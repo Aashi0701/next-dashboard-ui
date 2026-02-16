@@ -5,13 +5,15 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Lesson, Prisma, Subject, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 
 import LessonFilters from "@/components/filters/LessonFilters";
 import LessonSort from "@/components/filters/LessonSort";
+import LessonCard from "@/components/mobile/LessonCard";
 
-type LessonList = Lesson & { subject: Subject } & { class: Class } & {
+type LessonList = Lesson & {
+  subject: Subject;
+  class: Class;
   teacher: Teacher;
 };
 
@@ -27,7 +29,7 @@ const LessonListPage = async ({
   const { page, sortBy, sortOrder, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
 
-  // LOAD FILTER DATA
+  /* ================= FILTER DATA ================= */
   const [subjects, teachers, classes] = await Promise.all([
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
     prisma.teacher.findMany({ orderBy: { name: "asc" } }),
@@ -36,11 +38,16 @@ const LessonListPage = async ({
 
   const relatedData = { subjects, teachers, classes };
 
-  // TABLE STRUCTURE
+  /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
+    { header: "Lesson Name", accessor: "name"},
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
-    { header: "Teacher", accessor: "teacher", className: "hidden md:table-cell" },
+    {
+      header: "Teacher",
+      accessor: "teacher",
+      className: "hidden md:table-cell",
+    },
     ...(role === "admin"
       ? [{ header: "Actions", accessor: "action", className: "text-center" }]
       : []),
@@ -51,22 +58,13 @@ const LessonListPage = async ({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
-      {/* Subject */}
-      <td className="p-4 truncate">
-        {item.subject.name}
-      </td>
-
-      {/* Class */}
-      <td className="p-4 truncate">
-        {item.class.name}
-      </td>
-
-      {/* Teacher */}
+      <td className="p-4 font-medium truncate">{item.name}</td>
+      <td className="p-4 truncate">{item.subject.name}</td>
+      <td className="p-4 truncate">{item.class.name}</td>
       <td className="p-4 truncate hidden md:table-cell">
         {item.teacher.name} {item.teacher.surname}
       </td>
 
-      {/* Actions */}
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
@@ -76,18 +74,14 @@ const LessonListPage = async ({
               data={item}
               relatedData={relatedData}
             />
-            <FormContainer
-              table="lesson"
-              type="delete"
-              id={item.id}
-            />
+            <FormContainer table="lesson" type="delete" id={item.id} />
           </div>
         </td>
       )}
     </tr>
   );
 
-  // BUILD QUERY
+  /* ================= QUERY ================= */
   const query: Prisma.LessonWhereInput = {};
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -113,7 +107,7 @@ const LessonListPage = async ({
     }
   }
 
-  // SORT LOGIC
+  /* ================= SORT ================= */
   let orderBy: any = {};
   const order = sortOrder === "desc" ? "desc" : "asc";
 
@@ -129,12 +123,12 @@ const LessonListPage = async ({
         orderBy = { teacher: { name: order } };
         break;
       case "date":
-        orderBy = { createdAt: order };
+        orderBy = { id: order };
         break;
     }
   }
 
-  // FETCH DATA
+  /* ================= DATA ================= */
   const [data, count] = await prisma.$transaction([
     prisma.lesson.findMany({
       where: query,
@@ -151,29 +145,55 @@ const LessonListPage = async ({
   ]);
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* TOP */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Lessons</h1>
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* ===== TOP BAR ===== */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full">
+        {/* ===== TITLE ===== */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900">
+          Lessons
+        </h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+        {/* ===== SEARCH + ACTIONS ===== */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
 
-          <div className="flex items-center gap-4 self-end">
+          <div className="flex items-center gap-1 sm:gap-2">
             <LessonFilters subjects={subjects} teachers={teachers} classes={classes} />
             <LessonSort />
-
-            {role === "admin" && (
-              <FormContainer table="lesson" type="create" relatedData={relatedData} />
-            )}
+            {role === "admin" && <FormContainer table="lesson" type="create" relatedData={relatedData} />}
           </div>
         </div>
       </div>
 
-      {/* LIST */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* ===== DESKTOP TABLE ===== */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
 
-      {/* PAGINATION */}
+      {/* ===== MOBILE CARDS ===== */}
+      <div className="md:hidden mt-3 space-y-3">
+        {data.map((item) => (
+          <LessonCard
+            key={item.id}
+            item={item}
+            actions={
+              role === "admin" && (
+                <>
+                  <FormContainer
+                    table="lesson"
+                    type="update"
+                    data={item}
+                    relatedData={relatedData}
+                  />
+                  <FormContainer table="lesson" type="delete" id={item.id} />
+                </>
+              )
+            }
+          />
+        ))}
+      </div>
+
+      {/* ===== PAGINATION ===== */}
       <Pagination page={p} count={count} />
     </div>
   );

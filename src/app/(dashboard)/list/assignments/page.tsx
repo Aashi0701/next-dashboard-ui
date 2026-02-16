@@ -4,12 +4,12 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import FormContainer from "@/components/FormContainer";
 
 import AssignmentFilters from "@/components/filters/AssignmentFilters";
 import AssignmentSort from "@/components/filters/AssignmentSort";
+import AssignmentCard from "@/components/mobile/AssignmentCard";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -33,14 +33,14 @@ export default async function AssignmentListPage({
 
   const p = page ? parseInt(page) : 1;
 
-  // LOAD FILTER DATA
+  /* ================= FILTER DATA ================= */
   const [subjects, classes, teachers] = await Promise.all([
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.teacher.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  // TABLE COLUMNS
+  /* ================= TABLE STRUCTURE ================= */
   const columns = [
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
@@ -76,13 +76,9 @@ export default async function AssignmentListPage({
     </tr>
   );
 
-  // BUILD FILTER QUERY (SAFE)
+  /* ================= QUERY ================= */
   const query: Prisma.AssignmentWhereInput = {
-    lesson: {
-      subject: {},
-      teacher: {},
-      class: {},
-    },
+    lesson: { subject: {}, teacher: {}, class: {} },
   };
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -92,28 +88,23 @@ export default async function AssignmentListPage({
       case "subjectId":
         query.lesson!.subjectId = Number(value);
         break;
-
       case "classId":
         query.lesson!.classId = Number(value);
         break;
-
       case "teacherId":
         query.lesson!.teacherId = value;
         break;
-
       case "dateFrom":
         query.dueDate = { gte: new Date(value) };
         break;
-
-      case "dateTo": {
-        const existing = query.dueDate as any;
+      case "dateTo":
         query.dueDate = {
-          ...(existing?.gte ? { gte: existing.gte } : {}),
+          ...(query.dueDate as any)?.gte
+            ? { gte: (query.dueDate as any).gte }
+            : {},
           lte: new Date(value),
         };
         break;
-      }
-
       case "search":
         query.lesson!.subject = {
           name: { contains: value, mode: "insensitive" },
@@ -122,7 +113,6 @@ export default async function AssignmentListPage({
     }
   }
 
-  // ROLE CONDITIONS
   if (role === "teacher") {
     query.lesson!.teacherId = currentUserId!;
   }
@@ -139,9 +129,9 @@ export default async function AssignmentListPage({
     };
   }
 
-  // SORTING
-  let orderBy: any = {};
+  /* ================= SORT ================= */
   const order = sortOrder === "desc" ? "desc" : "asc";
+  let orderBy: any = {};
 
   switch (sortBy) {
     case "subject":
@@ -158,18 +148,12 @@ export default async function AssignmentListPage({
       break;
   }
 
-  // FETCH DATA
+  /* ================= DATA ================= */
   const [data, count] = await prisma.$transaction([
     prisma.assignment.findMany({
       where: query,
       include: {
-        lesson: {
-          select: {
-            subject: true,
-            teacher: true,
-            class: true,
-          },
-        },
+        lesson: { select: { subject: true, teacher: true, class: true } },
       },
       orderBy,
       take: ITEM_PER_PAGE,
@@ -179,33 +163,37 @@ export default async function AssignmentListPage({
   ]);
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* TOP BAR */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Assignments</h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h1 className="text-base md:text-lg font-semibold">Assignments</h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
-
-          <div className="flex items-center gap-4 self-end">
-            <AssignmentFilters
-              subjects={subjects}
-              classes={classes}
-              teachers={teachers}
-            />
-            <AssignmentSort />
-
-            {(role === "admin" || role === "teacher") && (
-              <FormContainer table="assignment" type="create" />
-            )}
-          </div>
+          <AssignmentFilters subjects={subjects} classes={classes} teachers={teachers} />
+          <AssignmentSort />
+          {(role === "admin" || role === "teacher") && (
+            <FormContainer table="assignment" type="create" />
+          )}
         </div>
       </div>
 
-      {/* TABLE */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* DESKTOP TABLE */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
 
-      {/* PAGINATION */}
+      {/* MOBILE CARDS */}
+      <div className="md:hidden mt-4 space-y-3">
+        {data.map((item) => (
+          <AssignmentCard
+            key={item.id}
+            item={item}
+            role={role}
+          />
+        ))}
+      </div>
+
       <Pagination page={p} count={count} />
     </div>
   );

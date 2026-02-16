@@ -1,160 +1,226 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import InputField from "../InputField";
-import {
-  assignmentSchema,
-  AssignmentSchema,
-} from "@/lib/formValidationSchemas";
-import {
-  createAssignment,
-  updateAssignment,
-} from "@/lib/actions";
 import {
   Dispatch,
   SetStateAction,
   startTransition,
   useActionState,
   useEffect,
+  useState,
 } from "react";
-import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
 
-const AssignmentForm = ({
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  assignmentSchema,
+  AssignmentFormValues,
+} from "@/lib/formValidationSchemas";
+
+import { createAssignment, updateAssignment } from "@/lib/actions";
+
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import InputField from "../InputField";
+import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
+import RadixSelect from "@/components/ui/RadixSelect";
+import FormStepper from "@/components/ui/FormStepper";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { ActionState } from "@/lib/actions";
+
+/* ===================================================== */
+
+const steps = ["Details", "Schedule"];
+
+/* ===================================================== */
+
+export default function AssignmentForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: AssignmentFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<AssignmentSchema>({
-    resolver: zodResolver(assignmentSchema) as any,
-  });
-
-  const [state, formAction] = useActionState<
-    { success: boolean; error: boolean },
-    AssignmentSchema
-  >(type === "create" ? createAssignment : updateAssignment, {
-    success: false,
-    error: false,
-  });
-
-  const onSubmit = handleSubmit((formData) => {
-    startTransition(() => {
-      formAction(formData);
-    });
-  });
-
+  relatedData?: {
+    lessons: { id: number; name: string }[];
+  };
+}) {
   const router = useRouter();
+  const { lessons = [] } = relatedData || {};
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<AssignmentFormValues>({
+    resolver: zodResolver(assignmentSchema) as any,
+    defaultValues: {
+      title: data?.title ?? "",
+      startDate: data?.startDate ? new Date(data.startDate) : undefined,
+      dueDate: data?.dueDate ? new Date(data.dueDate) : undefined,
+      lessonId: data?.lessonId,
+      ...(data?.id ? { id: data.id } : {}),
+    },
+    mode: "onChange",
+  });
+
+  const {
+    watch,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { isSubmitting, isValid },
+  } = methods;
+
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, AssignmentFormValues>(
+    type === "create" ? createAssignment : updateAssignment,
+    { success: false },
+  );
+
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof AssignmentFormValues)[][] = [
+      ["title", "lessonId"],
+      ["startDate", "dueDate"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
+  });
+
+  /* ================= SUCCESS ================= */
 
   useEffect(() => {
-    if (state.success) {
-      toast(
-        `Assignment has been ${type === "create" ? "created" : "updated"}!`
-      );
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router, setOpen, type]);
+    if (!state.success) return;
 
-  const { lessons } = relatedData;
+    toast.success(
+      `Assignment ${type === "create" ? "created" : "updated"} successfully`,
+    );
+    setOpen(false);
+    router.refresh();
+  }, [state.success, type, router, setOpen]);
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create"
-          ? "Create a new assignment"
-          : "Update the assignment"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        {/* HEADER */}
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Assignment" : "Update Assignment"}
+        </h1>
 
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label="Title"
-          name="title"
-          defaultValue={data?.title}
-          register={register}
-          error={errors?.title}
-        />
+        {/* STEPPER */}
+        <FormStepper steps={steps} step={step} />
 
-        <InputField
-          label="Start Date"
-          name="startDate"
-          type="datetime-local"
-          defaultValue={
-            data?.startDate
-              ? new Date(data.startDate).toISOString().slice(0, 16)
-              : ""
-          }
-          register={register}
-          error={errors?.startDate}
-        />
+        {/* STEP CONTENT */}
+        <div className="relative min-h-[150px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 — DETAILS */}
+            {step === 0 && (
+              <motion.div
+                key="details"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4"
+              >
+                <InputField label="Title" name="title" />
 
-        <InputField
-          label="Due Date"
-          name="dueDate"
-          type="datetime-local"
-          defaultValue={
-            data?.dueDate
-              ? new Date(data.dueDate).toISOString().slice(0, 16)
-              : ""
-          }
-          register={register}
-          error={errors?.dueDate}
-        />
+                <RadixSelect
+                  placeholder="Select lesson"
+                  value={
+                    watch("lessonId") ? String(watch("lessonId")) : undefined
+                  }
+                  onChange={(v) =>
+                    setValue("lessonId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={lessons.map((l) => ({
+                    value: String(l.id), // ✅ always non-empty
+                    label: l.name,
+                  }))}
+                />
+              </motion.div>
+            )}
 
-        {data && (
-          <InputField
-            label="Id"
-            name="id"
-            defaultValue={data?.id}
-            register={register}
-            error={errors?.id}
-            hidden
-          />
+            {/* STEP 2 — SCHEDULE */}
+            {step === 1 && (
+              <motion.div
+                key="schedule"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4"
+              >
+                <RadixDateTimePicker
+                  value={watch("startDate")}
+                  onChange={(d) =>
+                    setValue("startDate", d, {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Start date & time"
+                />
+
+                <RadixDateTimePicker
+                  value={watch("dueDate")}
+                  onChange={(d) =>
+                    setValue("dueDate", d, {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Due date & time"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {state.error && (
+          <p className="text-xs text-red-500 mt-2">
+            {state.error}
+          </p>
         )}
 
-        {/* LESSON DROPDOWN */}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Lesson</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("lessonId")}
-            defaultValue={data?.lessonId ?? ""}
-          >
-            <option value="">Select Lesson</option>
-            {lessons.map((lesson: { id: number; name: string }) => (
-              <option key={lesson.id} value={lesson.id}>
-                {lesson.name}
-              </option>
-            ))}
-          </select>
+        {/* ACTIONS */}
+        <div className="flex justify-between pt-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
 
-          {errors.lessonId?.message && (
-            <p className="text-xs text-red-400">
-              {errors.lessonId.message.toString()}
-            </p>
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!isValid || isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+            >
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
           )}
         </div>
-      </div>
-
-      {state.error && (
-        <span className="text-red-500">Something went wrong!</span>
-      )}
-
-      <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+      </form>
+    </FormProvider>
   );
-};
-
-export default AssignmentForm;
+}

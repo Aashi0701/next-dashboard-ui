@@ -27,13 +27,41 @@ export default function LessonSort() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow"
+        className="hidden md:flex
+          items-center gap-2
+          px-2 py-1.5
+          text-sm
+          border rounded-2xl
+          bg-purple-500
+          text-white
+          hover:bg-indigo-500
+          transition"
+          aria-label="Sort"
       >
-        <img src="/sort.png" width={18} height={18} />
+        <span className="text-base leading-none">⇅</span>
+        Sort
+      </button>
+
+      {/* ===== MOBILE SORT (ICON) ===== */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="
+          md:hidden
+          w-6 h-6
+          rounded-full
+          bg-purple-500
+          text-white
+          flex items-center justify-center
+          hover:brightness-95
+          transition
+        "
+        aria-label="Sort"
+      >
+        ⇅
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white border shadow-lg rounded-md z-40">
+        <div className="absolute right-0 mt-2 w-28 md:w-44 bg-white border shadow-lg rounded-md z-40">
           <div className="py-1 text-[10px] text-gray-700">
 
             <button onClick={() => toggleSort("subject")} className="block w-full text-left px-3 py-1.5 hover:bg-gray-100">

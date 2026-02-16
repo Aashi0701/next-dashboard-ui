@@ -1,4 +1,5 @@
 "use client";
+
 import Image from "next/image";
 import {
   RadialBarChart,
@@ -7,34 +8,42 @@ import {
 } from "recharts";
 
 const CountChart = ({ boys, girls }: { boys: number; girls: number }) => {
+  const total = boys + girls;
+
   const data = [
-    { name: "Total", count: boys + girls, fill: "white" },
-    { name: "Girls", count: girls, fill: "#FAE27C" },
-    { name: "Boys", count: boys, fill: "#C3EBFA" },
+    { name: "Boys", count: boys, fill: "#C4B5FD" },
+    { name: "Girls", count: girls, fill: "#FDA4AF" },
   ];
 
   return (
-    <div className="relative w-full h-[300px] min-h-[300px]"> {/* ✅ fixed height */}
-      <ResponsiveContainer width="100%" height="100%">
-        <RadialBarChart
-          cx="50%"
-          cy="50%"
-          innerRadius="40%"
-          outerRadius="100%"
-          barSize={32}
-          data={data}
-        >
-          <RadialBar background dataKey="count" />
-        </RadialBarChart>
-      </ResponsiveContainer>
+    /* HARD CLAMP */
+    <div className="relative w-full max-w-full overflow-hidden">
+      {/* SAFETY WRAPPER */}
+      <div className="mx-auto max-w-[280px] h-[220px] sm:h-[240px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart
+            cx="50%"
+            cy="50%"
+            innerRadius="58%"
+            outerRadius="88%"  
+            barSize={16}
+            data={data}
+          >
+            <RadialBar
+              dataKey="count"
+              background={{ fill: "#F1F5F9" }}
+              cornerRadius={10}
+            />
+          </RadialBarChart>
+        </ResponsiveContainer>
 
-      <Image
-        src="/maleFemale.png"
-        alt="gender icon"
-        width={50}
-        height={50}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-      />
+        {/* CENTER CONTENT */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <Image src="/pictogram.png" alt="gender" width={30} height={30} />
+          <p className="text-[11px] text-gray-500 mt-1">Total</p>
+          <p className="text-xl font-semibold text-gray-900">{total}</p>
+        </div>
+      </div>
     </div>
   );
 };

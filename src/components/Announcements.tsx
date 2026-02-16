@@ -111,14 +111,14 @@ const Announcements = async () => {
   -------------------------- */
   return (
     <div className="bg-white p-4 rounded-md shadow-sm flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Announcements</h2>
+      <h2 className="text-sm sm:text-lg font-semibold">Announcements</h2>
 
       {announcements.map((a) => (
         <div
           key={a.id}
           className="p-3 rounded-md border bg-gray-50 hover:bg-gray-100 transition"
         >
-          <h4 className="text-sm font-medium text-gray-900">
+          <h4 className="text-xs sm:text-sm font-medium text-gray-900">
             {a.title}
           </h4>
 

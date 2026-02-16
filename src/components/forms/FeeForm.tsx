@@ -1,9 +1,28 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import {
+  Dispatch,
+  SetStateAction,
+  startTransition,
+  useEffect,
+  useState,
+} from "react";
+
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import { FeeSchema, FeeSchemaType } from "@/lib/formValidationSchemas";
+
 import { createFee, updateFee } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import FormStepper from "@/components/ui/FormStepper";
+import { motion, AnimatePresence } from "framer-motion";
+
+const steps = ["Basic Info", "Classification"];
 
 export default function FeeForm({
   type,
@@ -12,131 +31,197 @@ export default function FeeForm({
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: FeeSchemaType;
   close: () => void;
   relatedData?: {
     classes?: {
       id: number;
       name: string;
-      grade?: { level: number };
     }[];
   };
 }) {
-  const form = useForm<FeeSchemaType>({
-    resolver: zodResolver(FeeSchema),
+  const router = useRouter();
+  const { classes = [] } = relatedData || {};
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF (OUTPUT TYPE ONLY) ================= */
+
+  const methods = useForm<FeeSchemaType>({
+    resolver: zodResolver(FeeSchema) as any, // ✅ REQUIRED with z.coerce
     defaultValues: {
+      id: data?.id,
       title: data?.title ?? "",
       amount: data?.amount ?? undefined,
       type: data?.type ?? "ADMISSION",
-      term: data?.term ?? "",
-      classId: data?.classId ?? "",
+      classId: data?.classId ?? null,
+      term: data?.term ?? null,
+      isActive: data?.isActive ?? true,
     },
+    mode: "onChange",
   });
 
-  async function onSubmit(values: FeeSchemaType) {
-    if (type === "create") {
-      await createFee({} as any, values);
-    } else {
-      await updateFee({} as any, { ...values, id: data.id });
-    }
-    close();
-  }
+  const {
+    watch,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { isSubmitting, errors },
+  } = methods;
 
-  /* ---------- SHARED STYLES ---------- */
+  const feeType = watch("type");
 
-  const label =
-    "text-xs font-medium text-gray-500";
+  /* ================= STEP VALIDATION ================= */
 
-  const input =
-    "w-full rounded-md bg-gray-50 border border-gray-300 px-3 py-2 text-sm outline-none " +
-    "focus:border-lamaPurple focus:ring-1 focus:ring-lamaPurple";
+  const nextStep = async () => {
+    const fieldsByStep: (keyof FeeSchemaType)[][] = [
+      ["title", "amount"],
+      ["type", "term", "classId"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const submitFinal = handleSubmit((values) => {
+    startTransition(async () => {
+      const parsed = FeeSchema.parse(values);
+
+      const result =
+        type === "create"
+          ? await createFee({ success: false }, parsed)
+          : await updateFee(
+              { success: false },
+              {
+                ...parsed,
+                id: data!.id!, // ✅ GUARANTEED ID for update
+              },
+            );
+
+      if (result.success) {
+        toast.success(
+          `Fee ${type === "create" ? "created" : "updated"} successfully`,
+        );
+        close();
+        router.refresh();
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  });
+
+  /* ================= UI ================= */
 
   return (
-  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-    {/* HEADER */}
-    <div className="flex items-center justify-between">
-      <h2 className="text-lg font-semibold text-gray-800">
-        {type === "create" ? "Create Fee Structure" : "Update Fee Structure"}
-      </h2>
-    </div>
+    <FormProvider {...methods}>
+      <form className="flex flex-col gap-4 max-h-[85vh]">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Fee Structure" : "Update Fee Structure"}
+        </h1>
 
-    <hr className="border-gray-200" />
-
-    {/* FIELDS */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      {/* Fee Title */}
-      <div className="flex flex-col gap-1">
-        <label className={label}>Fee Title</label>
-        <input
-          {...form.register("title")}
-          placeholder="Admission Fee / Term 1 Fee"
-          className={input}
+        <FormStepper
+          steps={steps}
+          step={step}
+          errorSteps={[
+            Boolean(errors.title || errors.amount),
+            Boolean(errors.type || errors.term || errors.classId),
+          ]}
         />
-      </div>
 
-      {/* Amount */}
-      <div className="flex flex-col gap-1">
-        <label className={label}>Amount (₹)</label>
-        <input
-          type="number"
-          {...form.register("amount", { valueAsNumber: true })}
-          placeholder="e.g. 15000"
-          className={input}
-        />
-      </div>
+        <div className="min-h-[180px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 */}
+            {step === 0 && (
+              <motion.div key="basic" className="space-y-4">
+                <InputField label="Fee Title" name="title" />
+                <InputField label="Amount (₹)" name="amount" type="number" />
+              </motion.div>
+            )}
 
-      {/* Fee Type */}
-      <div className="flex flex-col gap-1">
-        <label className={label}>Fee Type</label>
-        <select {...form.register("type")} className={input}>
-          <option value="ADMISSION">Admission</option>
-          <option value="TERM">Term</option>
-          <option value="ANNUAL">Annual</option>
-          <option value="MISC">Miscellaneous</option>
-        </select>
-      </div>
+            {/* STEP 2 */}
+            {step === 1 && (
+              <motion.div key="classification" className="space-y-4">
+                <RadixSelect
+                  placeholder="Select Fee Type"
+                  value={watch("type")}
+                  onChange={(v) =>
+                    setValue("type", v as FeeSchemaType["type"], {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={[
+                    { value: "ADMISSION", label: "Admission" },
+                    { value: "TERM", label: "Term" },
+                    { value: "ANNUAL", label: "Annual" },
+                    { value: "MISC", label: "Miscellaneous" },
+                  ]}
+                />
 
-      {/* Term */}
-      <div className="flex flex-col gap-1">
-        <label className={label}>Term (optional)</label>
-        <select {...form.register("term")} className={input}>
-          <option value="">— None —</option>
-          <option value="TERM_1">Term 1</option>
-          <option value="TERM_2">Term 2</option>
-        </select>
-      </div>
+                {feeType === "TERM" && (
+                  <RadixSelect
+                    placeholder="Select term"
+                    value={watch("term") ?? ""}
+                    onChange={(v) =>
+                      setValue("term", v as FeeSchemaType["term"], {
+                        shouldValidate: true,
+                      })
+                    }
+                    options={[
+                      { value: "TERM_1", label: "Term 1" },
+                      { value: "TERM_2", label: "Term 2" },
+                    ]}
+                  />
+                )}
 
-      {/* Class */}
-      <div className="md:col-span-2 flex flex-col gap-1">
-        <label className={label}>Class (optional)</label>
-        <select {...form.register("classId")} className={input}>
-          <option value="">All Classes</option>
-          {relatedData?.classes?.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-              {cls.grade ? ` (Grade ${cls.grade.level})` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
+                <RadixSelect
+                  placeholder="All Classes"
+                  value={
+                    watch("classId") !== null ? String(watch("classId")) : ""
+                  }
+                  onChange={(v) =>
+                    setValue("classId", v ? Number(v) : null, {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={classes.map((cls) => ({
+                    value: String(cls.id),
+                    label: cls.name,
+                  }))}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-    {/* FOOTER */}
-    <div className="flex justify-end gap-3 border-t pt-4">
-      <button
-        type="button"
-        onClick={close}
-        className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
-      >
-        Cancel
-      </button>
-      <button
-        type="submit"
-        className="px-5 py-2 text-sm rounded-md bg-lamaPurple text-white hover:bg-lamaPurpleDark"
-      >
-        {type === "create" ? "Create Fee" : "Update Fee"}
-      </button>
-    </div>
-  </form>
-);
+        {/* ACTIONS */}
+        <div className="flex justify-between pt-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submitFinal}
+              disabled={isSubmitting}
+              className="bg-blue-800 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Fee"
+                  : "Update Fee"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
+  );
 }

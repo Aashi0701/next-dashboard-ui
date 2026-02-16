@@ -1,59 +1,100 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { useState } from "react";
+import Image from "next/image";
+
+import RadixSelect from "@/components/ui/RadixSelect";
+import FilterDrawer from "@/components/filters/FilterDrawer";
 
 export default function FeeFilters({
-  classes,
+  classes = [],
 }: {
   classes: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
-  const [open, setOpen] = useState(false);
 
-  function apply(classId?: string) {
+  const [open, setOpen] = useState(false);
+  const [classId, setClassId] = useState(params.get("classId") || "");
+
+  /* ================= APPLY ================= */
+
+  const applyFilters = () => {
     const q = new URLSearchParams(params.toString());
 
-    if (classId) q.set("classId", classId);
-    else q.delete("classId");
+    classId ? q.set("classId", classId) : q.delete("classId");
 
-    router.push(`?${q.toString()}`);
+    router.push("?" + q.toString());
     setOpen(false);
-  }
+  };
+
+  /* ================= RESET ================= */
+
+  const resetFilters = () => {
+    const q = new URLSearchParams(params.toString());
+    q.delete("classId");
+
+    router.push("?" + q.toString());
+    setClassId("");
+    setOpen(false);
+  };
+
+  /* ================= UI ================= */
 
   return (
-    <div className="relative">
-      {/* ICON BUTTON */}
+    <>
+      {/* DESKTOP FILTER BUTTON */}
       <button
-        onClick={() => setOpen((p) => !p)}
-        className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center hover:bg-yellow-400"
+        onClick={() => setOpen(true)}
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm rounded-2xl bg-purple-500 text-white hover:bg-indigo-500 transition"
       >
-        <Image src="/filter.png" alt="filter" width={14} height={14} />
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+        Filter
       </button>
 
-      {/* DROPDOWN */}
-      {open && (
-        <div className="absolute right-0 mt-2 bg-white border rounded-md shadow-md z-20 w-44">
-          <button
-            onClick={() => apply()}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-          >
-            All Classes
-          </button>
+      {/* MOBILE FILTER BUTTON */}
+      <button
+        onClick={() => setOpen(true)}
+        className="md:hidden w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
+      >
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+      </button>
 
-          {classes.map((cls) => (
+      <FilterDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        footer={
+          <div className="flex gap-3">
             <button
-              key={cls.id}
-              onClick={() => apply(String(cls.id))}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+              onClick={resetFilters}
+              className="flex-1 h-11 border rounded-xl text-sm"
             >
-              {cls.name}
+              Reset
             </button>
-          ))}
+            <button
+              onClick={applyFilters}
+              className="flex-1 h-11 bg-blue-600 text-white rounded-xl text-sm font-medium"
+            >
+              Apply
+            </button>
+          </div>
+        }
+      >
+        {/* CLASS */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Class</label>
+          <RadixSelect
+            value={classId}
+            placeholder="All Classes"
+            options={classes.map((c) => ({
+              value: String(c.id),
+              label: c.name,
+            }))}
+            onChange={(v) => setClassId(v ?? "")}
+          />
         </div>
-      )}
-    </div>
+      </FilterDrawer>
+    </>
   );
 }

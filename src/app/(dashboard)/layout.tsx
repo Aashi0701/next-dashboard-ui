@@ -1,5 +1,5 @@
+import AutoLogoutGuard from "@/components/AutoLogoutGuard";
 import DashboardShell from "./DashboardShell";
-import { getNavbarData } from "@/components/NavbarServer";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export default async function DashboardLayout({
@@ -9,17 +9,11 @@ export default async function DashboardLayout({
 }) {
   const session = await getSessionUser();
 
-  if (!session) {
-    return null;
-  }
-
-  const navbarData = await getNavbarData(session);
+  if (!session) return null;
 
   return (
-    <DashboardShell
-      navbarData={navbarData}
-      role={session.role}   // ✅ PASS ROLE
-    >
+    <DashboardShell role={session.role}>
+      <AutoLogoutGuard />
       {children}
     </DashboardShell>
   );

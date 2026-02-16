@@ -5,11 +5,11 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Exam, Prisma, Subject, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 
 import ExamFilters from "@/components/filters/ExamFilters";
 import ExamSort from "@/components/filters/ExamSort";
+import ExamCard from "@/components/mobile/ExamCard";
 
 type ExamList = Exam & {
   lesson: {
@@ -26,26 +26,33 @@ export default async function ExamListPage({
 }) {
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...queryParams } = params;
+  const p = page ? parseInt(page) : 1;
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
 
-  const p = page ? parseInt(page) : 1;
-
-  // Load filters data
+  /* ================= FILTER DATA ================= */
   const [subjects, classes, teachers] = await Promise.all([
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.teacher.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  // Table Columns
+  /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
-    { header: "Teacher", accessor: "teacher", className: "hidden md:table-cell" },
-    { header: "Date", accessor: "date", className: "hidden md:table-cell" },
+    {
+      header: "Teacher",
+      accessor: "teacher",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: "Date",
+      accessor: "date",
+      className: "hidden md:table-cell",
+    },
     ...(role === "admin" || role === "teacher"
       ? [{ header: "Actions", accessor: "action", className: "text-center" }]
       : []),
@@ -76,16 +83,9 @@ export default async function ExamListPage({
     </tr>
   );
 
-  // --------------------------------------------------------
-  //                 BUILD FILTER QUERY (FULL FIX)
-  // --------------------------------------------------------
-
+  /* ================= QUERY ================= */
   const query: Prisma.ExamWhereInput = {
-    lesson: {
-      subject: {},
-      teacher: {},
-      class: {},
-    },
+    lesson: {},
   };
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -95,34 +95,21 @@ export default async function ExamListPage({
       case "subjectId":
         query.lesson!.subjectId = Number(value);
         break;
-
       case "classId":
         query.lesson!.classId = Number(value);
         break;
-
       case "teacherId":
-        query.lesson!.teacherId = value; // teacherId is string
+        query.lesson!.teacherId = value;
         break;
-
       case "dateFrom":
         query.startTime = { gte: new Date(value) };
         break;
-
-      case "dateTo": {
-        const existing = query.startTime;
-
-        // Only merge if startTime is an object, not string or Date
-        if (existing && typeof existing === "object" && !("getTime" in existing)) {
-          query.startTime = {
-            ...(existing.gte ? { gte: existing.gte } : {}),
-            lte: new Date(value),
-          };
-        } else {
-          query.startTime = { lte: new Date(value) };
-        }
+      case "dateTo":
+        query.startTime = {
+          ...(query.startTime as any),
+          lte: new Date(value),
+        };
         break;
-      }
-
       case "search":
         query.lesson!.subject = {
           name: { contains: value, mode: "insensitive" },
@@ -131,10 +118,7 @@ export default async function ExamListPage({
     }
   }
 
-  // --------------------------------------------------------
-  //                  ROLE CONDITIONS 
-  // --------------------------------------------------------
-
+  /* ================= ROLE CONDITIONS ================= */
   if (role === "teacher") {
     query.lesson!.teacherId = currentUserId!;
   }
@@ -151,36 +135,27 @@ export default async function ExamListPage({
     };
   }
 
-  // --------------------------------------------------------
-  //                        SORTING 
-  // --------------------------------------------------------
-
-  let orderBy: any = {};
-  const order = sortOrder === "desc" ? "desc" : "asc";
+  /* ================= SORT ================= */
+  const order: "asc" | "desc" = sortOrder === "desc" ? "desc" : "asc";
+  let orderBy: Prisma.ExamOrderByWithRelationInput = { startTime: order };
 
   switch (sortBy) {
     case "subject":
       orderBy = { lesson: { subject: { name: order } } };
       break;
-
     case "class":
       orderBy = { lesson: { class: { name: order } } };
       break;
-
     case "teacher":
       orderBy = { lesson: { teacher: { name: order } } };
       break;
-
     case "date":
       orderBy = { startTime: order };
       break;
   }
 
-  // --------------------------------------------------------
-  //                    FETCH DATA 
-  // --------------------------------------------------------
-
-  const [data, count] = await prisma.$transaction([
+  /* ================= DATA ================= */
+  const [data, count] = (await prisma.$transaction([
     prisma.exam.findMany({
       where: query,
       include: {
@@ -197,24 +172,22 @@ export default async function ExamListPage({
       skip: ITEM_PER_PAGE * (p - 1),
     }),
     prisma.exam.count({ where: query }),
-  ]);
-
-  // --------------------------------------------------------
-  //                    RETURN UI 
-  // --------------------------------------------------------
+  ])) as [ExamList[], number];
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Exams</h1>
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* ===== TOP BAR ===== */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+        <h1 className="text-base md:text-lg font-semibold text-gray-900">
+          Exams
+        </h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
 
-          <div className="flex items-center gap-4 self-end">
+          <div className="flex items-center gap-1 sm:gap-2">
             <ExamFilters subjects={subjects} classes={classes} teachers={teachers} />
             <ExamSort />
-
             {(role === "admin" || role === "teacher") && (
               <FormContainer table="exam" type="create" />
             )}
@@ -222,7 +195,19 @@ export default async function ExamListPage({
         </div>
       </div>
 
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* ===== DESKTOP TABLE ===== */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
+
+      {/* ===== MOBILE CARDS ===== */}
+      <div className="md:hidden mt-4 space-y-3">
+        {data.map((item) => (
+          <ExamCard key={item.id} item={item} role={role} />
+        ))}
+      </div>
+
+      {/* ===== PAGINATION ===== */}
       <Pagination page={p} count={count} />
     </div>
   );

@@ -1,10 +1,18 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalendarContainer";
+import EventCalendarContainer from "@/components/EventCalendarContainer";
 import { auth } from "@clerk/nextjs/server";
 
-export default async function TeacherPage() {
+export default async function TeacherPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
+
+  const params = await searchParams;
+  const date = params?.date ?? undefined;
 
   return (
     <div className="p-4 flex flex-col xl:flex-row gap-4 w-full">
@@ -15,7 +23,6 @@ export default async function TeacherPage() {
             Schedule
           </h1>
 
-          {/* ✅ Calendar renders safely on all screen sizes */}
           <BigCalendarContainer
             type="teacherId"
             id={userId}
@@ -23,8 +30,9 @@ export default async function TeacherPage() {
         </div>
       </div>
 
-      {/* RIGHT – Announcements */}
+      {/* RIGHT – Events + Announcements */}
       <div className="w-full xl:w-1/3 min-w-0 flex flex-col gap-6">
+        <EventCalendarContainer date={date} />
         <Announcements />
       </div>
     </div>

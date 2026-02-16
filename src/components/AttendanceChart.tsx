@@ -1,9 +1,8 @@
 "use client";
-import Image from "next/image";
+
 import {
   BarChart,
   Bar,
-  Rectangle,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,42 +10,92 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useEffect, useState } from "react";
 
-const AttendanceChart = ({
-  data,
-}: {
-  data: { name: string; present: number; absent: number }[];
-}) => {
+type AttendanceData = {
+  name: string;
+  present: number;
+  absent: number;
+};
+
+const AttendanceChart = ({ data }: { data: AttendanceData[] }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   return (
-    <ResponsiveContainer width="100%" height="90%">
-      <BarChart width={500} height={300} data={data} barSize={20}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ddd" />
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={data}
+        barSize={isMobile ? 10 : 20}
+        margin={{
+          top: isMobile ? 6 : 20,
+          right: 10,
+          left: isMobile ? -10 : 0,
+          bottom: isMobile ? 0 : 10,
+        }}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#e5e7eb"
+        />
+
         <XAxis
           dataKey="name"
+          interval={0}
           axisLine={false}
-          tick={{ fill: "#d1d5db" }}
           tickLine={false}
+          tick={{
+            fill: "#9ca3af",
+            fontSize: isMobile ? 10 : 12,
+          }}
         />
-        <YAxis axisLine={false} tick={{ fill: "#d1d5db" }} tickLine={false} />
+
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          width={isMobile ? 24 : 40}
+          tick={{
+            fill: "#9ca3af",
+            fontSize: isMobile ? 10 : 12,
+          }}
+        />
+
         <Tooltip
-          contentStyle={{ borderRadius: "10px", borderColor: "lightgray" }}
+          contentStyle={{
+            borderRadius: 8,
+            borderColor: "#e5e7eb",
+            fontSize: 12,
+          }}
         />
+
         <Legend
-          align="left"
+          align="center"
           verticalAlign="top"
-          wrapperStyle={{ paddingTop: "20px", paddingBottom: "40px" }}
+          iconType="circle"
+          wrapperStyle={{
+            paddingTop: isMobile ? 2 : 10,
+            paddingBottom: isMobile ? 20 : 24,
+            fontSize: isMobile ? 10 : 16,
+          }}
         />
+
         <Bar
           dataKey="present"
-          fill="#FAE27C"
-          legendType="circle"
-          radius={[10, 10, 0, 0]}
+          fill="#FDA4AF"
+          radius={[6, 6, 0, 0]}
         />
+
         <Bar
           dataKey="absent"
-          fill="#C3EBFA"
-          legendType="circle"
-          radius={[10, 10, 0, 0]}
+          fill="#D8B4FE"
+          radius={[6, 6, 0, 0]}
         />
       </BarChart>
     </ResponsiveContainer>

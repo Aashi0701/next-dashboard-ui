@@ -1,114 +1,134 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import Image from "next/image";
 
-export default function TeacherFilters({ subjects, classes }: any) {
-  const [open, setOpen] = useState(false);
+import FilterDrawer from "@/components/filters/FilterDrawer";
+import RadixSelect from "@/components/ui/RadixSelect";
 
+/* ================= TYPES ================= */
+
+type Props = {
+  subjects: { id: number; name: string }[];
+  classes: { id: number; name: string }[];
+};
+
+/* ================= COMPONENT ================= */
+
+export default function TeacherFilters({ subjects, classes }: Props) {
   const router = useRouter();
   const params = useSearchParams();
 
-  const [subjectId, setSubjectId] = useState(params.get("subjectId") || "");
-  const [classId, setClassId] = useState(params.get("classId") || "");
+  const [open, setOpen] = useState(false);
+
+  const [subjectId, setSubjectId] = useState(
+    params.get("subjectId") || ""
+  );
+  const [classId, setClassId] = useState(
+    params.get("classId") || ""
+  );
+
+  /* ================= ACTIONS ================= */
 
   const applyFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    if (subjectId) query.set("subjectId", subjectId);
-    else query.delete("subjectId");
+    subjectId
+      ? query.set("subjectId", subjectId)
+      : query.delete("subjectId");
 
-    if (classId) query.set("classId", classId);
-    else query.delete("classId");
+    classId
+      ? query.set("classId", classId)
+      : query.delete("classId");
 
-    router.push(`?${query.toString()}`);
+    router.push("?" + query.toString());
     setOpen(false);
   };
 
   const resetFilters = () => {
     const query = new URLSearchParams(params.toString());
+
     query.delete("subjectId");
     query.delete("classId");
-    router.push(`?${query.toString()}`);
+
+    router.push("?" + query.toString());
+
+    setSubjectId("");
+    setClassId("");
     setOpen(false);
   };
 
+  /* ================= UI ================= */
+
   return (
     <>
-      {/* Adjust Button */}
+      {/* ===== DESKTOP FILTER BUTTON ===== */}
       <button
         onClick={() => setOpen(true)}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow"
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm rounded-2xl bg-purple-500 text-white hover:bg-indigo-500 transition"
       >
-        <img src="/adjust.png" width={18} height={18} />
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+        Filter
       </button>
 
-      {/* Drawer */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
-          <div className="w-80 bg-white shadow-xl h-full p-6 flex flex-col gap-6">
-            <div className="flex justify-between">
-              <h2 className="text-lg font-semibold">Filters</h2>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-xl text-gray-600"
-              >
-                ×
-              </button>
-            </div>
+      {/* ===== MOBILE FILTER BUTTON ===== */}
+      <button
+        onClick={() => setOpen(true)}
+        className="md:hidden w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
+      >
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+      </button>
 
-            {/* Subject Filter */}
-            <div>
-              <label className="text-sm font-medium text-gray-600">Subject</label>
-              <select
-                className="w-full p-3 border rounded-lg mt-2"
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-              >
-                <option value="">All</option>
-                {subjects.map((sub: any) => (
-                  <option value={sub.id} key={sub.id}>
-                    {sub.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Class Filter */}
-            <div>
-              <label className="text-sm font-medium text-gray-600">Class</label>
-              <select
-                className="w-full p-3 border rounded-lg mt-2"
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-              >
-                <option value="">All</option>
-                {classes.map((cls: any) => (
-                  <option value={cls.id} key={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-3 mt-auto">
-              <button
-                onClick={resetFilters}
-                className="flex-1 border rounded-lg p-2"
-              >
-                Reset
-              </button>
-              <button
-                onClick={applyFilters}
-                className="flex-1 bg-blue-600 text-white p-2 rounded-lg"
-              >
-                Apply
-              </button>
-            </div>
+      {/* ===== FILTER DRAWER ===== */}
+      <FilterDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        footer={
+          <div className="flex gap-3">
+            <button
+              onClick={resetFilters}
+              className="flex-1 border rounded-xl py-2 text-sm"
+            >
+              Reset
+            </button>
+            <button
+              onClick={applyFilters}
+              className="flex-1 bg-blue-600 text-white rounded-xl py-2 text-sm"
+            >
+              Apply
+            </button>
           </div>
+        }
+      >
+        {/* SUBJECT */}
+        <div>
+          <label className="font-medium text-gray-700">Subject</label>
+          <RadixSelect
+            value={subjectId}
+            onChange={(v) => setSubjectId(v ?? "")}
+            placeholder="All Subjects"
+            options={subjects.map((s) => ({
+              value: String(s.id), // ✅ non-empty
+              label: s.name,
+            }))}
+          />
         </div>
-      )}
+
+        {/* CLASS */}
+        <div>
+          <label className="font-medium text-gray-700">Class</label>
+          <RadixSelect
+            value={classId}
+            onChange={(v) => setClassId(v ?? "")}
+            placeholder="All Classes"
+            options={classes.map((c) => ({
+              value: String(c.id), // ✅ non-empty
+              label: c.name,
+            }))}
+          />
+        </div>
+      </FilterDrawer>
     </>
   );
 }

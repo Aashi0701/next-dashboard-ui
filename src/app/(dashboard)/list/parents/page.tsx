@@ -11,53 +11,47 @@ import { auth } from "@clerk/nextjs/server";
 
 import ParentFilters from "@/components/filters/ParentFilters";
 import ParentSort from "@/components/filters/ParentSort";
+import ParentCard from "@/components/mobile/ParentCard";
 
-type ParentList = Parent & { students: Student[] };
+type ParentList = Parent & {
+  students: Student[];
+};
 
 const ParentListPage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) => {
-
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...queryParams } = params;
+  const p = page ? parseInt(page) : 1;
 
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
-  // ----------------------------
-  // TABLE COLUMNS
-  // ----------------------------
+  /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
-  { header: "Info", accessor: "info" },
+    { header: "Info", accessor: "info" },
+    {
+      header: "Student Names",
+      accessor: "students",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: "Phone",
+      accessor: "phone",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: "Address",
+      accessor: "address",
+      className: "hidden lg:table-cell",
+    },
+    ...(role === "admin"
+      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
+      : []),
+  ];
 
-  {
-    header: "Student Names",
-    accessor: "students",
-    className: "hidden md:table-cell",
-  },
-
-  {
-    header: "Phone",
-    accessor: "phone",
-    className: "hidden md:table-cell", // ✅ CHANGED (was lg)
-  },
-
-  {
-    header: "Address",
-    accessor: "address",
-    className: "hidden lg:table-cell",
-  },
-
-  ...(role === "admin"
-    ? [{ header: "Actions", accessor: "action", className: "text-center" }]
-    : []),
-];
-
-  // ----------------------------
-  // RENDER TABLE ROW
-  // ----------------------------
   const renderRow = (item: ParentList) => (
     <tr
       key={item.id}
@@ -73,12 +67,12 @@ const ParentListPage = async ({
         </div>
       </td>
 
-      {/* Student Names */}
+      {/* Students */}
       <td className="p-4 hidden md:table-cell truncate">
         {item.students.map((s) => s.name).join(", ")}
       </td>
 
-      {/* Phone ✅ FIXED */}
+      {/* Phone */}
       <td className="p-4 hidden md:table-cell truncate">
         {item.phone}
       </td>
@@ -100,11 +94,7 @@ const ParentListPage = async ({
     </tr>
   );
 
-  const p = page ? parseInt(page) : 1;
-
-  // ----------------------------
-  // FILTER QUERY
-  // ----------------------------
+  /* ================= QUERY ================= */
   const query: Prisma.ParentWhereInput = {};
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -114,41 +104,32 @@ const ParentListPage = async ({
       case "search":
         query.name = { contains: value, mode: "insensitive" };
         break;
-
       case "studentId":
         query.students = { some: { id: value } };
-        break;
-
-      default:
         break;
     }
   }
 
-  // ----------------------------
-  // SORTING
-  // ----------------------------
-  const sortField = sortBy || "createdAt";
-  const order: "asc" | "desc" = (sortOrder as any) || "desc";
+  /* ================= SORT ================= */
+  const order: "asc" | "desc" = sortOrder === "asc" ? "asc" : "desc";
 
-  const sortableFields: Record<string, any> = {
-    name: { name: order },
-    phone: { phone: order },
-    address: { address: order },
-  };
+  const sortableFields: Record<string, Prisma.ParentOrderByWithRelationInput> =
+    {
+      name: { name: order },
+      phone: { phone: order },
+      address: { address: order },
+    };
 
-  const orderBy = sortableFields[sortField] || { createdAt: order };
+  const orderBy =
+    (sortBy && sortableFields[sortBy]) || { createdAt: order };
 
-  // ----------------------------
-  // GET STUDENTS FOR FILTERS
-  // ----------------------------
+  /* ================= FILTER DATA ================= */
   const allStudents = await prisma.student.findMany({
     orderBy: { name: "asc" },
   });
 
-  // ----------------------------
-  // MAIN QUERY
-  // ----------------------------
-  const [data, count] = await prisma.$transaction([
+  /* ================= DATA ================= */
+  const [data, count] = (await prisma.$transaction([
     prisma.parent.findMany({
       where: query,
       include: { students: true },
@@ -157,36 +138,42 @@ const ParentListPage = async ({
       skip: ITEM_PER_PAGE * (p - 1),
     }),
     prisma.parent.count({ where: query }),
-  ]);
+  ])) as [ParentList[], number];
 
-  // ----------------------------
-  // RENDER UI
-  // ----------------------------
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* ===== TOP BAR ===== */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+        <h1 className="text-base md:text-lg font-semibold text-gray-900">
+          Parents
+        </h1>
 
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Parents</h1>
-
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
 
-          <div className="flex items-center gap-4 self-end">
+          <div className="flex items-center gap-1 sm:gap-2">
             <ParentFilters students={allStudents} />
             <ParentSort />
-
             {role === "admin" && (
               <FormContainer table="parent" type="create" />
             )}
           </div>
-
         </div>
       </div>
 
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* ===== DESKTOP TABLE ===== */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
 
+      {/* ===== MOBILE CARDS ===== */}
+      <div className="md:hidden mt-4 space-y-3">
+        {data.map((item) => (
+          <ParentCard key={item.id} parent={item} role={role} />
+        ))}
+      </div>
+
+      {/* ===== PAGINATION ===== */}
       <Pagination page={p} count={count} />
     </div>
   );

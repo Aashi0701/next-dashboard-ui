@@ -14,6 +14,7 @@ import {
   deleteEvent,
   deleteParent,
   deleteFee,
+  deleteHoliday,
 } from "@/lib/actions";
 
 import dynamic from "next/dynamic";
@@ -30,6 +31,11 @@ import {
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
 import AssignFeeForm from "./forms/AssignFeeForm";
+import ModalPortal from "./ModalPortal";
+
+/* ------------------------------------------------------------------ */
+/* TYPES */
+/* ------------------------------------------------------------------ */
 
 type TableKey = FormContainerProps["table"];
 type MutationType = "create" | "update";
@@ -37,12 +43,16 @@ type ServerAction = (prev: any, formData: FormData) => Promise<any>;
 
 type FormFactory = (
   setOpen: Dispatch<SetStateAction<boolean>>,
-  type: MutationType,
+  type?: MutationType,
   data?: any,
-  relatedData?: any
+  relatedData?: any,
 ) => JSX.Element;
 
-const deleteActionMap: Record<TableKey, ServerAction> = {
+/* ------------------------------------------------------------------ */
+/* DELETE ACTIONS (PROFILE EXCLUDED INTENTIONALLY) */
+/* ------------------------------------------------------------------ */
+
+const deleteActionMap: Partial<Record<TableKey, ServerAction>> = {
   subject: deleteSubject,
   class: deleteClass,
   teacher: deleteTeacher,
@@ -55,9 +65,13 @@ const deleteActionMap: Record<TableKey, ServerAction> = {
   attendance: deleteAttendance,
   event: deleteEvent,
   announcement: deleteAnnouncement,
+  holiday: deleteHoliday,
   fee: deleteFee,
-  payment: deleteFee,
 };
+
+/* ------------------------------------------------------------------ */
+/* FORMS (DYNAMIC IMPORTS) */
+/* ------------------------------------------------------------------ */
 
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"));
 const StudentForm = dynamic(() => import("./forms/StudentForm"));
@@ -73,29 +87,74 @@ const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"));
 const AttendanceForm = dynamic(() => import("./forms/AttendanceForm"));
 const FeeForm = dynamic(() => import("./forms/FeeForm"));
 const CollectPaymentForm = dynamic(() => import("./forms/CollectPaymentForm"));
+const HolidayForm = dynamic(() => import("./forms/HolidayForm"));
+const ProfileForm = dynamic(() => import("./forms/ProfileForm"));
+
+/* ------------------------------------------------------------------ */
+/* FORM FACTORY MAP */
+/* ------------------------------------------------------------------ */
 
 const forms: Record<TableKey, FormFactory> = {
-  subject: (s, t, d, r) => <SubjectForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  class: (s, t, d, r) => <ClassForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  teacher: (s, t, d, r) => <TeacherForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  student: (s, t, d, r) => <StudentForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  parent: (s, t, d, r) => <ParentForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  exam: (s, t, d, r) => <ExamForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  lesson: (s, t, d, r) => <LessonForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  assignment: (s, t, d, r) => <AssignmentForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  result: (s, t, d, r) => <ResultForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  attendance: (s, t, d, r) => <AttendanceForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  event: (s, t, d, r) => <EventForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  announcement: (s, t, d, r) => <AnnouncementForm {...{ setOpen: s, type: t, data: d, relatedData: r }} />,
-  fee: (s, t, d, r) => (<FeeForm type={t} data={d} close={() => s(false)} relatedData={r} />),
-  payment: (s, t, d) => (<CollectPaymentForm data={d} close={() => s(false)}/>),
+  subject: (s, t, d, r) => (
+    <SubjectForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  class: (s, t, d, r) => (
+    <ClassForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  teacher: (s, t, d, r) => (
+    <TeacherForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  student: (s, t, d, r) => (
+    <StudentForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  parent: (s, t, d, r) => (
+    <ParentForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  exam: (s, t, d, r) => (
+    <ExamForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  lesson: (s, t, d, r) => (
+    <LessonForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  assignment: (s, t, d, r) => (
+    <AssignmentForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  result: (s, t, d, r) => (
+    <ResultForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  attendance: (s, t, d, r) => (
+    <AttendanceForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  event: (s, t, d, r) => (
+    <EventForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  announcement: (s, t, d, r) => (
+    <AnnouncementForm {...{ setOpen: s, type: t!, data: d, relatedData: r }} />
+  ),
+  holiday: (s, t, d) => <HolidayForm type={t!} data={d} setOpen={s} />,
+  fee: (s, t, d, r) => (
+    <FeeForm type={t!} data={d} relatedData={r} close={() => s(false)} />
+  ),
+  payment: (s, _t, d) => <CollectPaymentForm data={d} close={() => s(false)} />,
+
+  /* ✅ PROFILE — FIXED */
+  profile: (s, _t, _d, r) => (
+    <ProfileForm
+      relatedData={r}
+      setOpen={(v: boolean) => {
+        if (!v) {
+          s(false);
+        }
+      }}
+    />
+  ),
 };
 
 const iconMap: Record<string, string> = {
-  create: "/create.png",
+  create: "/createnew.png",
   update: "/update.png",
-  delete: "/delete.png",
-  assign: "/assign.png",
+  delete: "/bin.png",
+  assign: "/assignment.png",
 };
 
 const FormModal = ({
@@ -110,21 +169,28 @@ const FormModal = ({
   const router = useRouter();
 
   const iconBase =
-    "w-7 h-7 flex items-center justify-center rounded-full transition hover:scale-105";
+    "w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full transition hover:scale-105";
 
   const iconStyle =
     type === "create"
-      ? "bg-yellow-400 hover:bg-yellow-500"
+      ? "bg-purple-500 hover:bg-blue-600"
       : type === "update"
-      ? "bg-blue-500 hover:bg-blue-600"
-      : type === "assign"
-      ? "bg-green-500 hover:bg-green-600"
-      : "bg-red-500 hover:bg-red-600";
+        ? "bg-green-300 hover:bg-blue-600"
+        : type === "assign"
+          ? "bg-yellow-300 hover:bg-blue-600"
+          : "bg-orange-300 hover:bg-blue-600";
 
   const Form = () => {
+    /* 🚫 PROFILE CANNOT BE DELETED */
+    if (type === "delete" && table === "profile") {
+      return null;
+    }
+
     /* DELETE */
     if (type === "delete" && id) {
       const action = deleteActionMap[table];
+      if (!action) return null;
+
       const [state, formAction] = useActionState(action, {
         success: false,
         error: false,
@@ -171,33 +237,52 @@ const FormModal = ({
 
   return (
     <>
-      {/* TRIGGER */}
-      <div onClick={() => setOpen(true)} className="inline-block cursor-pointer">
+      {/* TRIGGER (UNCHANGED) */}
+      <div
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center justify-center leading-none cursor-pointer"
+      >
         {trigger ?? (
           <button className={`${iconBase} ${iconStyle}`}>
-            <Image
-              src={iconMap[type]}
-              alt={type}
-              width={14}
-              height={14}
-            />
+            <Image src={iconMap[type]} alt={type} width={14} height={14} />
           </button>
         )}
       </div>
 
-      {/* MODAL */}
       {open && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[60%] lg:w-[45%]">
-            <Form />
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute top-3 right-3"
+        <ModalPortal>
+          <div className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center">
+            {/* MODAL CONTAINER */}
+            <div
+              className="
+          relative
+          w-full
+          sm:max-w-xl md:max-w-2xl
+          bg-white
+          rounded-t-2xl sm:rounded-2xl
+          shadow-xl
+          max-h-[90vh]
+          overflow-y-auto
+          p-4 sm:p-6
+        "
             >
-              <Image src="/close.png" alt="close" width={15} height={15} />
-            </button>
+              {/* MOBILE HANDLE */}
+              <div className="sm:hidden flex justify-center mb-2">
+                <div className="w-10 h-1.5 rounded-full bg-gray-300" />
+              </div>
+
+              <Form />
+
+              {/* CLOSE BUTTON */}
+              <button
+                onClick={() => setOpen(false)}
+                className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100"
+              >
+                <Image src="/close.png" alt="close" width={15} height={15} />
+              </button>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );

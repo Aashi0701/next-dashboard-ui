@@ -1,157 +1,166 @@
+// app/(dashboard)/list/payments/page.tsx
+
 import prisma from "@/lib/prisma";
-import Pagination from "@/components/Pagination";
-import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
-import FormContainer from "@/components/FormContainer";
-import { PaymentStatusBadge } from "@/components/ui/FeeBadges";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { auth } from "@clerk/nextjs/server";
 import { Prisma } from "@prisma/client";
+import { ITEM_PER_PAGE } from "@/lib/settings";
 
-/* =========================
+import Pagination from "@/components/Pagination";
+import TableSearch from "@/components/TableSearch";
+
+import PaymentsClient, { FullStudentFee } from "@/components/PaymentsClient";
+import PaymentsFilters from "@/components/filters/PaymentFilters";
+import PaymentsSort from "@/components/filters/PaymentSort";
+
+export const dynamic = "force-dynamic";
+
+/* ============================================================
+   TYPES
+============================================================ */
+interface SearchParams {
+  page?: string;
+  search?: string;
+  status?: string;
+  classId?: string;
+  studentId?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
+/* ============================================================
    PAGE
-========================= */
-
-const PaymentsPage = async ({
+============================================================ */
+export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; search?: string };
-}) => {
-  const { page, search } = searchParams;
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+
+  const { page, search, status, classId, studentId, sortBy, sortOrder } =
+    params;
+
   const p = page ? Number(page) : 1;
 
+  /* ================= USER ROLE ================= */
   const { sessionClaims } = await auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const role = (sessionClaims?.metadata as { role?: string })?.role ?? "";
 
-  /* -----------------------------
-     QUERY STUDENT FEES
-  ----------------------------- */
-  const where: Prisma.StudentFeeWhereInput | undefined = search
-  ? {
-      student: {
-        is: {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { surname: { contains: search, mode: "insensitive" } },
-          ],
-        },
-      },
-    }
-  : undefined;
+  /* ================= STUDENT FILTER ================= */
+  const studentWhere: Prisma.StudentWhereInput = {};
 
+  /* SEARCH (name / surname) */
+  if (search) {
+    studentWhere.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { surname: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
-  const [data, count] = await prisma.$transaction([
-  prisma.studentFee.findMany({
+  /* CLASS FILTER */
+  if (classId) {
+    studentWhere.classId = Number(classId);
+  }
+
+  /* STUDENT FILTER */
+  if (studentId) {
+    studentWhere.id = studentId;
+  }
+
+  /* ================= FINAL WHERE ================= */
+  const where: Prisma.StudentFeeWhereInput = {};
+
+  if (Object.keys(studentWhere).length > 0) {
+    where.student = {
+      is: studentWhere,
+    };
+  }
+
+  /* ================= SORT ================= */
+  let orderBy: Prisma.StudentFeeOrderByWithRelationInput = {
+    assignedAt: "desc",
+  };
+
+  if (sortBy) {
+    orderBy = {
+      [sortBy]: sortOrder === "desc" ? "desc" : "asc",
+    };
+  }
+
+  /* ================= FETCH ================= */
+  const fullData = await prisma.studentFee.findMany({
     where,
     include: {
       student: {
         include: {
           class: true,
+          parent: true,
         },
       },
       feeStructure: true,
       payments: true,
     },
-    orderBy: {
-      assignedAt: "desc",
-    },
-    take: ITEM_PER_PAGE,
-    skip: ITEM_PER_PAGE * (p - 1),
-  }),
-  prisma.studentFee.count({ where }),
-]);
+    orderBy,
+  });
 
-  /* -----------------------------
-     TABLE CONFIG
-  ----------------------------- */
-  const columns = [
-    { header: "Student", accessor: "student" },
-    { header: "Class", accessor: "class" },
-    { header: "Fee", accessor: "fee" },
-    { header: "Total", accessor: "total" },
-    { header: "Paid", accessor: "paid" },
-    { header: "Due", accessor: "due" },
-    { header: "Status", accessor: "status" },
-    ...(role === "admin"
-      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
-      : []),
-  ];
-
-  /* -----------------------------
-     ROW RENDERER
-  ----------------------------- */
-  const renderRow = (item: any) => {
+  /* ================= STATUS FILTER (IN-MEMORY) ================= */
+  const filteredData = fullData.filter((item) => {
     const total = item.feeStructure.amount;
-    const paid = item.payments.reduce(
-      (sum: number, p: any) => sum + p.amount,
-      0
-    );
-    const due = total - paid;
+    const paid = item.payments.reduce((sum, p) => sum + p.amount, 0);
 
-    const status =
-      paid === 0 ? "PENDING" : paid < total ? "PARTIAL" : "PAID";
+    if (status === "PAID") return paid === total;
+    if (status === "PARTIAL") return paid > 0 && paid < total;
+    if (status === "PENDING") return paid === 0;
 
-    return (
-      <tr key={item.id} className="border-b text-sm">
-        <td className="p-4">
-          {item.student.name} {item.student.surname}
-        </td>
+    return true;
+  });
 
-        <td className="p-4">{item.student.class?.name}</td>
+  /* ================= PAGINATION ================= */
+  const count = filteredData.length;
 
-        <td className="p-4">{item.feeStructure.title}</td>
+  const paginatedData = filteredData.slice(
+    ITEM_PER_PAGE * (p - 1),
+    ITEM_PER_PAGE * p,
+  );
 
-        <td className="p-4 font-semibold">₹{total.toLocaleString()}</td>
+  const typedData = paginatedData as FullStudentFee[];
 
-        <td className="p-4 text-green-700">
-          ₹{paid.toLocaleString()}
-        </td>
+  /* ================= FILTER DATA ================= */
+  const [classes, students] = await Promise.all([
+    prisma.class.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.student.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
-        <td className="p-4 text-red-600">
-          ₹{due.toLocaleString()}
-        </td>
-
-        <td className="p-4">
-          <PaymentStatusBadge status={status} />
-        </td>
-
-        {role === "admin" && (
-          <td className="p-4 text-center">
-            {status !== "PAID" && (
-              <FormContainer
-                table="payment"
-                type="create"
-                data={{
-                  studentFeeId: item.id,
-                  dueAmount: due,
-                }}
-              />
-            )}
-          </td>
-        )}
-      </tr>
-    );
-  };
-
-  /* -----------------------------
-     UI
-  ----------------------------- */
+  /* ================= UI ================= */
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Payments</h1>
-        <TableSearch />
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* TOP BAR */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h1 className="text-base md:text-lg font-semibold">Payments</h1>
+
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
+          <TableSearch />
+          <PaymentsFilters classes={classes} students={students} />
+          <PaymentsSort />
+        </div>
       </div>
 
-      <Table
-        columns={columns}
-        renderRow={renderRow}
-        data={data}
+      {/* CONTENT */}
+      <PaymentsClient
+        data={typedData}
+        count={count}
+        page={p}
+        role={role}
+        classes={classes}
       />
 
       <Pagination page={p} count={count} />
     </div>
   );
-};
-
-export default PaymentsPage;
+}

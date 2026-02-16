@@ -1,21 +1,35 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import RadixSelect from "@/components/ui/RadixSelect";
 
 export default function ClassFilters({ supervisors }: any) {
-  const [open, setOpen] = useState(false);
-
   const router = useRouter();
   const params = useSearchParams();
 
-  const [supervisorId, setSupervisorId] = useState(params.get("supervisorId") || "");
+  const [open, setOpen] = useState(false);
+  const [supervisorId, setSupervisorId] = useState(
+    params.get("supervisorId") || ""
+  );
+
+  /* ================= LOCK BACKGROUND SCROLL ================= */
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  /* ================= ACTIONS ================= */
 
   const applyFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    if (supervisorId) query.set("supervisorId", supervisorId);
-    else query.delete("supervisorId");
+    supervisorId
+      ? query.set("supervisorId", supervisorId)
+      : query.delete("supervisorId");
 
     router.push("?" + query.toString());
     setOpen(false);
@@ -26,69 +40,98 @@ export default function ClassFilters({ supervisors }: any) {
     query.delete("supervisorId");
 
     router.push("?" + query.toString());
+    setSupervisorId("");
     setOpen(false);
   };
 
+  /* ================= UI ================= */
+
   return (
     <>
-      {/* Filter Button */}
+      {/* ===== DESKTOP FILTER BUTTON ===== */}
       <button
         onClick={() => setOpen(true)}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow"
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm rounded-2xl bg-purple-500 text-white hover:bg-indigo-500 transition"
       >
-        <img src="/adjust.png" width={18} height={18} />
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+        Filter
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
-          <div className="w-72 bg-white shadow-xl h-full p-6 flex flex-col">
+      {/* ===== MOBILE FILTER BUTTON ===== */}
+      <button
+        onClick={() => setOpen(true)}
+        className="md:hidden w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
+      >
+        <Image src="/filter1.png" alt="filter" width={14} height={14} />
+      </button>
 
-            {/* Header */}
-            <div className="flex justify-between items-center border-b pb-4">
-              <h2 className="text-lg font-semibold">Filters</h2>
-              <button onClick={() => setOpen(false)} className="text-2xl text-gray-500 hover:text-gray-700">
+      {/* ===== DRAWER ===== */}
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
+          {/* CLICK OUTSIDE */}
+          <div
+            className="absolute inset-0"
+            onClick={() => setOpen(false)}
+          />
+
+          <div
+            className="
+              fixed bottom-0 left-0 right-0
+              md:top-0 md:right-0 md:left-auto
+              h-[45%] md:h-full
+              max-h-[85vh] md:max-h-none
+              md:w-80
+              bg-white
+              rounded-t-2xl md:rounded-none
+              shadow-xl
+              flex flex-col
+            "
+          >
+            {/* HEADER */}
+            <div className="flex justify-between items-center px-5 py-4 border-b">
+              <h2 className="text-base font-semibold">Filters</h2>
+              <button
+                onClick={() => setOpen(false)}
+                className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-lg"
+              >
                 ×
               </button>
             </div>
 
-            <div className="flex flex-col gap-6 mt-6">
+            {/* BODY */}
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Supervisor
+                </label>
 
-              {/* Supervisor Filter */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-600">Supervisor</label>
-                <select
-                  className="p-3 border rounded-lg text-sm"
+                <RadixSelect
                   value={supervisorId}
-                  onChange={(e) => setSupervisorId(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {supervisors.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {s.surname}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setSupervisorId(v ?? "")}
+                  placeholder="All Supervisors"
+                  options={supervisors.map((s: any) => ({
+                    value: String(s.id), // ✅ non-empty
+                    label: `${s.name} ${s.surname}`,
+                  }))}
+                />
               </div>
-
             </div>
 
-            {/* Footer Buttons */}
-            <div className="mt-auto flex gap-2 pt-6 border-t">
+            {/* FOOTER */}
+            <div className="px-5 py-4 border-t flex gap-3">
               <button
                 onClick={resetFilters}
-                className="flex-1 border rounded-lg p-2 text-sm hover:bg-gray-100"
+                className="flex-1 border rounded-xl py-2 text-sm"
               >
                 Reset
               </button>
-
               <button
                 onClick={applyFilters}
-                className="flex-1 bg-blue-600 text-white rounded-lg p-2 text-sm hover:bg-blue-700"
+                className="flex-1 bg-blue-600 text-white rounded-xl py-2 text-sm"
               >
                 Apply
               </button>
             </div>
-
           </div>
         </div>
       )}

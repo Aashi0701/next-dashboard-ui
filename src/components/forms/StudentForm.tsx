@@ -1,304 +1,336 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import InputField from "../InputField";
-import Image from "next/image";
 import {
   Dispatch,
   SetStateAction,
-  startTransition,
-  useActionState,
   useEffect,
   useState,
+  startTransition,
+  useActionState,
 } from "react";
-import {
-  studentSchema,
-  StudentSchema,
-} from "@/lib/formValidationSchemas";
-import {
-  createStudent,
-  updateStudent,
-} from "@/lib/actions";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import RadixDatePicker from "../ui/RadixDatePicker";
+import RadixSelect from "../ui/RadixSelect";
+import { studentSchema, StudentFormValues } from "@/lib/formValidationSchemas";
+import { createStudent, updateStudent } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import InputField from "../InputField";
 import { CldUploadWidget } from "next-cloudinary";
+import { motion, AnimatePresence } from "framer-motion";
+import { Camera } from "lucide-react";
+import FormStepper from "@/components/ui/FormStepper";
+import { ActionState } from "@/lib/actions";
 
-const StudentForm = ({
+const steps = ["Authentication", "Personal", "Academic"];
+
+export default function StudentForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: Partial<StudentFormValues>;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<StudentSchema>({
-    resolver: zodResolver(studentSchema) as any,
+  relatedData?: {
+    grades: any[];
+    classes: any[];
+    parents: any[];
+  };
+}) {
+  const router = useRouter();
+  const { grades = [], classes = [], parents = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+  const [img, setImg] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<StudentFormValues>({
+    resolver: zodResolver(studentSchema),
+    mode: "onChange",
+    defaultValues: {
+      ...data,
+      gradeId: data?.gradeId ?? 0,
+      classId: data?.classId ?? 0,
+    },
   });
 
-  const [img, setImg] = useState<any>();
+  const {
+    handleSubmit,
+    setValue,
+    trigger,
+    watch,
+    register,
+    formState: { isSubmitting },
+  } = methods;
 
-  const [state, formAction] = useActionState(
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, StudentFormValues>(
     type === "create" ? createStudent : updateStudent,
-    { success: false, error: false }
+    { success: false },
   );
 
-  const onSubmit = handleSubmit((formData) => {
-    startTransition(() => {
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fields: (keyof StudentFormValues)[][] = [
+      ["username", "email", "password"],
+      ["name", "surname", "phone", "address", "bloodType", "birthday", "sex"],
+      ["parentId", "gradeId", "classId"],
+    ];
+
+    const valid = await trigger(fields[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() =>
       formAction({
-        ...formData,
-        img: img?.secure_url,
-      });
-    });
+        ...values,
+        img: img?.secure_url ?? values.img,
+      }),
+    );
   });
 
-  const router = useRouter();
+  const {
+    formState: { errors },
+  } = methods;
+
+  const errorSteps = [
+    Boolean(errors.username || errors.email || errors.phone),
+    Boolean(errors.name || errors.surname || errors.address),
+  ];
 
   useEffect(() => {
     if (state.success) {
-      toast(`Student has been ${type === "create" ? "created" : "updated"}!`);
+      toast.success(
+        `Student ${type === "create" ? "created" : "updated"} successfully`,
+      );
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state, router, setOpen, type]);
 
-  const { grades, classes } = relatedData;
+  /* ================= UI ================= */
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-10 max-h-[85vh] overflow-y-auto px-2"
-    >
-      {/* Title */}
-      <h1 className="text-2xl font-bold text-gray-800">
-        {type === "create" ? "Create New Student" : "Update Student"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Student" : "Update Student"}
+        </h1>
 
-      {/* ================================
-          Authentication Information
-      ================================= */}
-      <div className="border-b pb-3">
-        <h2 className="text-lg font-semibold text-gray-700">
-          Authentication Information
-        </h2>
-      </div>
+        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <InputField
-          label="Username"
-          name="username"
-          defaultValue={data?.username}
-          register={register}
-          error={errors.username}
-        />
-        <InputField
-          label="Email"
-          name="email"
-          defaultValue={data?.email}
-          register={register}
-          error={errors.email}
-        />
-        <InputField
-          label="Password"
-          type="password"
-          name="password"
-          defaultValue={data?.password}
-          register={register}
-          error={errors.password}
-        />
-      </div>
+        {/* SCROLL AREA */}
+        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 */}
+            {step === 0 && (
+              <motion.div
+                key="auth"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              >
+                <InputField label="Username" name="username" />
+                <InputField label="Email" name="email" />
+                <InputField label="Password" name="password" type="password" />
+                <CldUploadWidget
+                  uploadPreset="school"
+                  onUploadAdded={() => setUploading(true)}
+                  onSuccess={(res, { widget }) => {
+                    setImg(res.info);
+                    setUploading(false);
+                    widget.close();
+                  }}
+                  onError={() => {
+                    setUploading(false);
+                  }}
+                >
+                  {({ open }) => (
+                    <div className="sm:col-span-2">
+                      {/* PREVIEW */}
+                      {img && (
+                        <div className="mb-3 flex items-center gap-4">
+                          <img
+                            src={img.secure_url}
+                            alt="Avatar"
+                            className="w-16 h-16 rounded-full object-cover border"
+                          />
 
-      {/* ================================
-          Personal Information
-      ================================= */}
-      <div className="border-b pb-3">
-        <h2 className="text-lg font-semibold text-gray-700">Personal Information</h2>
-      </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-green-600 text-xs sm:text-sm font-medium">
+                              Photo uploaded ✓
+                            </span>
 
-      {/* Upload */}
-      <div className="flex items-center gap-4 py-2">
-        <CldUploadWidget
-          uploadPreset="school"
-          onSuccess={(result, { widget }) => {
-            setImg(result.info);
-            widget.close();
-          }}
-        >
-          {({ open }) => (
-            <div
-              className="flex items-center gap-3 cursor-pointer border rounded-lg px-4 py-2 hover:bg-gray-50 transition"
-              onClick={() => open()}
+                            <div className="flex gap-3 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => open()}
+                                className="text-blue-600 hover:underline"
+                              >
+                                Replace
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setImg(null)}
+                                className="text-red-500 hover:underline"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* UPLOAD BUTTON */}
+                      {!img && (
+                        <button
+                          type="button"
+                          onClick={() => open()}
+                          disabled={uploading}
+                          className="
+            w-full h-11
+            flex items-center justify-center gap-2
+            border rounded-xl
+            bg-gray-50 hover:bg-gray-100
+            text-sm sm:text-base
+            disabled:opacity-50
+          "
+                        >
+                          {uploading ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                              Uploading…
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                              <span>Upload Photo</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </CldUploadWidget>
+              </motion.div>
+            )}
+
+            {/* STEP 2 */}
+            {step === 1 && (
+              <motion.div
+                key="personal"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                <InputField label="First Name" name="name" />
+                <InputField label="Last Name" name="surname" />
+                <InputField label="Phone" name="phone" />
+                <InputField label="Address" name="address" />
+                <InputField label="Blood Type" name="bloodType" />
+                <RadixDatePicker
+                  value={watch("birthday")}
+                  onChange={(d) =>
+                    setValue("birthday", d, { shouldValidate: true })
+                  }
+                />
+
+                <RadixSelect
+                  value={watch("sex")}
+                  onChange={(v) =>
+                    setValue("sex", v as any, { shouldValidate: true })
+                  }
+                  options={[
+                    { value: "MALE", label: "Male" },
+                    { value: "FEMALE", label: "Female" },
+                  ]}
+                />
+              </motion.div>
+            )}
+
+            {/* STEP 3 */}
+            {step === 2 && (
+              <motion.div
+                key="academic"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                <select
+                  {...register("parentId")}
+                  className="h-11 rounded-xl border px-3 text-sm"
+                >
+                  <option value="">Select Parent</option>
+                  {parents.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.surname}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  {...register("gradeId", { valueAsNumber: true })}
+                  className="h-11 rounded-xl border px-3 text-sm"
+                >
+                  <option value={0}>Select Grade</option>
+                  {grades.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.level}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  {...register("classId", { valueAsNumber: true })}
+                  className="h-11 rounded-xl border px-3 text-sm"
+                >
+                  <option value={0}>Select Class</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {state.error && (
+          <p className="text-xs text-red-500 mt-2">{state.error}</p>
+        )}
+
+        {/* ================= ACTION BAR ================= */}
+        <div className="sticky bottom-0 bg-white px-5 py-3 flex justify-between border-t">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
             >
-              <Image src="/upload.png" alt="Upload" width={28} height={28} />
-              <span className="text-sm text-gray-700">Upload a Photo</span>
-            </div>
-          )}
-        </CldUploadWidget>
-
-        {img?.secure_url && (
-          <Image
-            src={img.secure_url}
-            alt="Preview"
-            width={50}
-            height={50}
-            className="rounded-full object-cover"
-          />
-        )}
-      </div>
-
-      {/* Grid Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        <InputField
-          label="First Name"
-          name="name"
-          defaultValue={data?.name}
-          register={register}
-          error={errors.name}
-        />
-
-        <InputField
-          label="Last Name"
-          name="surname"
-          defaultValue={data?.surname}
-          register={register}
-          error={errors.surname}
-        />
-
-        <InputField
-          label="Phone"
-          name="phone"
-          defaultValue={data?.phone}
-          register={register}
-          error={errors.phone}
-        />
-
-        <InputField
-          label="Address"
-          name="address"
-          defaultValue={data?.address}
-          register={register}
-          error={errors.address}
-        />
-
-        <InputField
-          label="Blood Type"
-          name="bloodType"
-          defaultValue={data?.bloodType}
-          register={register}
-          error={errors.bloodType}
-        />
-
-        <InputField
-          label="Birthday"
-          name="birthday"
-          type="date"
-          defaultValue={
-            data?.birthday
-              ? data.birthday.toISOString().split("T")[0]
-              : ""
-          }
-          register={register}
-          error={errors.birthday}
-        />
-
-        <div className="space-y-2">
-          <label className="text-sm text-gray-700 font-medium">Parent</label>
-          <select
-            className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm"
-            {...register("parentId")}
-            defaultValue={data?.parentId}
-          >
-            <option value="">Select Parent</option>
-            {relatedData.parents.map((p: any) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.surname} ({p.phone})
-              </option>
-            ))}
-          </select>
-
-          {errors.parentId?.message && (
-            <p className="text-xs text-red-500">{errors.parentId.message!.toString()}</p>
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
           )}
         </div>
-
-        {/* Sex */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Sex</label>
-          <select
-            className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm"
-            {...register("sex")}
-            defaultValue={data?.sex}
-          >
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-          </select>
-          {errors.sex && (
-            <p className="text-xs text-red-500">
-              {errors.sex.message?.toString()}
-            </p>
-          )}
-        </div>
-
-        {/* Grade */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Grade</label>
-          <select
-            className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm"
-            {...register("gradeId")}
-            defaultValue={data?.gradeId}
-          >
-            {grades.map((g: any) => (
-              <option key={g.id} value={g.id}>
-                {g.level}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Class */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Class</label>
-          <select
-            className="w-full mt-1 p-3 border border-gray-300 rounded-lg text-sm"
-            {...register("classId")}
-            defaultValue={data?.classId}
-          >
-            {classes.map((cls: any) => (
-              <option key={cls.id} value={cls.id}>
-                {cls.name} ({cls._count.students}/{cls.capacity})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Hidden ID */}
-        {data && (
-          <input type="hidden" {...register("id")} defaultValue={data?.id} />
-        )}
-      </div>
-
-      {/* Error Message */}
-      {state.error && (
-        <p className="text-red-500 text-sm">Something went wrong. Try again.</p>
-      )}
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold shadow-sm transition"
-      >
-        {type === "create" ? "Create Student" : "Update Student"}
-      </button>
-    </form>
+      </form>
+    </FormProvider>
   );
-};
-
-export default StudentForm;
+}

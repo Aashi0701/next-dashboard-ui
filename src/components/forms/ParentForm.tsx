@@ -1,155 +1,248 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import {
+  Dispatch,
+  SetStateAction,
+  useState,
+  useEffect,
+  startTransition,
+  useActionState,
+} from "react";
+
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dispatch, SetStateAction, startTransition, useActionState, useEffect } from "react";
-import { parentSchema, ParentSchema } from "@/lib/formValidationSchemas";
+
+import { parentSchema, ParentFormValues } from "@/lib/formValidationSchemas";
+
 import { createParent, updateParent } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import InputField from "../InputField";
 
-const ParentForm = ({
+import InputField from "../InputField";
+import { AnimatePresence, motion } from "framer-motion";
+import { ActionState } from "@/lib/actions";
+
+/* ===================================================== */
+
+const steps = ["Authentication", "Personal"];
+
+function Stepper({ steps, step }: { steps: string[]; step: number }) {
+  const CIRCLE = 36; // w-8 h-8
+
+  return (
+    <div className="relative mb-6">
+      {/* CONNECTOR LINE */}
+      <div
+        className="absolute top-1/2 left-4 right-4 h-[2px] bg-gray-200 -translate-y-1/2"
+        style={{
+          top: CIRCLE / 2,
+          left: CIRCLE / 1,
+          right: CIRCLE / 2,
+        }}
+      >
+        <motion.div
+          className="h-full bg-blue-600"
+          initial={{ width: 0 }}
+          animate={{
+            width: `${(step / (steps.length - 1)) * 100}%`,
+          }}
+          transition={{ duration: 0.35, ease: "easeInOut" }}
+        />
+      </div>
+
+      {/* STEPS */}
+      <div className="relative flex justify-between">
+        {steps.map((label, i) => {
+          const active = i === step;
+          const completed = i < step;
+
+          return (
+            <div key={label} className="flex flex-col items-center gap-2">
+              <motion.div
+                animate={{ scale: active ? 1.15 : 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 24,
+                }}
+                className={`
+                  w-8 h-8 rounded-full flex items-center justify-center z-10
+                  transition-colors
+                  ${
+                    completed
+                      ? "bg-green-600 text-white"
+                      : active
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                  }
+                `}
+              >
+                {completed ? "✓" : i + 1}
+              </motion.div>
+
+              <span
+                className={`text-xs font-medium ${
+                  active ? "text-blue-600" : "text-gray-500"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function ParentForm({
   type,
   data,
   setOpen,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: ParentFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-}) => {
+}) {
+  const router = useRouter();
+  const [step, setStep] = useState(0);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ParentSchema>({
-    resolver: zodResolver(parentSchema) as any,
+  /* ================= RHF ================= */
+
+  const methods = useForm<ParentFormValues>({
+    resolver: zodResolver(parentSchema),
     defaultValues: {
       id: data?.id,
       username: data?.username ?? "",
-      name: data?.name ?? "",
-      surname: data?.surname ?? "",
       email: data?.email ?? "",
       phone: data?.phone ?? "",
+      name: data?.name ?? "",
+      surname: data?.surname ?? "",
       address: data?.address ?? "",
     },
+    mode: "onChange",
   });
 
-  const [state, formAction] = useActionState(
+  const {
+    handleSubmit,
+    trigger,
+    formState: { isSubmitting },
+  } = methods;
+
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, ParentFormValues>(
     type === "create" ? createParent : updateParent,
-    { success: false, error: false }
+    { success: false },
   );
 
-  const router = useRouter();
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof ParentFormValues)[][] = [
+      ["username", "email", "phone"],
+      ["name", "surname", "address"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
 
   const onSubmit = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
 
+  /* ================= SUCCESS ================= */
+
   useEffect(() => {
     if (state.success) {
-      toast(`Parent has been ${type === "create" ? "created" : "updated"}!`);
+      toast.success(
+        `Parent ${type === "create" ? "created" : "updated"} successfully`,
+      );
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state.success, router, setOpen, type]);
+
+  /* ================= UI ================= */
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-10 max-h-[85vh] overflow-y-auto px-1"
-    >
-      {/* TITLE */}
-      <h1 className="text-2xl font-bold text-gray-800">
-        {type === "create" ? "Create New Parent" : "Update Parent"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Student" : "Update Student"}
+        </h1>
 
-      {/* AUTH SECTION */}
-      <div className="border-b pb-3">
-        <h2 className="text-lg font-semibold text-gray-700">
-          Authentication Information
-        </h2>
-      </div>
+        <Stepper steps={steps} step={step} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <InputField
-          label="Username"
-          name="username"
-          register={register}
-          error={errors.username}
-        />
+        {/* SCROLL AREA */}
+        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 */}
+            {step === 0 && (
+              <motion.div
+                key="auth"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="grid sm:grid-cols-2 gap-4"
+              >
+                <InputField label="Username" name="username" />
+                <InputField label="Email" name="email" />
+                <InputField label="Phone" name="phone" />
+              </motion.div>
+            )}
 
-        <InputField
-          label="Email"
-          name="email"
-          register={register}
-          error={errors.email}
-        />
+            {/* STEP 2 */}
+            {step === 1 && (
+              <motion.div
+                key="personal"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="grid sm:grid-cols-2 gap-4"
+              >
+                <InputField label="First Name" name="name" />
+                <InputField label="Last Name" name="surname" />
+                <InputField label="Address" name="address" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-        <InputField
-          label="Phone"
-          name="phone"
-          register={register}
-          error={errors.phone}
-        />
-      </div>
-
-      {/* PERSONAL SECTION */}
-      <div className="border-b pb-3">
-        <h2 className="text-lg font-semibold text-gray-700">
-          Personal Information
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <InputField
-          label="First Name"
-          name="name"
-          register={register}
-          error={errors.name}
-        />
-
-        <InputField
-          label="Last Name"
-          name="surname"
-          register={register}
-          error={errors.surname}
-        />
-
-        <InputField
-          label="Address"
-          name="address"
-          register={register}
-          error={errors.address}
-        />
-
-        {data && (
-          <InputField
-            label="Id"
-            name="id"
-            defaultValue={data?.id}
-            register={register}
-            error={errors.id}
-            hidden
-          />
+        {state.error && (
+          <p className="text-xs text-red-500 mt-2">{state.error}</p>
         )}
-      </div>
 
-      {/* ERROR MESSAGE */}
-      {state.error && (
-        <p className="text-red-500 text-sm">Something went wrong. Try again.</p>
-      )}
+        {/* ACTIONS */}
+        <div className="flex justify-between pt-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
 
-      {/* BUTTON */}
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold shadow-sm transition"
-      >
-        {type === "create" ? "Create Parent" : "Update Parent"}
-      </button>
-    </form>
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Parent"
+                  : "Update Parent"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
   );
-};
-
-export default ParentForm;
+}

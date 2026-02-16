@@ -4,7 +4,14 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { collectPaymentAction } from "@/lib/actions";
-import { PaymentMode } from "@prisma/client"; // ✅ IMPORT ENUM
+
+export enum PaymentMode {
+  CASH = "CASH",
+  UPI = "UPI",
+  CARD = "CARD",
+  BANK_TRANSFER = "BANK_TRANSFER",
+}
+
 
 type FormValues = {
   studentFeeId: number;

@@ -2,34 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
-type Props = {
-  fullName?: string;
-  role?: string;
-  unreadAnnouncements?: number;
-  onMenuClick?: () => void;
+const UserButton = dynamic(
+  () => import("@clerk/nextjs").then((mod) => mod.UserButton),
+  { ssr: false }
+);
+
+type NavbarData = {
+  fullName: string;
+  role: string;
+  unreadAnnouncements: number;
 };
 
-export default function NavbarClient({
-  fullName,
-  role,
-  unreadAnnouncements = 0,
-  onMenuClick,
-}: Props) {
+export default function NavbarClient({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
-  const hideBadge = pathname.startsWith("/list/announcements");
+  const [data, setData] = useState<NavbarData | null>(null);
 
-  const showBadge = unreadAnnouncements > 0 && !hideBadge;
+  useEffect(() => {
+    fetch("/api/navbar")
+      .then((res) => res.json())
+      .then(setData)
+      .catch(() => {
+        setData({ fullName: "", role: "", unreadAnnouncements: 0 });
+      });
+  }, []);
+
+  const hideBadge = pathname.startsWith("/list/announcements");
+  const showBadge = data && data.unreadAnnouncements > 0 && !hideBadge;
 
   return (
-    <nav className="h-14 bg-white border-b flex items-center px-4">
-      {/* Mobile menu */}
+    <nav className="h-14 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 border-b flex items-center px-4">
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-md hover:bg-gray-100"
-        aria-label="Open menu"
+        className="lg:hidden p-2 rounded-md hover:bg-gray-100 text-white font-bold"
       >
         ☰
       </button>
@@ -37,19 +45,19 @@ export default function NavbarClient({
       <div className="ml-auto flex items-center gap-4">
         <Link
           href="/list/announcements"
-          className="relative w-8 h-8 flex items-center justify-center rounded-full bg-gray-100"
+          className="relative w-6 h-6 flex items-center justify-center rounded-full bg-white"
         >
-          <Image src="/announcement.png" alt="" width={18} height={18} />
+          <Image src="/announcements.png" alt="" width={14} height={14} />
           {showBadge && (
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] px-1.5 rounded-full min-w-[18px] text-center">
-              {unreadAnnouncements > 99 ? "99+" : unreadAnnouncements}
+            <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] px-1.5 rounded-full">
+              {data!.unreadAnnouncements > 99 ? "99+" : data!.unreadAnnouncements}
             </span>
           )}
         </Link>
 
         <div className="hidden sm:flex flex-col items-end">
-          <span className="text-xs font-medium">{fullName}</span>
-          <span className="text-[10px] text-gray-500 capitalize">{role}</span>
+          <span className="text-xs font-medium">{data?.fullName}</span>
+          <span className="text-[10px] text-gray-500 capitalize">{data?.role}</span>
         </div>
 
         <UserButton />

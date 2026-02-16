@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import "react-datepicker/dist/react-datepicker.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,20 +17,25 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  if (!clerkKey) {
-    throw new Error(
-      "❌ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is missing in environment variables"
-    );
-  }
-
   return (
-    <ClerkProvider publishableKey={clerkKey}>
+    <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+    >
       <html lang="en">
-        <body className={inter.className}>
+        <body
+          className={`${inter.className} min-h-screen w-full overflow-x-hidden bg-gray-50`}
+        >
           {children}
-          <ToastContainer position="bottom-right" theme="dark" />
+          <ToastContainer
+            position="bottom-right"
+            theme="dark"
+            limit={2}
+            autoClose={2000}
+            hideProgressBar
+            closeButton={false}
+            className="md:!bottom-6 md:!right-6 !bottom-4 !left-1/2 !-translate-x-1/2 md:!translate-x-0"
+            toastClassName="!rounded-xl !px-4 !py-2 !min-h-0 !w-auto !max-w-[320px] text-sm"
+          />
         </body>
       </html>
     </ClerkProvider>

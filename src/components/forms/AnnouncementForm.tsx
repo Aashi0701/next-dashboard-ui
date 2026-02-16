@@ -1,140 +1,244 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  announcementFormSchema,
-  AnnouncementFormSchema,
-} from "@/lib/formValidationSchemas";
-
-import { createAnnouncement, updateAnnouncement } from "@/lib/actions";
 import {
   Dispatch,
   SetStateAction,
   startTransition,
   useActionState,
   useEffect,
+  useState,
 } from "react";
-import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
-import InputField from "../InputField";
 
-const AnnouncementForm = ({
+import { useForm, FormProvider, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  announcementFormSchema,
+  AnnouncementFormInput,
+  AnnouncementFormValues,
+} from "@/lib/formValidationSchemas";
+
+import { createAnnouncement, updateAnnouncement } from "@/lib/actions";
+
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import FormStepper from "@/components/ui/FormStepper";
+import RadixDatePicker from "@/components/ui/RadixDatePicker";
+import RadixSelect from "@/components/ui/RadixSelect";
+import InputField from "../InputField";
+import { ActionState } from "@/lib/actions";
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ===================================================== */
+
+const steps = ["Details", "Schedule"];
+
+type AnnouncementAction = (
+  state: ActionState,
+  data: AnnouncementFormValues
+) => Promise<ActionState>;
+
+/* ===================================================== */
+
+export default function AnnouncementForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: AnnouncementFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
+  relatedData?: {
+    classes: { id: number; name: string }[];
+  };
+}) {
+  const router = useRouter();
   const classes = relatedData?.classes ?? [];
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<AnnouncementFormSchema>({
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<AnnouncementFormInput>({
     resolver: zodResolver(announcementFormSchema),
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
       description: data?.description ?? "",
-      date: data?.date
-        ? new Date(data.date).toISOString().slice(0, 10)
-        : "",
+      date: data?.date ? new Date(data.date) : undefined,
       classId: data?.classId ? String(data.classId) : "",
     },
+    mode: "onChange",
   });
 
-  const [state, formAction] = useActionState(
-    type === "create" ? createAnnouncement : updateAnnouncement,
-    { success: false, error: false }
-  );
+  const {
+    control,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { isSubmitting, isValid, errors },
+  } = methods;
 
-  const router = useRouter();
+  /* ================= STEP VALIDATION ================= */
 
-  const onSubmit = handleSubmit((formData) => {
-    const payload = {
-      id: data?.id,
-      title: formData.title,
-      description: formData.description,
-      date: new Date(formData.date),
-      classId:
-        formData.classId === "" || formData.classId === null
-          ? null
-          : Number(formData.classId),
-    };
+  const nextStep = async () => {
+    const fieldsByStep: (keyof AnnouncementFormInput)[][] = [
+      ["title", "description"],
+      ["date"],
+    ];
 
-    startTransition(() => formAction(payload));
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= ACTION ================= */
+
+  const announcementAction: AnnouncementAction = async (state, data) => {
+    return type === "create"
+      ? createAnnouncement(state, data)
+      : updateAnnouncement(state, data);
+  };
+
+  const [state, formAction] = useActionState(announcementAction, {
+    success: false,
   });
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => {
+      // values are already validated & parsed by zodResolver
+      formAction(values);
+    });
+  });
+
+  /* ================= SUCCESS ================= */
 
   useEffect(() => {
-    if (state.success) {
-      toast(
-        `Announcement has been ${
-          type === "create" ? "created" : "updated"
-        }!`
-      );
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router, setOpen, type]);
+    if (!state.success) return;
+
+    toast.success(
+      `Announcement ${type === "create" ? "created" : "updated"} successfully`,
+    );
+
+    setOpen(false);
+    router.refresh();
+  }, [state.success, type, router, setOpen]);
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-6 w-full" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create Announcement" : "Update Announcement"}
-      </h1>
+    <FormProvider {...methods}>
+      <form
+        onSubmit={onSubmit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.preventDefault();
+        }}
+        className="flex flex-col gap-4"
+      >
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Announcement" : "Update Announcement"}
+        </h1>
 
-      <InputField
-        label="Title"
-        name="title"
-        register={register}
-        error={errors?.title}
-      />
+        <FormStepper
+          steps={steps}
+          step={step}
+          errorSteps={[
+            Boolean(errors.title || errors.description),
+            Boolean(errors.date),
+          ]}
+        />
 
-      <InputField
-        label="Description"
-        name="description"
-        register={register}
-        error={errors?.description}
-      />
+        {/* CONTENT */}
+        <div className="min-h-[170px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 — DETAILS */}
+            {step === 0 && (
+              <motion.div
+                key="details"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="space-y-4"
+              >
+                <InputField label="Title" name="title" />
+                <InputField label="Description" name="description" />
+              </motion.div>
+            )}
 
-      <InputField
-        label="Date"
-        name="date"
-        type="date"
-        register={register}
-        error={errors?.date}
-      />
+            {/* STEP 2 — SCHEDULE */}
+            {step === 1 && (
+              <motion.div
+                key="schedule"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="space-y-4"
+              >
+                {/* DATE */}
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixDatePicker
+                      value={field.value}
+                      onChange={(d) => {
+                        if (!d) return;
+                        field.onChange(d);
+                      }}
+                    />
+                  )}
+                />
 
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-gray-500">Class (optional)</label>
-        <select
-          className="ring-[1.5px] ring-gray-300 p-2 rounded-md"
-          {...register("classId")}
-        >
-          <option value="">All Classes</option>
-          {classes.map((cls: any) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
-      </div>
+                {/* CLASS */}
+                <Controller
+                  name="classId"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixSelect
+                      placeholder="Select class (optional)"
+                      value={field.value || undefined}
+                      onChange={(v) => field.onChange(v ?? "")}
+                      options={[
+                        { value: "ALL", label: "All Classes" },
+                        ...classes.map((cls) => ({
+                          value: String(cls.id),
+                          label: cls.name,
+                        })),
+                      ]}
+                    />
+                  )}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {state.error && (
-        <p className="text-red-500">Something went wrong.</p>
-      )}
+        {/* ACTIONS */}
+        <div className="flex justify-between py-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
 
-      <button className="bg-blue-500 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!isValid || isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+            >
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
   );
-};
-
-export default AnnouncementForm;
+}

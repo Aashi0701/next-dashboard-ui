@@ -5,29 +5,32 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma, Subject, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
+
 import SubjectFilters from "@/components/filters/SubjectFilters";
 import SubjectSort from "@/components/filters/SubjectSort";
+import SubjectCard from "@/components/mobile/SubjectCard";
 
 type SubjectList = Subject & { teachers: Teacher[] };
 
-export default async function SubjectListPage({
+const SubjectListPage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  // Read URL parameters
-  const params = await searchParams;
-  const { page, sortBy, sortOrder, ...queryParams } = params;
-
-  const p = page ? parseInt(page) : 1;
-
-  // Auth check
+}) => {
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
-  // Table columns
+  const params = await searchParams;
+  const { page, sortBy, sortOrder, ...queryParams } = params;
+  const p = page ? parseInt(page) : 1;
+
+  /* ================= FILTER DATA ================= */
+  const teachers = await prisma.teacher.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
     { header: "Subject Name", accessor: "name" },
     {
@@ -45,17 +48,12 @@ export default async function SubjectListPage({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
-      {/* Subject Name */}
-      <td className="p-4 truncate font-medium">
-        {item.name}
-      </td>
+      <td className="p-4 font-medium truncate">{item.name}</td>
 
-      {/* Teachers */}
       <td className="p-4 truncate hidden md:table-cell">
         {item.teachers.map((t) => t.name).join(", ")}
       </td>
 
-      {/* Actions */}
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
@@ -67,12 +65,7 @@ export default async function SubjectListPage({
     </tr>
   );
 
-  // Load teachers for filter dropdown
-  const allTeachers = await prisma.teacher.findMany({
-    orderBy: { name: "asc" },
-  });
-
-  // Build Prisma WHERE query
+  /* ================= QUERY ================= */
   const query: Prisma.SubjectWhereInput = {};
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -82,44 +75,33 @@ export default async function SubjectListPage({
       case "search":
         query.name = { contains: value, mode: "insensitive" };
         break;
-
       case "teacherId":
         query.teachers = { some: { id: value } };
         break;
-
-      default:
-        break;
     }
   }
 
-  // Sorting Logic
-  let orderByPrisma: any = {};
+  /* ================= SORT ================= */
+  let orderBy: Prisma.SubjectOrderByWithRelationInput = {};
+  const order = sortOrder === "desc" ? "desc" : "asc";
 
   if (sortBy) {
-    const order = sortOrder === "desc" ? "desc" : "asc";
-
     switch (sortBy) {
       case "name":
-        orderByPrisma = { name: order };
+        orderBy = { name: order };
         break;
-
-      case "teacher":
-        // Sort by number of teachers (closest possible alternative)
-        orderByPrisma = { teachers: { _count: order } };
-        break;
-
       case "date":
-        orderByPrisma = { createdAt: order };
+        orderBy = { id: order };
         break;
     }
   }
 
-  // Fetch paginated subjects
+  /* ================= DATA ================= */
   const [data, count] = await prisma.$transaction([
     prisma.subject.findMany({
       where: query,
       include: { teachers: true },
-      orderBy: orderByPrisma,
+      orderBy,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
     }),
@@ -127,18 +109,21 @@ export default async function SubjectListPage({
   ]);
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Subjects</h1>
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* ===== TOP BAR ===== */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+        {/* ===== TITLE ===== */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900">
+          Subjects
+        </h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+        {/* ===== SEARCH + ACTIONS ===== */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
 
-          <div className="flex items-center gap-4 self-end">
-            <SubjectFilters teachers={allTeachers} />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <SubjectFilters teachers={teachers} />
             <SubjectSort />
-
             {role === "admin" && (
               <FormContainer table="subject" type="create" />
             )}
@@ -146,11 +131,22 @@ export default async function SubjectListPage({
         </div>
       </div>
 
-      {/* TABLE */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* ===== DESKTOP TABLE ===== */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
 
-      {/* PAGINATION */}
+      {/* ===== MOBILE CARDS ===== */}
+      <div className="md:hidden mt-4 space-y-4">
+        {data.map((item) => (
+          <SubjectCard key={item.id} item={item} role={role} />
+        ))}
+      </div>
+
+      {/* ===== PAGINATION ===== */}
       <Pagination page={p} count={count} />
     </div>
   );
-}
+};
+
+export default SubjectListPage;

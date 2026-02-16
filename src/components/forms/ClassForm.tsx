@@ -1,158 +1,237 @@
 "use client";
 
+import {
+  Dispatch,
+  SetStateAction,
+  startTransition,
+  useActionState,
+  useEffect,
+  useState,
+} from "react";
+
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import InputField from "../InputField";
-import {
-  classSchema,
-  ClassSchema,
-  subjectSchema,
-  SubjectSchema,
-} from "@/lib/formValidationSchemas";
-import {
-  createClass,
-  createSubject,
-  updateClass,
-  updateSubject,
-} from "@/lib/actions";
-import { Dispatch, SetStateAction, startTransition, useActionState, useEffect } from "react";
+
+import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
+import { createClass, updateClass } from "@/lib/actions";
+
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-const ClassForm = ({
+import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import FormStepper from "@/components/ui/FormStepper";
+
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ================= STEPS ================= */
+
+const steps = ["Basic Info", "Assignments"];
+
+/* ================= MAIN FORM ================= */
+
+export default function ClassForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: Partial<ClassSchema>;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ClassSchema>({
-    resolver: zodResolver(classSchema) as any,
+  relatedData?: {
+    teachers: { id: string; name: string; surname: string }[];
+    grades: { id: number; level: string }[];
+  };
+}) {
+  const router = useRouter();
+  const { teachers = [], grades = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<ClassSchema>({
+    resolver: zodResolver(classSchema),
+    defaultValues: {
+      id: data?.id,
+      name: data?.name ?? "",
+      capacity: data?.capacity ?? 1,
+      gradeId: data?.gradeId ?? 0,
+      supervisorId: data?.supervisorId ?? "",
+    },
+    mode: "onChange",
   });
 
-  // AFTER REACT 19 IT'LL BE USEACTIONSTATE
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    trigger,
+    formState: { isSubmitting, errors },
+  } = methods;
 
-  const [state, formAction] = useActionState<{ success: boolean; error: boolean }, ClassSchema>(
+  /* ================= ACTION ================= */
+
+  type ActionState = {
+    success: boolean;
+    error?: string;
+  };
+
+  const [state, formAction] = useActionState<ActionState, ClassSchema>(
     type === "create" ? createClass : updateClass,
-    {
-      success: false,
-      error: false,
-    }
+    { success: false },
   );
 
-  const onSubmit = handleSubmit((data) => {
-    startTransition(() => {
-      formAction(data);
-    });
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof ClassSchema)[][] = [
+      ["name", "capacity"],
+      ["gradeId", "supervisorId"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
   });
 
-  const router = useRouter();
+  /* ================= EFFECT ================= */
 
   useEffect(() => {
     if (state.success) {
-      toast(`Subject has been ${type === "create" ? "created" : "updated"}!`);
+      toast.success(
+        `Class ${type === "create" ? "created" : "updated"} successfully`,
+      );
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state.success, type, setOpen, router]);
 
-  const { teachers, grades } = relatedData;
+  const errorSteps = [
+    Boolean(errors.name || errors.capacity),
+    Boolean(errors.gradeId || errors.supervisorId),
+  ];
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new class" : "Update the class"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        {/* Hidden fields for RadixSelect */}
+        <input type="hidden" {...methods.register("gradeId")} />
+        <input type="hidden" {...methods.register("supervisorId")} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputField
-          label="Class name"
-          name="name"
-          defaultValue={data?.name}
-          register={register}
-          error={errors?.name}
-        />
+        {/* TITLE */}
+        <h1 className="text-base sm:text-xl font-semibold">
+          {type === "create" ? "Create Class" : "Update Class"}
+        </h1>
 
-        <InputField
-          label="Capacity"
-          name="capacity"
-          defaultValue={data?.capacity}
-          register={register}
-          error={errors?.capacity}
-        />
+        {/* STEPPER */}
+        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
 
-        {data && (
-          <InputField
-            label="Id"
-            name="id"
-            defaultValue={data?.id}
-            register={register}
-            error={errors?.id}
-            hidden
-          />
+        {/* BODY */}
+        <div className="min-h-[150px] transition-all">
+          <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-4"
+              >
+                <InputField label="Class Name" name="name" />
+
+                <InputField label="Capacity" name="capacity" type="number" />
+
+                {data?.id && <InputField name="id" hidden />}
+              </motion.div>
+            )}
+
+            {step === 1 && (
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-4"
+              >
+                <RadixSelect
+                  value={watch("gradeId") ? String(watch("gradeId")) : ""}
+                  onChange={(v) =>
+                    setValue("gradeId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Grade"
+                  options={grades.map((g) => ({
+                    value: String(g.id),
+                    label: g.level,
+                  }))}
+                />
+
+                <RadixSelect
+                  value={watch("supervisorId")}
+                  onChange={(v) =>
+                    setValue("supervisorId", v ?? "", {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Supervisor"
+                  options={teachers.map((t) => ({
+                    value: t.id,
+                    label: `${t.name} ${t.surname}`,
+                  }))}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ERROR */}
+        {step === steps.length - 1 && state.error && (
+          <span className="text-xs text-red-500">{state.error}</span>
         )}
 
-        {/* Supervisor */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs text-gray-500">Supervisor</label>
-          <select
-            className="ring-1 ring-gray-300 p-2 rounded-md text-sm w-full focus:ring-blue-400"
-            {...register("supervisorId")}
-            defaultValue={data?.supervisorId ?? ""}
-          >
-            <option value="">Select Supervisor</option>
-            {teachers.map((teacher: any) => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.name} {teacher.surname}
-              </option>
-            ))}
-          </select>
-          {errors.supervisorId && (
-            <p className="text-xs text-red-400">
-              {errors.supervisorId.message as string}
-            </p>
+        {/* ACTIONS */}
+        <div className="flex justify-between pt-3 border-t">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep((s) => s - 1)}>
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="bg-blue-600 text-white px-4 py-2 rounded-full"
+            >
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Class"
+                  : "Update Class"}
+            </button>
           )}
         </div>
-
-        {/* Grade */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs text-gray-500">Grade</label>
-          <select
-            className="ring-1 ring-gray-300 p-2 rounded-md text-sm w-full focus:ring-blue-400"
-            {...register("gradeId")}
-            defaultValue={data?.gradeId}
-          >
-            <option value="">Select Grade</option>
-            {grades.map((grade: any) => (
-              <option key={grade.id} value={grade.id}>
-                {grade.level}
-              </option>
-            ))}
-          </select>
-          {errors.gradeId && (
-            <p className="text-xs text-red-400">
-              {errors.gradeId.message as string}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {state.error && (
-        <span className="text-red-500">Something went wrong!</span>
-      )}
-      <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+      </form>
+    </FormProvider>
   );
-};
-
-export default ClassForm;
+}

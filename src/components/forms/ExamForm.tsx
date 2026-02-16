@@ -1,140 +1,230 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import InputField from "../InputField";
 import {
-  examSchema,
-  ExamSchema,
-  subjectSchema,
-  SubjectSchema,
-} from "@/lib/formValidationSchemas";
-import {
-  createExam,
-  createSubject,
-  updateExam,
-  updateSubject,
-} from "@/lib/actions";
-import { Dispatch, SetStateAction, startTransition, useActionState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
+  Dispatch,
+  SetStateAction,
+  useState,
+  useEffect,
+  startTransition,
+  useActionState,
+} from "react";
 
-const ExamForm = ({
+import { useForm, FormProvider, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { examSchema, ExamFormValues } from "@/lib/formValidationSchemas";
+import { createExam, updateExam } from "@/lib/actions";
+
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
+import FormStepper from "@/components/ui/FormStepper";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { ActionState } from "@/lib/actions";
+
+/* ===================================================== */
+
+const steps = ["Basic Info", "Schedule"];
+
+/* ===================================================== */
+
+export default function ExamForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: ExamFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ExamSchema>({
+  relatedData?: { lessons: { id: number; name: string }[] };
+}) {
+  const router = useRouter();
+  const { lessons = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<ExamFormValues>({
     resolver: zodResolver(examSchema) as any,
+    defaultValues: {
+      id: data?.id,
+      title: data?.title ?? "",
+      startTime: data?.startTime ? new Date(data.startTime) : undefined,
+      endTime: data?.endTime ? new Date(data.endTime) : undefined,
+      lessonId: data?.lessonId,
+    },
+    mode: "onChange",
   });
 
-  // AFTER REACT 19 IT'LL BE USEACTIONSTATE
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    trigger,
+    control,
+    formState: { isSubmitting },
+  } = methods;
 
-  const [state, formAction] = useActionState(
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, ExamFormValues>(
     type === "create" ? createExam : updateExam,
-    {
-      success: false,
-      error: false,
-    }
+    { success: false },
   );
 
-  const onSubmit = handleSubmit((data) => {
-    console.log(data);
-    startTransition(() => {
-      formAction(data);
-    });
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof ExamFormValues)[][] = [
+      ["title", "lessonId"],
+      ["startTime", "endTime"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
   });
 
-  const router = useRouter();
+  /* ================= SUCCESS ================= */
 
   useEffect(() => {
-    if (state.success) {
-      toast(`Exam has been ${type === "create" ? "created" : "updated"}!`);
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router, type, setOpen]);
+    if (!state.success) return;
 
-  const { lessons } = relatedData;
+    toast.success(
+      `Exam ${type === "create" ? "created" : "updated"} successfully`,
+    );
+    setOpen(false);
+    router.refresh();
+  }, [state.success, type, router, setOpen]);
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new exam" : "Update the exam"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Student" : "Update Student"}
+        </h1>
 
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label="Exam title"
-          name="title"
-          defaultValue={data?.title}
-          register={register}
-          error={errors?.title}
-        />
-        <InputField
-          label="Start Date"
-          name="startTime"
-          defaultValue={data?.startTime}
-          register={register}
-          error={errors?.startTime}
-          type="datetime-local"
-        />
-        <InputField
-          label="End Date"
-          name="endTime"
-          defaultValue={data?.endTime}
-          register={register}
-          error={errors?.endTime}
-          type="datetime-local"
-        />
-        {data && (
-          <InputField
-            label="Id"
-            name="id"
-            defaultValue={data?.id}
-            register={register}
-            error={errors?.id}
-            hidden
-          />
-        )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Lesson</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("lessonId")}
-            defaultValue={data?.teachers}
-          >
-            {lessons.map((lesson: { id: number; name: string }) => (
-              <option value={lesson.id} key={lesson.id}>
-                {lesson.name}
-              </option>
-            ))}
-          </select>
-          {errors.lessonId?.message && (
-            <p className="text-xs text-red-400">
-              {errors.lessonId.message.toString()}
-            </p>
+        <FormStepper steps={steps} step={step} />
+
+        {/* SCROLL AREA */}
+        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 – BASIC INFO */}
+            {step === 0 && (
+              <motion.div
+                key="basic"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="space-y-4"
+              >
+                <InputField label="Exam Title" name="title" />
+
+                <RadixSelect
+                  value={watch("lessonId") ? String(watch("lessonId")) : ""}
+                  onChange={(v) =>
+                    setValue("lessonId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Lesson"
+                  options={lessons.map((l) => ({
+                    value: String(l.id),
+                    label: l.name,
+                  }))}
+                />
+              </motion.div>
+            )}
+
+            {/* STEP 2 – SCHEDULE */}
+            {step === 1 && (
+              <motion.div
+                key="schedule"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="space-y-4"
+              >
+                <Controller
+                  name="startTime"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixDateTimePicker
+                      value={field.value}
+                      onChange={(v) =>
+                        setValue("startTime", v, {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="Start date & time"
+                    />
+                  )}
+                />
+
+                <Controller
+                  name="endTime"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixDateTimePicker
+                      value={field.value}
+                      onChange={(v) =>
+                        setValue("endTime", v, {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="End date & time"
+                    />
+                  )}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ACTIONS */}
+        <div className="px-5 py-4 border-t bg-white flex justify-between">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+            >
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Exam"
+                  : "Update Exam"}
+            </button>
           )}
         </div>
-      </div>
-      {state.error && (
-        <span className="text-red-500">Something went wrong!</span>
-      )}
-      <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+      </form>
+    </FormProvider>
   );
-};
-
-export default ExamForm;
+}

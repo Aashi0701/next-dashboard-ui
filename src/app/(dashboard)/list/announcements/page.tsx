@@ -1,26 +1,24 @@
-import FormContainer from "@/components/FormContainer";
-import Pagination from "@/components/Pagination";
-import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Announcement, Class, Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 
+import Pagination from "@/components/Pagination";
+import TableSearch from "@/components/TableSearch";
 import AnnouncementFilters from "@/components/filters/AnnouncementFilters";
 import AnnouncementSort from "@/components/filters/AnnouncementSort";
+import FormContainer from "@/components/FormContainer";
 
-/* --------------------------------
-   TYPES
---------------------------------- */
+import AnnouncementTableClient from "./AnnouncementTableClient";
+import { FiEdit, FiTrash2 } from "react-icons/fi";
+
+/* ---------------- TYPES ---------------- */
 type AnnouncementList = Announcement & {
   class: Class | null;
   reads: { id: number }[];
+  actions?: React.ReactNode;
 };
 
-/* --------------------------------
-   PAGE
---------------------------------- */
 export default async function AnnouncementListPage({
   searchParams,
 }: {
@@ -34,28 +32,12 @@ export default async function AnnouncementListPage({
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
-  /* --------------------------------
-     FETCH CLASSES (FILTER DROPDOWN)
-  --------------------------------- */
+  /* FETCH CLASSES */
   const classes = await prisma.class.findMany({
     orderBy: { name: "asc" },
   });
 
-  /* --------------------------------
-     TABLE COLUMNS
-  --------------------------------- */
-  const columns = [
-    { header: "Title", accessor: "title" },
-    { header: "Class", accessor: "class" },
-    { header: "Date", accessor: "date", className: "hidden md:table-cell" },
-    ...(role === "admin"
-      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
-      : []),
-  ];
-
-  /* --------------------------------
-     BASE ROLE FILTERING
-  --------------------------------- */
+  /* ROLE FILTERING */
   let roleWhere: Prisma.AnnouncementWhereInput = {};
 
   if (role === "teacher" && userId) {
@@ -64,10 +46,11 @@ export default async function AnnouncementListPage({
       select: { classes: { select: { id: true } } },
     });
 
-    const classIds = teacher?.classes.map((c) => c.id) ?? [];
-
     roleWhere = {
-      OR: [{ classId: null }, { classId: { in: classIds } }],
+      OR: [
+        { classId: null },
+        { classId: { in: teacher?.classes.map((c) => c.id) ?? [] } },
+      ],
     };
   }
 
@@ -77,9 +60,7 @@ export default async function AnnouncementListPage({
       select: { classId: true },
     });
 
-    roleWhere = {
-      OR: [{ classId: null }, { classId: student?.classId }],
-    };
+    roleWhere = { OR: [{ classId: null }, { classId: student?.classId }] };
   }
 
   if (role === "parent" && userId) {
@@ -88,65 +69,42 @@ export default async function AnnouncementListPage({
       select: { students: { select: { classId: true } } },
     });
 
-    const classIds = parent?.students.map((s) => s.classId) ?? [];
-
     roleWhere = {
-      OR: [{ classId: null }, { classId: { in: classIds } }],
+      OR: [
+        { classId: null },
+        { classId: { in: parent?.students.map((s) => s.classId) ?? [] } },
+      ],
     };
   }
 
-  /* --------------------------------
-     FILTERING (SEARCH + CLASS)
-  --------------------------------- */
+  /* FILTERS */
   const filterWhere: Prisma.AnnouncementWhereInput = {};
-
-  for (const [key, value] of Object.entries(filters)) {
-    if (!value) continue;
-
-    switch (key) {
-      case "classId":
-        filterWhere.classId = Number(value);
-        break;
-
-      case "search":
-        filterWhere.title = { contains: value, mode: "insensitive" };
-        break;
-    }
+  if (filters.search) {
+    filterWhere.title = { contains: filters.search, mode: "insensitive" };
+  }
+  if (filters.classId) {
+    filterWhere.classId = Number(filters.classId);
   }
 
-  /* --------------------------------
-     FINAL WHERE CLAUSE
-  --------------------------------- */
   const where: Prisma.AnnouncementWhereInput = {
     AND: [roleWhere, filterWhere],
   };
 
-  /* --------------------------------
-     SORTING
-  --------------------------------- */
+  /* SORT */
   const sort: Prisma.SortOrder =
     sortOrder === "asc" || sortOrder === "desc" ? sortOrder : "desc";
 
-  let orderBy: Prisma.AnnouncementOrderByWithRelationInput;
+  const orderBy: Prisma.AnnouncementOrderByWithRelationInput =
+    sortBy === "title"
+      ? { title: sort }
+      : sortBy === "class"
+      ? { class: { name: sort } }
+      : sortBy === "date"
+      ? { date: sort }
+      : { date: "desc" };
 
-  switch (sortBy) {
-    case "title":
-      orderBy = { title: sort };
-      break;
-    case "class":
-      orderBy = { class: { name: sort } };
-      break;
-    case "date":
-      orderBy = { date: sort };
-      break;
-    default:
-      orderBy = { date: "desc" };
-  }
-
-  /* --------------------------------
-     FETCH DATA (WITH READ STATUS)
-  --------------------------------- */
-  const [data, count] = await prisma.$transaction([
+  /* FETCH DATA */
+  const [rawData, count] = await prisma.$transaction([
     prisma.announcement.findMany({
       where,
       include: {
@@ -163,111 +121,87 @@ export default async function AnnouncementListPage({
     prisma.announcement.count({ where }),
   ]);
 
-  /* --------------------------------
-     MARK AS READ (SAFE)
-  --------------------------------- */
-  if (userId && data.length > 0) {
-    await prisma.announcementRead.createMany({
-      data: data.map((a) => ({
-        userId,
-        announcementId: a.id,
-      })),
-      skipDuplicates: true,
-    });
-  }
-
-  /* --------------------------------
-     ROW RENDER
-  --------------------------------- */
-  const renderRow = (item: AnnouncementList) => {
-    const isUnread = item.reads.length === 0;
-
-    const isUrgent =
-      item.title.startsWith("URGENT") ||
-      item.title.startsWith("IMPORTANT") ||
-      new Date(item.date).getTime() >
-        Date.now() - 24 * 60 * 60 * 1000;
-
-    return (
-      <tr
-        key={item.id}
-        className={`border-b text-sm hover:bg-gray-50 ${
-          isUrgent ? "border-l-4 border-red-500" : ""
-        }`}
-      >
-        {/* ✅ TITLE */}
-        <td className="p-4 flex items-center gap-2">
-          {isUnread && (
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
-          )}
-
-          <span
-            className={`font-medium ${
-              isUnread ? "text-gray-900" : "text-gray-500"
-            }`}
-          >
-            {item.title}
-          </span>
-
-          {isUrgent && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
-              Urgent
-            </span>
-          )}
-        </td>
-
-        {/* ✅ CLASS */}
-        <td className="p-4">
-          {item.class?.name || "All Classes"}
-        </td>
-
-        {/* ✅ DATE */}
-        <td className="p-4 hidden md:table-cell text-gray-500">
-          {new Date(item.date).toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })}
-        </td>
-
-        {/* ✅ ACTIONS */}
-        {role === "admin" && (
-          <td className="p-4 text-center">
-            <div className="flex justify-center gap-2">
-              <FormContainer table="announcement" type="update" data={item} />
-              <FormContainer table="announcement" type="delete" id={item.id} />
-            </div>
-          </td>
-        )}
-      </tr>
+  /* SERVER-SIDE ACTIONS */
+  const data: AnnouncementList[] = rawData.map((item) => {
+    const msg = encodeURIComponent(
+      `📢 *School Announcement*\n\n` +
+        `*${item.title}*\n` +
+        `Class: ${item.class?.name || "All Classes"}\n` +
+        `Date: ${new Date(item.date).toLocaleDateString("en-IN")}`
     );
-  };
 
-  /* --------------------------------
-     UI
-  --------------------------------- */
+    return {
+      ...item,
+      actions:
+        role === "admin" ? (
+          <div className="flex items-center justify-center gap-3">
+            {/* EDIT */}
+            <div className="relative group">
+              <FormContainer
+                table="announcement"
+                type="update"
+                data={item}
+                trigger={
+                  <button
+                    className="w-9 h-9 flex items-center justify-center rounded-full
+                  bg-blue-50 border border-blue-200 hover:bg-blue-100 transition"
+                  >
+                    <FiEdit className="w-4 h-4 text-blue-600" />
+                  </button>
+                }
+              />
+              <span
+                className="absolute -top-8 left-1/2 -translate-x-1/2
+                px-2 py-1 text-xs rounded bg-blue-500 text-white
+                opacity-0 group-hover:opacity-100 transition pointer-events-none"
+              >
+                Edit
+              </span>
+            </div>
+
+            {/* DELETE */}
+            <div className="relative group">
+              <FormContainer
+                table="announcement"
+                type="delete"
+                id={item.id}
+                trigger={
+                  <button
+                    className="w-9 h-9 flex items-center justify-center rounded-full
+                  bg-red-50 border border-red-200 hover:bg-red-100 transition"
+                  >
+                    <FiTrash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                }
+              />
+              <span
+                className="absolute -top-8 left-1/2 -translate-x-1/2
+                px-2 py-1 text-xs rounded bg-red-500 text-white
+                opacity-0 group-hover:opacity-100 transition pointer-events-none"
+              >
+                Delete
+              </span>
+            </div>
+          </div>
+        ) : null,
+    };
+  });
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex-1 m-4 mt-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Announcements</h1>
-          <p className="text-sm text-gray-500">
-            School-wide and class-specific updates
-          </p>
-        </div>
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h1 className="text-base md:text-lg font-semibold">Announcements</h1>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <TableSearch />
-          <div className="h-6 w-px bg-gray-200" />
           <AnnouncementFilters classes={classes} />
           <AnnouncementSort />
-          {role === "admin" && (
-            <FormContainer table="announcement" type="create" />
-          )}
+          {role === "admin" && <FormContainer table="announcement" type="create" />}
         </div>
       </div>
 
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <AnnouncementTableClient data={data} role={role} />
       <Pagination page={p} count={count} />
     </div>
   );

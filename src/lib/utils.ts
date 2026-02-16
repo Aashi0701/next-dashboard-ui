@@ -1,45 +1,53 @@
-// IT APPEARS THAT BIG CALENDAR SHOWS THE LAST WEEK WHEN THE CURRENT DAY IS A WEEKEND.
-// FOR THIS REASON WE'LL GET THE LAST WEEK AS THE REFERENCE WEEK.
-// IN THE TUTORIAL WE'RE TAKING THE NEXT WEEK AS THE REFERENCE WEEK.
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import type { CalendarEvent } from "@/lib/types";
 
-const getLatestMonday = (): Date => {
+/* ================================================= */
+/* tailwind helper */
+/* ================================================= */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+/* ================================================= */
+/* ✅ REQUIRED: used in SingleTeacherPage */
+/* MUST return CalendarEvent[] ONLY */
+/* ================================================= */
+export function adjustScheduleToCurrentWeek(
+  events: CalendarEvent[]
+): CalendarEvent[] {
+  if (!Array.isArray(events)) return [];
+
   const today = new Date();
-  const dayOfWeek = today.getDay();
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const latestMonday = today;
-  latestMonday.setDate(today.getDate() - daysSinceMonday);
-  return latestMonday;
-};
 
-export const adjustScheduleToCurrentWeek = (
-  lessons: { title: string; start: Date; end: Date }[]
-): { title: string; start: Date; end: Date }[] => {
-  const latestMonday = getLatestMonday();
+  /* start of current week (Sunday) */
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
 
-  return lessons.map((lesson) => {
-    const lessonDayOfWeek = lesson.start.getDay();
+  return events.map((event) => {
+    const originalStart = new Date(event.start);
+    const originalEnd = new Date(event.end);
 
-    const daysFromMonday = lessonDayOfWeek === 0 ? 6 : lessonDayOfWeek - 1;
+    const dayOffset = originalStart.getDay();
 
-    const adjustedStartDate = new Date(latestMonday);
-
-    adjustedStartDate.setDate(latestMonday.getDate() + daysFromMonday);
-    adjustedStartDate.setHours(
-      lesson.start.getHours(),
-      lesson.start.getMinutes(),
-      lesson.start.getSeconds()
+    const newStart = new Date(startOfWeek);
+    newStart.setDate(startOfWeek.getDate() + dayOffset);
+    newStart.setHours(
+      originalStart.getHours(),
+      originalStart.getMinutes()
     );
-    const adjustedEndDate = new Date(adjustedStartDate);
-    adjustedEndDate.setHours(
-      lesson.end.getHours(),
-      lesson.end.getMinutes(),
-      lesson.end.getSeconds()
+
+    const newEnd = new Date(newStart);
+    newEnd.setHours(
+      originalEnd.getHours(),
+      originalEnd.getMinutes()
     );
 
     return {
-      title: lesson.title,
-      start: adjustedStartDate,
-      end: adjustedEndDate,
+      ...event,
+      start: newStart,
+      end: newEnd,
     };
   });
-};
+}

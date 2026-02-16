@@ -5,13 +5,13 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Prisma, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 
 import ClassFilters from "@/components/filters/ClassFilters";
 import ClassSort from "@/components/filters/ClassSort";
+import ClassCard from "@/components/mobile/ClassCard";
 
-type ClassList = Class & { supervisor: Teacher };
+type ClassList = Class & { supervisor: Teacher | null };
 
 const ClassListPage = async ({
   searchParams,
@@ -24,12 +24,15 @@ const ClassListPage = async ({
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
+  /* ================= COLUMNS ================= */
   const columns = [
     { header: "Class Name", accessor: "name" },
     { header: "Capacity", accessor: "capacity" },
     { header: "Grade", accessor: "grade" },
     { header: "Supervisor", accessor: "supervisor" },
-    ...(role === "admin" ? [{ header: "Actions", accessor: "action", className: "text-center" }] : []),
+    ...(role === "admin"
+      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
+      : []),
   ];
 
   const renderRow = (item: ClassList) => (
@@ -37,23 +40,15 @@ const ClassListPage = async ({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
-      {/* Class Name */}
       <td className="p-4 truncate">{item.name}</td>
-
-      {/* Capacity */}
       <td className="p-4">{item.capacity}</td>
-
-      {/* Grade */}
       <td className="p-4">{item.name[0]}</td>
-
-      {/* Supervisor */}
       <td className="p-4 truncate">
         {item.supervisor
           ? `${item.supervisor.name} ${item.supervisor.surname}`
           : "No Supervisor"}
       </td>
 
-      {/* Actions */}
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
@@ -65,9 +60,10 @@ const ClassListPage = async ({
     </tr>
   );
 
+  /* ================= PAGINATION ================= */
   const p = page ? parseInt(page) : 1;
 
-  // BUILD QUERY
+  /* ================= FILTER QUERY ================= */
   const query: Prisma.ClassWhereInput = {};
 
   for (const [key, value] of Object.entries(queryParams)) {
@@ -83,7 +79,7 @@ const ClassListPage = async ({
     }
   }
 
-  // SORT LOGIC
+  /* ================= SORT ================= */
   let orderBy: any = {};
   const order = sortOrder === "desc" ? "desc" : "asc";
 
@@ -95,16 +91,13 @@ const ClassListPage = async ({
       case "capacity":
         orderBy = { capacity: order };
         break;
-      case "grade":
-        orderBy = { name: order }; // grade = first letter
-        break;
       case "date":
         orderBy = { createdAt: order };
         break;
     }
   }
 
-  // FETCH
+  /* ================= DATA ================= */
   const [data, count] = await prisma.$transaction([
     prisma.class.findMany({
       where: query,
@@ -116,31 +109,38 @@ const ClassListPage = async ({
     prisma.class.count({ where: query }),
   ]);
 
-  // LOAD SUPERVISORS FOR FILTERS
   const supervisors = await prisma.teacher.findMany({
     orderBy: { name: "asc" },
   });
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* TOP */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold">All Classes</h1>
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+      {/* ===== TOP BAR ===== */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full">
+        <h1 className="text-base md:text-lg font-semibold">Classes</h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
-          <div className="flex items-center gap-4 self-end">
-            <ClassFilters supervisors={supervisors} />
-            <ClassSort />
-            {role === "admin" && <FormContainer table="class" type="create" />}
-          </div>
+
+          <ClassFilters supervisors={supervisors} />
+          <ClassSort />
+
+          {role === "admin" && <FormContainer table="class" type="create" />}
         </div>
       </div>
 
-      {/* LIST */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      {/* ===== DESKTOP TABLE ===== */}
+      <div className="hidden md:block mt-4">
+        <Table columns={columns} renderRow={renderRow} data={data} />
+      </div>
 
-      {/* PAGINATION */}
+      {/* ===== MOBILE CARDS ===== */}
+      <div className="md:hidden mt-3 space-y-3">
+        {data.map((item) => (
+          <ClassCard key={item.id} item={item} role={role} />
+        ))}
+      </div>
+
       <Pagination page={p} count={count} />
     </div>
   );

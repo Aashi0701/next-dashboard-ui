@@ -1,132 +1,247 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { resultSchema, ResultSchema } from "@/lib/formValidationSchemas";
-import { createResult, updateResult } from "@/lib/actions";
-import { Dispatch, SetStateAction, startTransition, useActionState, useEffect } from "react";
-import { toast } from "react-toastify";
-import InputField from "../InputField";
-import { useRouter } from "next/navigation";
+import {
+  Dispatch,
+  SetStateAction,
+  startTransition,
+  useActionState,
+  useEffect,
+  useState,
+} from "react";
 
-const ResultForm = ({
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  resultSchema,
+  ResultFormValues,
+} from "@/lib/formValidationSchemas";
+
+import { createResult, updateResult } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import FormStepper from "@/components/ui/FormStepper";
+import { motion, AnimatePresence } from "framer-motion";
+import { ActionState } from "@/lib/actions";
+
+const steps = ["Score", "Target"];
+
+/* ===================================================== */
+
+export default function ResultForm({
   type,
   data,
   setOpen,
-  relatedData
+  relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: ResultFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
+  relatedData?: {
+    students: { id: string; name: string; surname: string }[];
+    exams: { id: number; title: string }[];
+    assignments: { id: number; title: string }[];
+  };
+}) {
+  const router = useRouter();
+  const { students = [], exams = [], assignments = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<ResultFormValues>({
+    resolver: zodResolver(resultSchema) as any,
+    defaultValues: {
+      id: data?.id,
+      score: data?.score ?? undefined,
+      studentId: data?.studentId ?? "",
+      examId: data?.examId,
+      assignmentId: data?.assignmentId,
+    },
+    mode: "onChange",
+  });
 
   const {
-    register,
+    watch,
+    setValue,
+    trigger,
     handleSubmit,
-    formState: { errors },
-  } = useForm<ResultSchema>({
-    resolver: zodResolver(resultSchema) as any,
-  });
+    formState: { isSubmitting, isValid, errors },
+  } = methods;
 
-  const [state, formAction] = useActionState(
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, ResultFormValues>(
     type === "create" ? createResult : updateResult,
-    { success: false, error: false }
+    { success: false },
   );
 
-  const onSubmit = handleSubmit((formData) => {
-    startTransition(() => formAction(formData));
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof ResultFormValues)[][] = [
+      ["score", "studentId"],
+      ["examId", "assignmentId"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
   });
 
-  const router = useRouter();
+  /* ================= SUCCESS ================= */
 
   useEffect(() => {
-    if (state.success) {
-      toast(`Result has been ${type === "create" ? "created" : "updated"}!`);
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router, setOpen, type]);
+    if (!state.success) return;
 
-  const { students, exams, assignments } = relatedData;
+    toast.success(
+      `Result ${type === "create" ? "created" : "updated"} successfully`
+    );
+    setOpen(false);
+    router.refresh();
+  }, [state.success, type, router, setOpen]);
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-6" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create Result" : "Update Result"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Result" : "Update Result"}
+        </h1>
 
-      <InputField
-        label="Score"
-        name="score"
-        defaultValue={data?.score}
-        register={register}
-        error={errors?.score}
-      />
+        <FormStepper
+          steps={steps}
+          step={step}
+          errorSteps={[
+            Boolean(errors.score || errors.studentId),
+            Boolean(errors.examId || errors.assignmentId),
+          ]}
+        />
 
-      {/* Student Dropdown */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-gray-500">Student</label>
-        <select
-          className="ring-[1.5px] ring-gray-300 p-2 rounded-md"
-          {...register("studentId")}
-          defaultValue={data?.studentId ?? ""}
-        >
-          <option value="">Select Student</option>
-          {students.map((s: any) => (
-            <option key={s.id} value={s.id}>
-              {s.name} {s.surname}
-            </option>
-          ))}
-        </select>
-        {errors.studentId && (
-          <p className="text-xs text-red-400">{errors.studentId.message}</p>
+        {/* SCROLL AREA */}
+        <div className="min-h-[160px]">
+          <AnimatePresence mode="wait">
+            {/* STEP 1 — SCORE */}
+            {step === 0 && (
+              <motion.div
+                key="score"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="space-y-4"
+              >
+                <InputField label="Score" name="score" />
+
+                <RadixSelect
+                  placeholder="Select student"
+                  value={watch("studentId") || undefined}
+                  onChange={(v) =>
+                    setValue("studentId", v!, {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={students.map((s) => ({
+                    value: s.id,
+                    label: `${s.name} ${s.surname}`,
+                  }))}
+                />
+              </motion.div>
+            )}
+
+            {/* STEP 2 — TARGET */}
+            {step === 1 && (
+              <motion.div
+                key="target"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="space-y-4"
+              >
+                <RadixSelect
+                  placeholder="Select exam (optional)"
+                  value={
+                    watch("examId")
+                      ? String(watch("examId"))
+                      : undefined
+                  }
+                  onChange={(v) =>
+                    setValue("examId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={exams.map((e) => ({
+                    value: String(e.id),
+                    label: e.title,
+                  }))}
+                />
+
+                <RadixSelect
+                  placeholder="Select assignment (optional)"
+                  value={
+                    watch("assignmentId")
+                      ? String(watch("assignmentId"))
+                      : undefined
+                  }
+                  onChange={(v) =>
+                    setValue("assignmentId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={assignments.map((a) => ({
+                    value: String(a.id),
+                    label: a.title,
+                  }))}
+                />
+
+                {(errors.examId || errors.assignmentId) && (
+                  <p className="text-xs text-red-500">
+                    Select either an exam or an assignment
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {state.error && (
+          <p className="text-xs text-red-500 mt-2">
+            {state.error}
+          </p>
         )}
-      </div>
 
-      {/* Exam Dropdown */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-gray-500">Exam</label>
-        <select
-          className="ring-[1.5px] ring-gray-300 p-2 rounded-md"
-          {...register("examId")}
-          defaultValue={data?.examId ?? ""}
-        >
-          <option value="">Select Exam</option>
-          {exams.map((e: any) => (
-            <option key={e.id} value={e.id}>
-              {e.title}
-            </option>
-          ))}
-        </select>
-      </div>
+        {/* ACTIONS */}
+        <div className="flex justify-between py-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
+          )}
 
-      {/* Assignment Dropdown */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-gray-500">Assignment</label>
-        <select
-          className="ring-[1.5px] ring-gray-300 p-2 rounded-md"
-          {...register("assignmentId")}
-          defaultValue={data?.assignmentId ?? ""}
-        >
-          <option value="">Select Assignment</option>
-          {assignments.map((a: any) => (
-            <option key={a.id} value={a.id}>
-              {a.title}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {state.error && (
-        <p className="text-red-500">Something went wrong!</p>
-      )}
-
-      <button className="bg-blue-500 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!isValid || isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+            >
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
   );
-};
-
-export default ResultForm;
+}

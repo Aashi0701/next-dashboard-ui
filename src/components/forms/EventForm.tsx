@@ -1,178 +1,238 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { eventSchema, EventSchema } from "@/lib/formValidationSchemas";
-import { createEvent, updateEvent } from "@/lib/actions";
 import {
   Dispatch,
   SetStateAction,
   startTransition,
   useActionState,
   useEffect,
+  useState,
 } from "react";
-import { toast } from "react-toastify";
+
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  eventSchema,
+  EventFormInput,
+  EventFormValues,
+} from "@/lib/formValidationSchemas";
+
+import { createEvent, updateEvent, ActionState } from "@/lib/actions";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+
+import FormStepper from "@/components/ui/FormStepper";
+import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
+import RadixSelect from "@/components/ui/RadixSelect";
 import InputField from "../InputField";
 
-const EventForm = ({
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ================= STEPS ================= */
+
+const steps = ["Basic Info", "Schedule"];
+
+/* ================= FORM ================= */
+
+export default function EventForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: EventFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<EventSchema>({
+  relatedData?: {
+    classes: { id: number; name: string }[];
+  };
+}) {
+  const router = useRouter();
+  const { classes = [] } = relatedData || {};
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema) as any,
     defaultValues: {
       id: data?.id,
-      classId: data?.classId ?? "",
+      title: data?.title ?? "",
+      description: data?.description ?? "",
+      startTime: data?.startTime ? new Date(data.startTime) : undefined,
+      endTime: data?.endTime ? new Date(data.endTime) : undefined,
+      classId: data?.classId ?? undefined,
       category: data?.category ?? "default",
     },
+    mode: "onChange",
   });
 
-  const [state, formAction] = useActionState(
+  const {
+    watch,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { isSubmitting, errors },
+  } = methods;
+
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, EventFormInput>(
     type === "create" ? createEvent : updateEvent,
-    { success: false, error: false }
+    { success: false },
   );
 
-  const router = useRouter();
+  /* ================= STEP VALIDATION ================= */
 
-  const onSubmit = handleSubmit((values) => {
+  const nextStep = async () => {
+    const fieldsByStep: (keyof EventFormInput)[][] = [
+      ["title", "description"],
+      ["startTime", "endTime"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= FINAL SUBMIT ================= */
+
+  const submitFinal = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
 
-  useEffect(() => {
-    if (state.success) {
-      toast(`Event has been ${type === "create" ? "created" : "updated"}!`);
-      setOpen(false);
-      router.refresh();
-    }
-  }, [state, router, type, setOpen]);
+  /* ================= SUCCESS ================= */
 
-  const { classes } = relatedData;
+  useEffect(() => {
+    if (!state.success) return;
+
+    toast.success(
+      `Event ${type === "create" ? "created" : "updated"} successfully`,
+    );
+    setOpen(false);
+    router.refresh();
+  }, [state.success, type, router, setOpen]);
+
+  /* ================= UI ================= */
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-8 max-h-[85vh] overflow-y-auto px-1"
-    >
-      {/* TITLE */}
-      <h1 className="text-2xl font-bold text-gray-800">
-        {type === "create" ? "Create New Event" : "Update Event"}
-      </h1>
+    <FormProvider {...methods}>
+      {/* ❌ NO onSubmit */}
+      <form className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-lg font-semibold">
+          {type === "create" ? "Create Event" : "Update Event"}
+        </h1>
 
-      {/* BASIC EVENT INFO */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <InputField
-          label="Title"
-          name="title"
-          register={register}
-          defaultValue={data?.title}
-          error={errors.title}
+        <FormStepper
+          steps={steps}
+          step={step}
+          errorSteps={[
+            Boolean(errors.title || errors.description),
+            Boolean(errors.startTime || errors.endTime),
+          ]}
         />
 
-        <InputField
-          label="Description"
-          name="description"
-          register={register}
-          defaultValue={data?.description}
-          error={errors.description}
-        />
-      </div>
+        <div className="min-h-[180px]">
+          <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div key="basic" className="space-y-4">
+                <InputField label="Title" name="title" />
+                <InputField label="Description" name="description" />
 
-      {/* DATE & TIME */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputField
-          label="Start Time"
-          name="startTime"
-          type="datetime-local"
-          register={register}
-          defaultValue={
-            data?.startTime
-              ? new Date(data.startTime).toISOString().slice(0, 16)
-              : ""
-          }
-          error={errors.startTime}
-        />
+                <RadixSelect
+                  placeholder="Select category"
+                  value={watch("category")}
+                  onChange={(v) =>
+                    setValue("category", v, { shouldValidate: true })
+                  }
+                  options={[
+                    { value: "default", label: "Default" },
+                    { value: "holiday", label: "Holiday" },
+                    { value: "exam", label: "Exam" },
+                    { value: "competition", label: "Competition" },
+                    { value: "meeting", label: "Meeting" },
+                    { value: "celebration", label: "Celebration" },
+                  ]}
+                />
 
-        <InputField
-          label="End Time"
-          name="endTime"
-          type="datetime-local"
-          register={register}
-          defaultValue={
-            data?.endTime
-              ? new Date(data.endTime).toISOString().slice(0, 16)
-              : ""
-          }
-          error={errors.endTime}
-        />
-      </div>
+                <RadixSelect
+                  placeholder="Select class"
+                  value={
+                    watch("classId") !== undefined
+                      ? String(watch("classId"))
+                      : "__general__"
+                  }
+                  onChange={(v) =>
+                    setValue(
+                      "classId",
+                      v === "__general__" ? undefined : Number(v),
+                      { shouldValidate: true },
+                    )
+                  }
+                  options={[
+                    { value: "__general__", label: "General Event" },
+                    ...classes.map((c) => ({
+                      value: String(c.id),
+                      label: c.name,
+                    })),
+                  ]}
+                />
+              </motion.div>
+            )}
 
-      {/* CLASS SELECT */}
-      <div className="flex flex-col gap-2">
-        <label className="text-sm text-gray-700 font-medium">Class</label>
-        <select
-          {...register("classId")}
-          defaultValue={data?.classId ?? ""}
-          className="w-full p-3 border border-gray-300 rounded-lg text-sm shadow-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
-        >
-          <option value="">None (General Event)</option>
-          {classes.map((cls: any) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
-        {errors.classId && (
-          <p className="text-xs text-red-500">
-            {errors.classId.message?.toString()}
-          </p>
+            {step === 1 && (
+              <motion.div key="schedule" className="space-y-4">
+                <RadixDateTimePicker
+                  value={watch("startTime")}
+                  onChange={(d) =>
+                    d &&
+                    setValue("startTime", d, {
+                      shouldValidate: true,
+                    })
+                  }
+                />
+
+                <RadixDateTimePicker
+                  value={watch("endTime")}
+                  onChange={(d) =>
+                    d &&
+                    setValue("endTime", d, {
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {step === steps.length - 1 && state.error && (
+          <p className="text-xs text-red-500">{state.error}</p>
         )}
-      </div>
 
-      {/* CATEGORY SELECT */}
-      <div className="flex flex-col gap-2">
-        <label className="text-sm text-gray-700 font-medium">Category</label>
-        <select
-          {...register("category")}
-          defaultValue={data?.category ?? "default"}
-          className="w-full p-3 border border-gray-300 rounded-lg text-sm shadow-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
-        >
-          <option value="default">Default</option>
-          <option value="holiday">Holiday</option>
-          <option value="exam">Exam</option>
-          <option value="competition">Competition</option>
-          <option value="meeting">Meeting</option>
-          <option value="celebration">Celebration</option>
-        </select>
-        {errors.category && (
-          <p className="text-xs text-red-500">
-            {errors.category.message?.toString()}
-          </p>
-        )}
-      </div>
+        <div className="flex justify-between py-4">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep((s) => s - 1)}>
+              Back
+            </button>
+          )}
 
-      {/* ERROR */}
-      {state.error && (
-        <p className="text-red-500 text-sm p-3">Something went wrong. Try again.</p>
-      )}
-
-      {/* SUBMIT BUTTON */}
-      <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold shadow-sm transition">
-        {type === "create" ? "Create Event" : "Update Event"}
-      </button>
-    </form>
+          {step < steps.length - 1 ? (
+            <button type="button" onClick={nextStep}>
+              Next →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submitFinal}
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+            >
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
   );
-};
-
-export default EventForm;
+}

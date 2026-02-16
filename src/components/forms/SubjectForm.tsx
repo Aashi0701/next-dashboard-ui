@@ -1,114 +1,198 @@
 "use client";
 
+import {
+  Dispatch,
+  SetStateAction,
+  startTransition,
+  useActionState,
+  useEffect,
+  useState,
+} from "react";
+
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import InputField from "../InputField";
+
 import { subjectSchema, SubjectSchema } from "@/lib/formValidationSchemas";
-import { createSubject, updateSubject } from "@/lib/actions";
-import { Dispatch, SetStateAction, useActionState, useEffect, startTransition } from "react";
+import {
+  createSubject,
+  updateSubject,
+  ActionState,
+} from "@/lib/actions";
+
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-const SubjectForm = ({
+import FormStepper from "@/components/ui/FormStepper";
+import InputField from "../InputField";
+
+/* ================= STEPS ================= */
+
+const steps = ["Basic Info", "Assignment"];
+
+/* ================= MAIN FORM ================= */
+
+export default function SubjectForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: SubjectSchema;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
+  relatedData?: {
+    teachers: { id: string; name: string; surname: string }[];
+  };
+}) {
+  const router = useRouter();
+  const { teachers = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<SubjectSchema>({
+    resolver: zodResolver(subjectSchema),
+    defaultValues: {
+      id: data?.id,
+      name: data?.name ?? "",
+      teachers: data?.teachers ?? [],
+    },
+    mode: "onChange",
+  });
+
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<SubjectSchema>({
-    resolver: zodResolver(subjectSchema) as any,
-  });
+    trigger,
+    watch,
+    formState: { isSubmitting, errors },
+  } = methods;
 
-  const [state, formAction] = useActionState<
-  { success: boolean; error: boolean }, 
-  SubjectSchema
-  >(
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, SubjectSchema>(
     type === "create" ? createSubject : updateSubject,
-    { success: false, error: false }
+    { success: false },
   );
 
-  const onSubmit = handleSubmit((data) => {
-    startTransition(() => {
-      formAction(data);
-    });
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof SubjectSchema)[][] = [
+      ["name"],
+      ["teachers"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
   });
 
-  const router = useRouter();
+  /* ================= EFFECT ================= */
 
   useEffect(() => {
     if (state.success) {
-      toast(`Subject has been ${type === "create" ? "created" : "updated"}!`);
+      toast.success(
+        `Subject ${type === "create" ? "created" : "updated"} successfully`,
+      );
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state.success, type, setOpen, router]);
 
-  const { teachers } = relatedData;
+  const errorSteps = [
+    Boolean(errors.name),
+    Boolean(errors.teachers),
+  ];
+
+  /* ================= UI ================= */
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new subject" : "Update the subject"}
-      </h1>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <h1 className="text-base sm:text-xl font-semibold">
+          {type === "create" ? "Create Subject" : "Update Subject"}
+        </h1>
 
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label="Subject name"
-          name="name"
-          defaultValue={data?.name}
-          register={register}
-          error={errors?.name}
-        />
-        {data && (
-          <InputField
-            label="Id"
-            name="id"
-            defaultValue={data?.id}
-            register={register}
-            error={errors?.id}
-            hidden
-          />
-        )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Teachers</label>
-          <select
-            multiple
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("teachers")}
-            defaultValue={data?.teachers}
-          >
-            {teachers.map(
-              (teacher: { id: string; name: string; surname: string }) => (
-                <option value={teacher.id} key={teacher.id}>
-                  {teacher.name + " " + teacher.surname}
-                </option>
-              )
-            )}
-          </select>
-          {errors.teachers?.message && (
-            <p className="text-xs text-red-400">
-              {errors.teachers.message.toString()}
-            </p>
+        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
+
+        <div className="min-h-[140px]">
+          {step === 0 && (
+            <InputField label="Subject Name" name="name" />
+          )}
+
+          {step === 1 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-gray-500">
+                Teachers
+              </label>
+
+              <select
+                multiple
+                {...register("teachers")}
+                value={watch("teachers")}
+                className="
+                  rounded-md border border-gray-300
+                  p-2 text-sm
+                  focus:ring-2 focus:ring-blue-500
+                "
+              >
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} {t.surname}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
-      </div>
 
-      {state.error && <span className="text-red-500">Something went wrong!</span>}
+        {step === steps.length - 1 && state.error && (
+          <span className="text-xs text-red-500">
+            {state.error}
+          </span>
+        )}
 
-      <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
-      </button>
-    </form>
+        <div className="flex justify-between pt-3 border-t">
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s - 1)}
+              className="text-sm"
+            >
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="bg-blue-600 text-white px-4 py-2 rounded-full"
+            >
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Subject"
+                  : "Update Subject"}
+            </button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
   );
-};
-
-export default SubjectForm;
+}

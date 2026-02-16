@@ -18,12 +18,39 @@ export default function FeeSort() {
 
   return (
     <div className="relative">
-      {/* ICON BUTTON */}
       <button
-        onClick={() => setOpen((p) => !p)}
-        className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center hover:bg-yellow-400"
+        onClick={() => setOpen(!open)}
+        className="hidden md:flex
+          items-center gap-2
+          px-2 py-1.5
+          text-sm
+          border rounded-2xl
+          bg-purple-500
+          text-white
+          hover:bg-indigo-500
+          transition"
+          aria-label="Sort"
       >
-        <Image src="/sort.png" alt="sort" width={14} height={14} />
+        <span className="text-base leading-none">⇅</span>
+        Sort
+      </button>
+
+      {/* ===== MOBILE SORT (ICON) ===== */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="
+          md:hidden
+          w-6 h-6
+          rounded-full
+          bg-purple-500
+          text-white
+          flex items-center justify-center
+          hover:brightness-95
+          transition
+        "
+        aria-label="Sort"
+      >
+        ⇅
       </button>
 
       {/* DROPDOWN */}

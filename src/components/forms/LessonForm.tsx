@@ -1,226 +1,282 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { lessonSchema, LessonSchema } from "@/lib/formValidationSchemas";
-import { createLesson, updateLesson } from "@/lib/actions";
 import {
   Dispatch,
   SetStateAction,
   startTransition,
   useActionState,
   useEffect,
+  useState,
 } from "react";
+
+import { useForm, FormProvider, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  lessonSchema,
+  LessonFormValues,
+} from "@/lib/formValidationSchemas";
+import {
+  createLesson,
+  updateLesson,
+  ActionState,
+} from "@/lib/actions";
+
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import InputField from "../InputField";
 
-const LessonForm = ({
+import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
+import FormStepper from "@/components/ui/FormStepper";
+
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ================= STEPS ================= */
+
+const steps = ["Basic Info", "Schedule", "Assignment"];
+
+/* ================= MAIN FORM ================= */
+
+export default function LessonForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: LessonFormValues;
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: {
     teachers: { id: string; name: string; surname: string }[];
     subjects: { id: number; name: string }[];
     classes: { id: number; name: string }[];
   };
-}) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LessonSchema>({
-    resolver: zodResolver(lessonSchema) as any,
-  });
-
-  const [state, formAction] = useActionState<
-    { success: boolean; error: boolean },
-    LessonSchema
-  >(type === "create" ? createLesson : updateLesson, {
-    success: false,
-    error: false,
-  });
-
-  const onSubmit = handleSubmit((formData) => {
-    const payload: any = {
-      ...formData,
-      startTime: new Date(formData.startTime as any),
-      endTime: new Date(formData.endTime as any),
-    };
-
-    if (type === "update" && data?.id) payload.id = data.id;
-
-    startTransition(() => {
-      formAction(payload);
-    });
-  });
-
+}) {
   const router = useRouter();
+  const { teachers = [], subjects = [], classes = [] } = relatedData || {};
+
+  const [step, setStep] = useState(0);
+
+  /* ================= RHF ================= */
+
+  const methods = useForm<LessonFormValues>({
+    resolver: zodResolver(lessonSchema),
+    defaultValues: {
+      id: data?.id,
+      name: data?.name ?? "",
+      day: data?.day ?? "MONDAY",
+      startTime: data?.startTime ? new Date(data.startTime) : undefined,
+      endTime: data?.endTime ? new Date(data.endTime) : undefined,
+      subjectId: data?.subjectId ?? 0,
+      classId: data?.classId ?? 0,
+      teacherId: data?.teacherId ?? "",
+    },
+    mode: "onChange",
+  });
+
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    control,
+    trigger,
+    formState: { isSubmitting, errors },
+  } = methods;
+
+  /* ================= ACTION ================= */
+
+  const [state, formAction] = useActionState<ActionState, LessonFormValues>(
+    type === "create" ? createLesson : updateLesson,
+    { success: false },
+  );
+
+  /* ================= STEP VALIDATION ================= */
+
+  const nextStep = async () => {
+    const fieldsByStep: (keyof LessonFormValues)[][] = [
+      ["name", "day"],
+      ["startTime", "endTime"],
+      ["subjectId", "classId", "teacherId"],
+    ];
+
+    const valid = await trigger(fieldsByStep[step]);
+    if (valid) setStep((s) => s + 1);
+  };
+
+  /* ================= SUBMIT ================= */
+
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
+  });
+
+  /* ================= EFFECT ================= */
 
   useEffect(() => {
     if (state.success) {
-      toast(`Lesson ${type === "create" ? "created" : "updated"} successfully`);
+      toast.success(
+        `Lesson ${type === "create" ? "created" : "updated"} successfully`,
+      );
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state.success, type, setOpen, router]);
 
-  const { teachers = [], subjects = [], classes = [] } = relatedData || {};
+  const errorSteps = [
+    Boolean(errors.name || errors.day),
+    Boolean(errors.startTime || errors.endTime),
+    Boolean(errors.subjectId || errors.classId || errors.teacherId),
+  ];
+
+  /* ================= UI ================= */
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-xl font-semibold">Create a new lesson</h1>
-        <p className="text-sm text-gray-500">
-          Configure lesson schedule, subject and teacher
-        </p>
-      </div>
+    <FormProvider {...methods}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        {/* Hidden fields */}
+        <input type="hidden" {...methods.register("subjectId")} />
+        <input type="hidden" {...methods.register("classId")} />
+        <input type="hidden" {...methods.register("teacherId")} />
 
-      <div className="border-b" />
+        <h1 className="text-base sm:text-xl font-semibold">
+          {type === "create" ? "Create Lesson" : "Update Lesson"}
+        </h1>
 
-      {/* LESSON NAME */}
-      <div>
-        <InputField
-          label="Lesson name"
-          name="name"
-          defaultValue={data?.name}
-          register={register}
-          error={errors.name}
-        />
-      </div>
+        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
 
-      {/* SCHEDULE */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700">Schedule</h3>
+        <div className="min-h-[160px]">
+          <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div key="s1" className="space-y-4">
+                <InputField label="Lesson Name" name="name" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Day */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">Day</label>
-            <select
-              className="form-select"
-              {...register("day")}
-              defaultValue={data?.day ?? "MONDAY"}
-            >
-              <option value="MONDAY">Monday</option>
-              <option value="TUESDAY">Tuesday</option>
-              <option value="WEDNESDAY">Wednesday</option>
-              <option value="THURSDAY">Thursday</option>
-              <option value="FRIDAY">Friday</option>
-            </select>
-          </div>
+                <RadixSelect
+                  value={watch("day")}
+                  onChange={(v) =>
+                    setValue("day", v as any, { shouldValidate: true })
+                  }
+                  placeholder="Select Day"
+                  options={[
+                    { value: "MONDAY", label: "Monday" },
+                    { value: "TUESDAY", label: "Tuesday" },
+                    { value: "WEDNESDAY", label: "Wednesday" },
+                    { value: "THURSDAY", label: "Thursday" },
+                    { value: "FRIDAY", label: "Friday" },
+                  ]}
+                />
+              </motion.div>
+            )}
 
-          {/* Start Time */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">Start time</label>
-            <input
-              type="datetime-local"
-              {...register("startTime")}
-              defaultValue={
-                data?.startTime
-                  ? new Date(data.startTime).toISOString().slice(0, 16)
-                  : undefined
-              }
-              className="form-input"
-            />
-          </div>
+            {step === 1 && (
+              <motion.div key="s2" className="space-y-4">
+                <Controller
+                  name="startTime"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixDateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Start time"
+                    />
+                  )}
+                />
 
-          {/* End Time */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">End time</label>
-            <input
-              type="datetime-local"
-              {...register("endTime")}
-              defaultValue={
-                data?.endTime
-                  ? new Date(data.endTime).toISOString().slice(0, 16)
-                  : undefined
-              }
-              className="form-input"
-            />
-          </div>
+                <Controller
+                  name="endTime"
+                  control={control}
+                  render={({ field }) => (
+                    <RadixDateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="End time"
+                    />
+                  )}
+                />
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div key="s3" className="space-y-4">
+                <RadixSelect
+                  value={watch("subjectId") ? String(watch("subjectId")) : ""}
+                  onChange={(v) =>
+                    setValue("subjectId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Subject"
+                  options={subjects.map((s) => ({
+                    value: String(s.id),
+                    label: s.name,
+                  }))}
+                />
+
+                <RadixSelect
+                  value={watch("classId") ? String(watch("classId")) : ""}
+                  onChange={(v) =>
+                    setValue("classId", Number(v), {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Class"
+                  options={classes.map((c) => ({
+                    value: String(c.id),
+                    label: c.name,
+                  }))}
+                />
+
+                <RadixSelect
+                  value={watch("teacherId")}
+                  onChange={(v) =>
+                    setValue("teacherId", v ?? "", {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Select Teacher"
+                  options={teachers.map((t) => ({
+                    value: t.id,
+                    label: `${t.name} ${t.surname}`,
+                  }))}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </div>
 
-      {/* ASSIGNMENT */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700">Assignment</h3>
+        {step === steps.length - 1 && state.error && (
+          <span className="text-xs text-red-500">{state.error}</span>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Subject */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">Subject</label>
-            <select
-              {...register("subjectId")}
-              defaultValue={data?.subjectId ?? ""}
-              className="form-select"
+        <div className="flex justify-between pt-3 border-t">
+          {step > 0 && (
+            <button type="button" onClick={() => setStep((s) => s - 1)}>
+              Back
+            </button>
+          )}
+
+          {step < steps.length - 1 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="bg-blue-600 text-white px-4 py-2 rounded-full"
             >
-              <option value="">Select Subject</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Class */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">Class</label>
-            <select
-              {...register("classId")}
-              defaultValue={data?.classId ?? ""}
-              className="form-select"
+              Next →
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
             >
-              <option value="">Select Class</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Teacher */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-gray-500">Teacher</label>
-            <select
-              {...register("teacherId")}
-              defaultValue={data?.teacherId ?? ""}
-              className="form-select"
-            >
-              <option value="">Select Teacher</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} {t.surname}
-                </option>
-              ))}
-            </select>
-          </div>
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Lesson"
+                  : "Update Lesson"}
+            </button>
+          )}
         </div>
-      </div>
-
-      {state.error && (
-        <p className="text-sm text-red-500">
-          Something went wrong. Please try again.
-        </p>
-      )}
-
-      {/* ACTION */}
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold shadow-sm transition"
-      >
-        Create Lesson
-      </button>
-    </form>
+      </form>
+    </FormProvider>
   );
-};
-
-export default LessonForm;
+}

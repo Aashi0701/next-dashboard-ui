@@ -4,12 +4,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Admin {
-  id       String @id
-  username String @unique
+  id           String    @id
+  username     String
+  img          String?
+  lastActiveAt DateTime? // 👈 MUST BE OPTIONAL FIRST
 }
 
 model Student {
@@ -32,7 +33,7 @@ model Student {
   grade       Grade        @relation(fields: [gradeId], references: [id])
   attendances Attendance[]
   results     Result[]
-  birthday    DateTime
+  birthday    DateTime?
 
   // Fees
   studentFees StudentFee[]
@@ -53,7 +54,7 @@ model Teacher {
   subjects  Subject[]
   lessons   Lesson[]
   classes   Class[]
-  birthday  DateTime
+  birthday  DateTime?
 }
 
 model Parent {
@@ -66,6 +67,7 @@ model Parent {
   address   String
   createdAt DateTime  @default(now())
   students  Student[]
+  img       String?
 }
 
 model Grade {
@@ -179,14 +181,31 @@ model Event {
 model Announcement {
   id          Int      @id @default(autoincrement())
   title       String
-  description String
+  description String?
   date        DateTime
+  classId     Int?
+  class       Class?   @relation(fields: [classId], references: [id])
 
-  classId Int?
-  class   Class? @relation(fields: [classId], references: [id])
-
-  // Reads for announcements
   reads AnnouncementRead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([date])
+  @@index([classId])
+}
+
+model AnnouncementRead {
+  id             Int      @id @default(autoincrement())
+  userId         String
+  announcementId Int
+  readAt         DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([userId])
+  @@index([announcementId])
 }
 
 enum UserSex {
@@ -214,34 +233,23 @@ model Message {
   @@index([receiverId])
 }
 
-model AnnouncementRead {
-  id             Int      @id @default(autoincrement())
-  userId         String
-  announcementId Int
-  readAt         DateTime @default(now())
-
-  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, announcementId])
-}
-
-/* =======================
-   FEES & PAYMENTS
-   ======================= */
+/**
+ * FEES & PAYMENTS
+ */
 
 model FeeStructure {
   id        Int       @id @default(autoincrement())
-  title     String                 // e.g. "Admission Fee", "Term 1 Fee"
-  amount    Int                    // stored in smallest unit (e.g. INR paisa)
+  title     String // e.g. "Admission Fee", "Term 1 Fee"
+  amount    Int // stored in smallest unit (e.g. INR paisa)
   type      FeeType   @default(ADMISSION)
   term      TermType?
-  classId   Int?                   // NULL = school-wide fee
+  classId   Int? // NULL = school-wide fee
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  class        Class?       @relation(fields: [classId], references: [id])
-  studentFees  StudentFee[]
+  class       Class?       @relation(fields: [classId], references: [id])
+  studentFees StudentFee[]
 
   @@index([classId])
   @@index([type])
@@ -249,40 +257,46 @@ model FeeStructure {
 }
 
 model StudentFee {
-  id             Int        @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   studentId      String
   feeStructureId Int
-  assignedAt     DateTime   @default(now())
+  assignedAt     DateTime  @default(now())
   dueDate        DateTime?
   totalAmount    Int
-  paidAmount     Int        @default(0)
-  status         FeeStatus  @default(PENDING)
+  paidAmount     Int       @default(0)
+  status         FeeStatus @default(PENDING)
 
-  student        Student      @relation(fields: [studentId], references: [id])
-  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
-  payments       Payment[]
+  // 🔽 NEW FIELDS FOR QR RECEIPT
+  receiptNo  String? @unique
+  verifyHash String? @unique
 
-  @@unique([studentId, feeStructureId])   // prevents duplicate assignment for same fee
+  student      Student      @relation(fields: [studentId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  payments     Payment[]
+
+  @@unique([studentId, feeStructureId])
   @@index([studentId])
   @@index([feeStructureId])
   @@index([status])
 }
 
 model Payment {
-  id           Int          @id @default(autoincrement())
+  id           Int         @id @default(autoincrement())
   studentFeeId Int
-  amount       Int                      // amount paid in smallest unit
+  amount       Int // amount paid in smallest unit
   mode         PaymentMode @default(CASH)
-  referenceId  String?                  // transaction / receipt id
-  paidAt       DateTime     @default(now())
+  referenceId  String? // transaction / receipt id
+  paidAt       DateTime    @default(now())
 
-  studentFee   StudentFee   @relation(fields: [studentFeeId], references: [id])
+  studentFee StudentFee @relation(fields: [studentFeeId], references: [id])
 
   @@index([studentFeeId])
   @@index([paidAt])
 }
 
-/* --- existing enums kept as-is --- */
+/**
+ * --- existing enums kept as-is ---
+ */
 enum FeeType {
   ADMISSION
   TERM
@@ -295,11 +309,13 @@ enum TermType {
   TERM_2
 }
 
-/* --- NEW enums for payment workflow --- */
+/**
+ * --- NEW enums for payment workflow ---
+ */
 enum FeeStatus {
-  PENDING   // no payment yet
-  PARTIAL   // some amount paid
-  PAID      // fully settled
+  PENDING // no payment yet
+  PARTIAL // some amount paid
+  PAID // fully settled
 }
 
 enum PaymentMode {
@@ -307,4 +323,14 @@ enum PaymentMode {
   UPI
   CARD
   BANK_TRANSFER
+}
+
+model Holiday {
+  id        Int      @id @default(autoincrement())
+  title     String
+  date      DateTime
+  isFullDay Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }

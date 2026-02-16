@@ -342,3 +342,830 @@
 .animate-shake {
   animation: shake 0.35s ease-in-out;
 }
+
+.react-calendar__tile {
+  position: relative;
+  overflow: visible;
+}
+
+.react-calendar__tile > button {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Holiday tile text */
+.react-calendar__tile.holiday-tile {
+  font-weight: 700;
+  color: #15803d;
+}
+
+/* Dot */
+.holiday-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background-color: #16a34a;
+}
+
+/* Marker */
+.holiday-marker {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none; /* important */
+}
+
+/* Tooltip */
+.holiday-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10000;
+}
+
+/* Arrow */
+.holiday-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #111827 transparent transparent transparent;
+}
+
+/* 🔑 THE FIX */
+.react-calendar__tile button:hover .holiday-tooltip {
+  opacity: 1;
+}
+
+
+/* =======================
+   Calendar Wrapper
+======================= */
+.calendar-wrapper {
+  height: 520px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 8px;
+}
+
+/* =======================
+   Toolbar (Top Controls)
+======================= */
+.rbc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.rbc-toolbar-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rbc-btn-group button {
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.rbc-btn-group button:hover {
+  background: #f3f4f6;
+}
+
+.rbc-btn-group button.rbc-active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+/* =======================
+   Month Grid
+======================= */
+.rbc-month-view {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.rbc-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 0;
+  background: #f9fafb;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rbc-month-row {
+  min-height: 78px; /* compact rows */
+}
+
+.rbc-day-bg {
+  background: #ffffff;
+}
+
+.rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid #f1f5f9;
+}
+
+.rbc-today {
+  background-color: #eff6ff;
+}
+
+/* =======================
+   Date Numbers
+======================= */
+.rbc-date-cell {
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: right;
+  color: #111827;
+}
+
+.rbc-off-range {
+  color: #9ca3af;
+}
+
+/* =======================
+   Events (PREMIUM LOOK)
+======================= */
+.calendar-event {
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.3;
+  border: none;
+  margin-bottom: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Class events */
+.class-event {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+}
+
+/* Holiday events */
+.holiday-event {
+  background: linear-gradient(135deg, #fde68a, #fcd34d);
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* =======================
+   Popup (More events)
+======================= */
+.rbc-overlay {
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.rbc-overlay-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* =======================
+   Remove selection glow
+======================= */
+.rbc-slot-selection {
+  background: transparent;
+}
+
+/* Hide Sunday column in MONTH view */
+.teacher-calendar .rbc-header:first-child,
+.teacher-calendar .rbc-date-cell:first-child,
+.teacher-calendar .rbc-day-bg:first-child {
+  display: none;
+}
+
+/* Re-align grid after removing Sunday */
+.teacher-calendar .rbc-month-view {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+@media (max-width: 640px) {
+  .react-datepicker {
+    font-size: 12px;
+  }
+
+  .react-datepicker__time-list-item {
+    font-size: 12px;
+  }
+
+  .react-datepicker__day {
+    width: 1.8rem;
+    line-height: 1.8rem;
+  }
+}
+
+/* ===============================
+   Swiper Navigation – Responsive
+================================ */
+
+/* Default (desktop) */
+.swiper-button-next,
+.swiper-button-prev {
+  width: 36px;
+  height: 36px;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 16px;
+  font-weight: 700;
+  color: #b45309; /* amber-700 */
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .swiper-button-next,
+  .swiper-button-prev {
+    width: 28px;
+    height: 28px;
+  }
+
+  .swiper-button-next::after,
+  .swiper-button-prev::after {
+    font-size: 12px;
+  }
+}
+
+/* ================= FLOATING LOGO ================= */
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.05); }
+}
+
+.animate-float-soft {
+  animation: floatSoft 6s ease-in-out infinite;
+}
+
+/* ================= SVG PONGAL KITES ================= */
+
+.pongal-kite-svg {
+  position: absolute;
+  width: 48px;
+  height: auto;
+  opacity: 1;
+  transform-origin: center center;
+  animation: kiteFloatSVG 14s linear infinite;
+  filter: drop-shadow(0 0 18px rgba(255, 153, 51, 0.85));
+  pointer-events: none;
+
+  will-change: transform, opacity;
+}
+
+/* ---------- POSITIONS ---------- */
+
+.kite-left {
+  left: 60px;
+  bottom: 20%;
+  animation-delay: 0s;
+}
+
+.kite-right {
+  right: 60px;
+  bottom: 30%;
+  animation-delay: 0s;
+}
+
+.kite-center {
+  left: 48%;
+  bottom: 10%;
+  animation-delay: 0s;
+}
+
+/* ---------- MOTION ---------- */
+
+@keyframes kiteFloatSVG {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  25% { transform: translate(30px, -60px) rotate(-4deg); }
+  40% { transform: translate(55px, -100px) rotate(3deg); }
+  55% { transform: translate(80px, -140px) rotate(-3deg); }
+  70% { transform: translate(110px, -190px) rotate(2deg); }
+  100% { transform: translate(150px, -260px) rotate(0deg); opacity: 0; }
+}
+
+/* ================= PONGAL EMBERS ================= */
+
+.sparkle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  opacity: 0;
+  z-index: 45;
+  animation: emberRise 6s linear infinite;
+  filter: blur(0.5px);
+  pointer-events: none;
+}
+
+.sparkle-pongal {
+  background: radial-gradient(
+    circle,
+    #ffef9f 30%,
+    #ffb703 55%,
+    transparent 75%
+  );
+  box-shadow:
+    0 0 18px rgba(255, 183, 77, 0.9),
+    0 0 36px rgba(255, 153, 51, 0.6);
+}
+
+/* Ember delays */
+.delay-0 { animation-delay: 0s; }
+.delay-1 { animation-delay: 1.2s; }
+.delay-2 { animation-delay: 2.4s; }
+.delay-3 { animation-delay: 3.6s; }
+.delay-4 { animation-delay: 4.8s; }
+.delay-5 { animation-delay: 6s; }
+.delay-6 { animation-delay: 7.2s; }
+
+/* Ember motion */
+@keyframes emberRise {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  20% { opacity: 1; }
+  100% {
+    transform: translateY(-160px) translateX(40px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* ================= LOGO GLOW ================= */
+
+.pongal-glow {
+  box-shadow:
+    0 0 28px rgba(255, 153, 51, 0.65),
+    0 0 70px rgba(255, 204, 102, 0.45);
+}
+
+/* ================= ACCESSIBILITY ================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-soft,
+  .sparkle,
+  .pongal-kite-svg {
+    animation: none;
+  }
+}
+
+@keyframes banner-float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-banner-float {
+  animation: banner-float 5s ease-in-out infinite;
+}
+
+/* subtle light sweep */
+.banner-shine {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: shine 6s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% {
+    left: -60%;
+  }
+  50% {
+    left: 120%;
+  }
+  100% {
+    left: 120%;
+  }
+}
+
+/* ================= FLIGHT ================= */
+.airplane-move {
+  position: absolute;
+  top: 3%;
+  right: -420px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  animation: airplane-fly 24s linear infinite;
+}
+
+/* Flip airplane image */
+.airplane-flip {
+  transform: scaleX(-1);
+}
+
+/* ================= ROPE IMAGE ================= */
+.rope-image {
+  display: flex;
+  align-items: center;
+
+  /* pull rope into both sides */
+  margin-left: -3px;
+  margin-right: -6px;
+  margin-top: -18px;
+
+  /* anchor rotation to left end */
+  transform-origin: left center;
+
+  /* sag + tie angle */
+  transform: translateY(10px) rotate(-180deg);
+
+  opacity: 0.85;
+}
+
+/* Optional gentle sway (very subtle) */
+.rope-image {
+  animation: rope-sway 4s ease-in-out infinite;
+}
+
+@keyframes rope-sway {
+  0% {
+    transform: translateY(6px) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-6deg);
+  }
+  100% {
+    transform: translateY(6px) rotate(-8deg);
+  }
+}
+
+/* ================= CLOTH BANNER ================= */
+.cloth-banner {
+  position: relative;
+  padding: 10px 36px 12px 32px;
+  background: linear-gradient(
+    90deg,
+    #9042e4,
+    #f72cb3,
+    #FECDD3
+  );
+
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+
+  /* ❌ remove pill look */
+  border-radius: 0;
+
+  /* irregular cloth shape */
+  clip-path: polygon(
+    0% 20%,
+    5% 0%,
+    95% 8%,
+    100% 30%,
+    96% 85%,
+    5% 100%,
+    0% 70%
+  );
+
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+
+  /* fabric motion */
+  animation: cloth-wave 3.8s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+.cloth-banner::after {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 18%;
+  width: 18px;
+  height: 64%;
+  background: inherit;
+  clip-path: polygon(
+    100% 0%,
+    0% 50%,
+    100% 100%
+  );
+  filter: brightness(0.9);
+}
+
+/* Tail cut to avoid button look */
+.cloth-banner::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 0;
+  width: 14px;
+  height: 100%;
+  background: linear-gradient(
+    to left,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+}
+
+/* ================= ANIMATIONS ================= */
+@keyframes airplane-fly {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-260vw);
+  }
+}
+
+@keyframes cloth-wave {
+  0% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-2deg) scaleX(1.03);
+  }
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 640px) {
+  .airplane-move {
+    top: 2%;
+    animation-duration: 30s;
+  }
+
+  .cloth-banner {
+    font-size: 12px;
+    padding: 8px 20px;
+  }
+}
+
+@keyframes float-soft {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 4s ease-in-out infinite;
+}
+
+/* Testimonials Styles */
+
+/* ============================= */
+/* Fade-in animation (card)      */
+/* ============================= */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out both;
+}
+
+/* ============================= */
+/* Swiper Pagination (FIXED)     */
+/* ============================= */
+
+/* Swiper wrapper */
+.testimonial-swiper {
+  padding-bottom: 56px; /* space for dots */
+}
+
+/* Pagination container */
+.testimonial-pagination {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 30;
+}
+
+/* Dots */
+.testimonial-pagination .swiper-pagination-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.35);
+  opacity: 1;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.testimonial-pagination .swiper-pagination-bullet-active {
+  background: linear-gradient(90deg, #6366f1, #ec4899);
+  transform: scale(1.4);
+}
+
+/* ============================= */
+/* Responsive fine-tuning        */
+/* ============================= */
+
+@media (max-width: 640px) {
+  .testimonial-swiper {
+    padding-bottom: 48px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  .swiper-pagination {
+    bottom: 10px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .swiper-pagination {
+    bottom: 8px;
+  }
+}
+
+.MuiPopper-root {
+  z-index: 999999 !important;
+}
+
+.MuiDialog-root {
+  z-index: 999999 !important;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes countIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-countIn {
+  animation: countIn 0.4s ease-out both;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.25s ease-out;
+}
+
+@layer base {
+  :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+        --chart-1: 12 76% 61%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+        --radius: 0.5rem;
+    }
+  .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 210 40% 98%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 212.7 26.8% 83.9%;
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
+
+.Toastify__toast {
+  min-height: unset !important;
+  padding: 8px 14px !important;
+  width: auto !important;
+  max-width: 320px !important;
+}
+
+.Toastify__toast-body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Optional: thinner success border */
+.Toastify__toast--success {
+  border-left: 3px solid #22c55e;
+}

@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import FormModal from "./FormModal";
 import { auth } from "@clerk/nextjs/server";
+import React from "react";
 
 type FormType = "create" | "update" | "delete" | "assign";
 
@@ -18,22 +19,42 @@ export type FormContainerProps = {
     | "attendance"
     | "event"
     | "announcement"
+    | "holiday"
     | "fee"
-    | "payment" ;
+    | "payment"
+    | "profile";
   type: FormType;
   data?: any;
   id?: number | string;
   relatedData?: any;
-  trigger?: React.ReactNode; // ✅ ADD THIS
+
+  /* Optional custom trigger */
+  trigger?: React.ReactNode;
+
+  /* ✅ Optional tooltip (NEW, SAFE) */
+  tooltip?: string;
 };
 
-const FormContainer = async ({ table, type, data, id, trigger }: FormContainerProps) => {
-  let relatedData = {};
+/* ---------------------------------------------------------------
+   MAIN COMPONENT
+---------------------------------------------------------------- */
+const FormContainer = async ({
+  table,
+  type,
+  data,
+  id,
+  trigger,
+  tooltip,
+}: FormContainerProps) => {
+  let relatedData: any = {};
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
 
+  /* ---------------------------------------------------------------
+     BUILD RELATED DATA BASED ON TABLE
+  ---------------------------------------------------------------- */
   if (type !== "delete") {
     switch (table) {
       case "subject":
@@ -101,11 +122,12 @@ const FormContainer = async ({ table, type, data, id, trigger }: FormContainerPr
         break;
 
       case "assignment":
-        const assignmentLessons = await prisma.lesson.findMany({
-          where: role === "teacher" ? { teacherId: currentUserId! } : {},
-          select: { id: true, name: true },
-        });
-        relatedData = { lessons: assignmentLessons };
+        relatedData = {
+          lessons: await prisma.lesson.findMany({
+            where: role === "teacher" ? { teacherId: currentUserId! } : {},
+            select: { id: true, name: true },
+          }),
+        };
         break;
 
       case "result":
@@ -123,13 +145,6 @@ const FormContainer = async ({ table, type, data, id, trigger }: FormContainerPr
         break;
 
       case "event":
-        relatedData = {
-          classes: await prisma.class.findMany({
-            select: { id: true, name: true },
-          }),
-        };
-        break;
-
       case "announcement":
         relatedData = {
           classes: await prisma.class.findMany({
@@ -137,7 +152,11 @@ const FormContainer = async ({ table, type, data, id, trigger }: FormContainerPr
           }),
         };
         break;
-      
+
+      case "holiday":
+        relatedData = {};
+        break;
+
       case "attendance":
         relatedData = {
           students: await prisma.student.findMany({
@@ -152,10 +171,6 @@ const FormContainer = async ({ table, type, data, id, trigger }: FormContainerPr
             orderBy: { id: "asc" },
           }),
         };
-        break;
-
-      case "parent":
-        relatedData = {};
         break;
 
       case "fee":
@@ -182,37 +197,88 @@ const FormContainer = async ({ table, type, data, id, trigger }: FormContainerPr
         };
         break;
 
+      case "profile":
+        if (!currentUserId || !role) break;
+
+        if (role === "admin") {
+          relatedData = {
+            profile: await prisma.admin.findUnique({
+              where: { id: currentUserId },
+            }),
+          };
+        }
+
+        if (role === "teacher") {
+          relatedData = {
+            profile: await prisma.teacher.findUnique({
+              where: { id: currentUserId },
+            }),
+          };
+        }
+
+        if (role === "student") {
+          relatedData = {
+            profile: await prisma.student.findUnique({
+              where: { id: currentUserId },
+              include: {
+                class: { select: { name: true } },
+                grade: { select: { level: true } },
+              },
+            }),
+          };
+        }
+
+        if (role === "parent") {
+          relatedData = {
+            profile: await prisma.parent.findUnique({
+              where: { id: currentUserId },
+              include: {
+                students: { select: { name: true, surname: true } },
+              },
+            }),
+          };
+        }
+        break;
+
       default:
         break;
     }
   }
 
-  return (
-  <>
-    {trigger && (
-      <div className="inline-block">
-        <FormModal
-          table={table}
-          type={type}
-          data={data}
-          id={id}
-          relatedData={relatedData}
-          trigger={trigger}
-        />
-      </div>
-    )}
+  /* ---------------------------------------------------------------
+     OUTPUT (WITH TOOLTIP SUPPORT)
+  ---------------------------------------------------------------- */
+  const content = trigger ? (
+    <FormModal
+      table={table}
+      type={type}
+      data={data}
+      id={id}
+      relatedData={relatedData}
+      trigger={trigger}
+    />
+  ) : (
+    <FormModal
+      table={table}
+      type={type}
+      data={data}
+      id={id}
+      relatedData={relatedData}
+    />
+  );
 
-    {!trigger && (
-      <FormModal
-        table={table}
-        type={type}
-        data={data}
-        id={id}
-        relatedData={relatedData}
-      />
-    )}
-  </>
-);
+  return tooltip ? (
+    <div className="relative inline-block group">
+      {/* Tooltip bubble (desktop hover only) */}
+      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 hidden whitespace-nowrap rounded-md bg-black px-2 py-1 text-[10px] text-white group-hover:block">
+        {tooltip}
+      </span>
+
+      {content}
+    </div>
+  ) : (
+    <>{content}</>
+  );
 };
 
 export default FormContainer;

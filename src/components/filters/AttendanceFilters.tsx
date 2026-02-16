@@ -1,22 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AttendanceFilters({ students, lessons }: any) {
-  const [open, setOpen] = useState(false);
+import dayjs, { Dayjs } from "dayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
-  const params = useSearchParams();
+import RadixSelect from "@/components/ui/RadixSelect";
+import FilterDrawer from "@/components/filters/FilterDrawer";
+
+/* ================= COMPONENT ================= */
+
+export default function AttendanceFilters({
+  students = [],
+  lessons = [],
+}: any) {
   const router = useRouter();
+  const params = useSearchParams();
+
+  const [open, setOpen] = useState(false);
 
   const [studentId, setStudentId] = useState(params.get("studentId") || "");
   const [lessonId, setLessonId] = useState(params.get("lessonId") || "");
   const [classId, setClassId] = useState(params.get("classId") || "");
   const [present, setPresent] = useState(params.get("present") || "");
-  const [dateFrom, setDateFrom] = useState(params.get("dateFrom") || "");
-  const [dateTo, setDateTo] = useState(params.get("dateTo") || "");
 
-  const apply = () => {
+  const [dateFrom, setDateFrom] = useState<Dayjs | null>(
+    params.get("dateFrom") ? dayjs(params.get("dateFrom")) : null
+  );
+  const [dateTo, setDateTo] = useState<Dayjs | null>(
+    params.get("dateTo") ? dayjs(params.get("dateTo")) : null
+  );
+
+  /* ================= APPLY ================= */
+
+  const applyFilters = () => {
     const q = new URLSearchParams(params.toString());
 
     studentId ? q.set("studentId", studentId) : q.delete("studentId");
@@ -24,121 +44,195 @@ export default function AttendanceFilters({ students, lessons }: any) {
     classId ? q.set("classId", classId) : q.delete("classId");
     present ? q.set("present", present) : q.delete("present");
 
-    dateFrom ? q.set("dateFrom", dateFrom) : q.delete("dateFrom");
-    dateTo ? q.set("dateTo", dateTo) : q.delete("dateTo");
+    dateFrom
+      ? q.set("dateFrom", dateFrom.format("YYYY-MM-DD"))
+      : q.delete("dateFrom");
+    dateTo
+      ? q.set("dateTo", dateTo.format("YYYY-MM-DD"))
+      : q.delete("dateTo");
 
     router.push("?" + q.toString());
     setOpen(false);
   };
 
-  const reset = () => {
-    router.push("?");
+  /* ================= RESET ================= */
+
+  const resetFilters = () => {
+    const q = new URLSearchParams(params.toString());
+    [
+      "studentId",
+      "lessonId",
+      "classId",
+      "present",
+      "dateFrom",
+      "dateTo",
+    ].forEach((k) => q.delete(k));
+
+    router.push("?" + q.toString());
+
+    setStudentId("");
+    setLessonId("");
+    setClassId("");
+    setPresent("");
+    setDateFrom(null);
+    setDateTo(null);
+
     setOpen(false);
   };
 
+  /* ================= UNIQUE CLASSES ================= */
+
+  const uniqueClasses = Array.from(
+    new Map(lessons.map((l: any) => [l.class.id, l.class])).values()
+  );
+
+  /* ================= UI ================= */
+
   return (
     <>
+      {/* DESKTOP FILTER BUTTON */}
       <button
         onClick={() => setOpen(true)}
-        className="w-8 h-8 rounded-full bg-lamaYellow flex justify-center items-center"
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm rounded-2xl bg-purple-500 text-white hover:bg-indigo-500 transition"
       >
-        <img src="/adjust.png" width={18} />
+        <img src="/filter1.png" width={14} alt="" />
+        Filter
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
-          <div className="w-80 bg-white p-6 h-full flex flex-col">
-            <h2 className="text-lg font-semibold mb-4">Filters</h2>
+      {/* MOBILE FILTER BUTTON */}
+      <button
+        onClick={() => setOpen(true)}
+        className="md:hidden w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
+      >
+        <img src="/filter1.png" width={14} alt="" />
+      </button>
 
-            <label className="text-xs">Student</label>
-            <select
-              className="border p-2 rounded mb-3"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-            >
-              <option value="">All</option>
-              {students.map((s: any) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.surname}
-                </option>
-              ))}
-            </select>
-
-            <label className="text-xs">Lesson</label>
-            <select
-              className="border p-2 rounded mb-3"
-              value={lessonId}
-              onChange={(e) => setLessonId(e.target.value)}
-            >
-              <option value="">All</option>
-              {lessons.map((l: any) => (
-                <option key={l.id} value={l.id}>
-                  {l.subject.name} - {l.class.name}
-                </option>
-              ))}
-            </select>
-
-            <label className="text-xs">Class</label>
-            <select
-              className="border p-2 rounded mb-3"
-              value={classId}
-              onChange={(e) => setClassId(e.target.value)}
-            >
-              <option value="">All</option>
-              {lessons
-                .map((l: any) => l.class)
-                .filter(
-                  (c: any, idx: number, arr: any[]) =>
-                    arr.findIndex((a) => a.id === c.id) === idx
-                )
-                .map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-
-            <label className="text-xs">Status</label>
-            <select
-              className="border p-2 rounded mb-3"
-              value={present}
-              onChange={(e) => setPresent(e.target.value)}
-            >
-              <option value="">All</option>
-              <option value="present">Present</option>
-              <option value="absent">Absent</option>
-            </select>
-
-            <label className="text-xs">Date From</label>
-            <input
-              type="date"
-              className="border p-2 rounded mb-3"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-
-            <label className="text-xs">Date To</label>
-            <input
-              type="date"
-              className="border p-2 rounded mb-3"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-
-            <div className="mt-auto flex gap-3">
-              <button className="border p-2 rounded flex-1" onClick={reset}>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <FilterDrawer
+          open={open}
+          onClose={() => setOpen(false)}
+          footer={
+            <div className="flex gap-3">
+              <button
+                onClick={resetFilters}
+                className="flex-1 h-11 border rounded-xl text-sm"
+              >
                 Reset
               </button>
               <button
-                className="bg-blue-600 text-white p-2 rounded flex-1"
-                onClick={apply}
+                onClick={applyFilters}
+                className="flex-1 h-11 bg-blue-600 text-white rounded-xl text-sm font-medium"
               >
                 Apply
               </button>
             </div>
+          }
+        >
+          {/* STUDENT */}
+          <FilterSelect
+            label="Student"
+            value={studentId}
+            onChange={setStudentId}
+            placeholder="All Students"
+            options={students.map((s: any) => ({
+              value: s.id,
+              label: `${s.name} ${s.surname}`,
+            }))}
+          />
+
+          {/* LESSON */}
+          <FilterSelect
+            label="Lesson"
+            value={lessonId}
+            onChange={setLessonId}
+            placeholder="All Lessons"
+            options={lessons.map((l: any) => ({
+              value: l.id,
+              label: `${l.subject.name} `,
+            }))}
+          />
+
+          {/* CLASS */}
+          <FilterSelect
+            label="Class"
+            value={classId}
+            onChange={setClassId}
+            placeholder="All Classes"
+            options={uniqueClasses.map((c: any) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+          />
+
+          {/* STATUS */}
+          <FilterSelect
+            label="Status"
+            value={present}
+            onChange={setPresent}
+            placeholder="All Status"
+            options={[
+              { value: "present", label: "Present" },
+              { value: "absent", label: "Absent" },
+            ]}
+          />
+
+          {/* DATE RANGE */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700">
+              Date range
+            </label>
+
+            <DatePicker
+              label="From"
+              value={dateFrom}
+              onChange={setDateFrom}
+              slotProps={{
+                textField: { fullWidth: true, size: "small" },
+                popper: { sx: { zIndex: 999999 } },
+              }}
+            />
+
+            <DatePicker
+              label="To"
+              value={dateTo}
+              onChange={setDateTo}
+              minDate={dateFrom ?? undefined}
+              slotProps={{
+                textField: { fullWidth: true, size: "small" },
+                popper: { sx: { zIndex: 999999 } },
+              }}
+            />
           </div>
-        </div>
-      )}
+        </FilterDrawer>
+      </LocalizationProvider>
     </>
+  );
+}
+
+/* ================= SUB COMPONENT ================= */
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <RadixSelect
+        value={value}
+        placeholder={placeholder}
+        options={options}
+        onChange={(v) => onChange(v ?? "")}
+      />
+    </div>
   );
 }

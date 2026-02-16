@@ -1,28 +1,29 @@
 import Announcements from "@/components/Announcements";
-import BigCalendarContainer from "@/components/BigCalendarContainer";
-import BigCalendar from "@/components/BigCalendar";
 import FormContainer from "@/components/FormContainer";
 import Performance from "@/components/Performance";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import TeacherSchedule from "@/components/TeacherSchedule";
+import { CalendarEvent } from "@/lib/types";
+import { adjustScheduleToCurrentWeek } from "@/lib/utils";
+import BackButton from "@/components/BackButton";
+
+/* ================= PAGE ================= */
 
 const SingleTeacherPage = async ({
-  params: { id },
+  params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) => {
+  const { id } = await params;
+
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
-  const teacher:
-    | (Teacher & {
-        _count: { subjects: number; lessons: number; classes: number };
-      })
-    | null = await prisma.teacher.findUnique({
+  const teacher = await prisma.teacher.findUnique({
     where: { id },
     include: {
       _count: {
@@ -35,170 +36,195 @@ const SingleTeacherPage = async ({
     },
   });
 
-  if (!teacher) {
-    return notFound();
-  }
+  if (!teacher) return notFound();
+
+  /* ================= SCHEDULE EVENTS (✅ FIX) ================= */
+
+  const lessons = await prisma.lesson.findMany({
+    where: { teacherId: teacher.id },
+    select: {
+      id: true,
+      name: true,
+      startTime: true,
+      endTime: true,
+    },
+  });
+
+  const holidays = await prisma.holiday.findMany({
+    select: {
+      id: true,
+      title: true,
+      date: true,
+      isFullDay: true,
+    },
+  });
+
+  /* ---------- EVENTS / ACTIVITIES (⭐ FIX ADDED) ---------- */
+  const activities = await prisma.event.findMany({
+    select: {
+      id: true,
+      title: true,
+      startTime: true,
+      endTime: true,
+    },
+  });
+
+  /* ---------- MAP LESSONS ---------- */
+  const classEvents: CalendarEvent[] = lessons.map((l) => ({
+    id: `class-${l.id}`,
+    title: l.name,
+    start: l.startTime,
+    end: l.endTime,
+    type: "CLASS",
+  }));
+
+  /* ---------- MAP HOLIDAYS ---------- */
+  const holidayEvents: CalendarEvent[] = holidays.map((h) => {
+    const start = new Date(h.date);
+    const end = new Date(h.date);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+      id: `holiday-${h.id}`,
+      title: `🎉 ${h.title}`,
+      start,
+      end,
+      type: "HOLIDAY",
+      allDay: h.isFullDay,
+    };
+  });
+
+  /* ---------- MAP ACTIVITIES (⭐ NEW) ---------- */
+  const activityEvents: CalendarEvent[] = activities.map((a) => ({
+    id: `event-${a.id}`,
+    title: a.title,
+    start: a.startTime,
+    end: a.endTime,
+    type: "EVENT", // keep same style for now
+  }));
+
+  /* ---------- FINAL MERGE (⭐ CRITICAL FIX) ---------- */
+  const events: CalendarEvent[] = [
+    ...(adjustScheduleToCurrentWeek(classEvents) ?? []),
+    ...holidayEvents,
+    ...activityEvents,
+  ];
+
   return (
-    <div className="flex-1 p-4 flex flex-col gap-4 xl:flex-row">
-      {/* LEFT */}
-      <div className="w-full xl:w-2/3">
-        {/* TOP */}
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* USER INFO CARD */}
-          <div className="bg-lamaSky py-6 px-4 rounded-md flex-1 flex gap-4">
-            <div className="w-1/3">
-              <Image
-                src={teacher.img || "/noAvatar.png"}
-                alt=""
-                width={144}
-                height={144}
-                className="w-36 h-36 rounded-full object-cover"
-              />
-            </div>
-            <div className="w-2/3 flex flex-col justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-semibold">
-                  {teacher.name + " " + teacher.surname}
-                </h1>
-                {role === "admin" && (
-                  <FormContainer table="teacher" type="update" data={teacher} />
-                )}
+    <div className="flex-1 px-1 py-2 p-2 md:p-6 flex flex-col gap-6 xl:flex-row">
+      {/* ================= LEFT ================= */}
+      <div className="w-full xl:w-2/3 flex flex-col gap-6">
+        {/* PROFILE */}
+        <div className="bg-lamaSky rounded-2xl px-4 py-4 sm:p-6 lg:px-8 lg:py-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+          {/* AVATAR */}
+          <div className="relative shrink-0 flex justify-center sm:justify-start w-full sm:w-auto">
+            <Image
+              src={teacher.img || "/noAvatar.png"}
+              alt="Teacher"
+              width={120}
+              height={120}
+              className="w-20 h-20 sm:w-28 sm:h-28 lg:w-34 lg:h-36 rounded-full object-cover border-2 border-white shadow-sm"
+            />
+
+            {role === "admin" && (
+              <div className="absolute -bottom-1 right-20 sm:-bottom-2 sm:-right-2 lg:-bottom-1 lg:right-3 scale-90 sm:scale-100">
+                <FormContainer
+                  table="teacher"
+                  type="update"
+                  data={teacher}
+                  tooltip="Edit Profile"
+                />
               </div>
-              <p className="text-sm text-gray-500">
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-              </p>
-              <div className="flex items-center justify-between gap-2 flex-wrap text-xs font-medium">
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
-                  <Image src="/blood.png" alt="" width={14} height={14} />
-                  <span>{teacher.bloodType}</span>
-                </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
-                  <Image src="/date.png" alt="" width={14} height={14} />
-                  <span>
-                    {new Intl.DateTimeFormat("en-GB").format(teacher.birthday)}
-                  </span>
-                </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
-                  <Image src="/mail.png" alt="" width={14} height={14} />
-                  <span>{teacher.email || "-"}</span>
-                </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
-                  <Image src="/phone.png" alt="" width={14} height={14} />
-                  <span>{teacher.phone || "-"}</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-          {/* SMALL CARDS */}
-          <div className="flex-1 flex gap-4 justify-between flex-wrap">
-            {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
-                src="/singleAttendance.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6"
+
+          {/* INFO */}
+          <div className="flex flex-col gap-3 w-full text-center sm:text-left">
+            <h1 className="text-base sm:text-xl lg:text-3xl font-semibold leading-tight">
+              {teacher.name} {teacher.surname}
+            </h1>
+
+            <p className="text-[11px] sm:text-xs text-gray-600">
+              Dedicated teacher focused on academic excellence.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-2 text-[10px] sm:text-xs font-bold mt-3">
+              <Info icon="/blood.png" value={teacher.bloodType} />
+              <Info
+                icon="/date.png"
+                value={new Intl.DateTimeFormat("en-GB").format(
+                  teacher.birthday,
+                )}
               />
-              <div className="">
-                <h1 className="text-xl font-semibold">90%</h1>
-                <span className="text-sm text-gray-400">Attendance</span>
-              </div>
-            </div>
-            {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
-                src="/singleBranch.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
-              <div className="">
-                <h1 className="text-xl font-semibold">
-                  {teacher._count.subjects}
-                </h1>
-                <span className="text-sm text-gray-400">Branches</span>
-              </div>
-            </div>
-            {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
-                src="/singleLesson.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
-              <div className="">
-                <h1 className="text-xl font-semibold">
-                  {teacher._count.lessons}
-                </h1>
-                <span className="text-sm text-gray-400">Lessons</span>
-              </div>
-            </div>
-            {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
-                src="/singleClass.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
-              <div className="">
-                <h1 className="text-xl font-semibold">
-                  {teacher._count.classes}
-                </h1>
-                <span className="text-sm text-gray-400">Classes</span>
-              </div>
+              <Info icon="/mail.png" value={teacher.email || "-"} />
+              <Info icon="/phone.png" value={teacher.phone || "-"} />
             </div>
           </div>
         </div>
-        {/* BOTTOM */}
-        <div className="mt-4 bg-white rounded-md p-4 h-[800px]">
-          <h1>Teacher&apos;s Schedule</h1>
-          <BigCalendarContainer type="teacherId" id={teacher.id} />
+
+        {/* STATS */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Stat icon="/singleAttendance.png" value="90%" label="Attendance" />
+          <Stat
+            icon="/singleBranch.png"
+            value={teacher._count.subjects}
+            label="Branches"
+          />
+          <Stat
+            icon="/singleLesson.png"
+            value={teacher._count.lessons}
+            label="Lessons"
+          />
+          <Stat
+            icon="/singleClass.png"
+            value={teacher._count.classes}
+            label="Classes"
+          />
+        </div>
+
+        {/* SCHEDULE */}
+        <div className="bg-white rounded-xl p-4 md:p-6 mb-2">
+          <div className="relative">
+            <TeacherSchedule events={events} />
+          </div>
         </div>
       </div>
-      {/* RIGHT */}
-      <div className="w-full xl:w-1/3 flex flex-col gap-4">
-        <div className="bg-white p-4 rounded-md">
-          <h1 className="text-xl font-semibold">Shortcuts</h1>
-          <div className="mt-4 flex gap-4 flex-wrap text-xs text-gray-500">
-           <Link
-              className="p-3 rounded-md bg-lamaSkyLight"
+
+      {/* ================= RIGHT ================= */}
+      <div className="w-full xl:w-1/3 flex flex-col gap-6">
+        <div className="bg-white rounded-xl p-4 md:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4">
+            Quick Actions
+          </h2>
+
+          <div className="grid grid-cols-2 gap-3 text-sm font-medium">
+            <Shortcut
               href={`/list/classes?supervisorId=${teacher.id}`}
-            >
-              Teacher&apos;s Classes
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-lamaPurpleLight"
+              label="Classes"
+              color="bg-lamaSkyLight"
+            />
+            <Shortcut
               href={`/list/students?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Students
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-lamaYellowLight"
+              label="Students"
+              color="bg-lamaPurpleLight"
+            />
+            <Shortcut
               href={`/list/lessons?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Lessons
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-pink-50"
+              label="Lessons"
+              color="bg-lamaYellowLight"
+            />
+            <Shortcut
               href={`/list/exams?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Exams
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-lamaSkyLight"
+              label="Exams"
+              color="bg-pink-50"
+            />
+            <Shortcut
               href={`/list/assignments?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Assignments
-            </Link>
+              label="Assignments"
+              color="bg-lamaSkyLight"
+            />
           </div>
         </div>
-        <Performance />
         <Announcements />
       </div>
     </div>
@@ -206,3 +232,49 @@ const SingleTeacherPage = async ({
 };
 
 export default SingleTeacherPage;
+
+/* ================= HELPERS ================= */
+
+const Stat = ({
+  icon,
+  value,
+  label,
+}: {
+  icon: string;
+  value: number | string;
+  label: string;
+}) => (
+  <div className="bg-white rounded-xl px-4 py-4 flex items-center gap-4 shadow-sm">
+    <Image src={icon} alt="" width={24} height={24} />
+    <div>
+      <h3 className="text-xs sm:text-lg font-semibold leading-none">{value}</h3>
+      <span className="text-xs sm:text-sm text-gray-500">{label}</span>
+    </div>
+  </div>
+);
+
+const Info = ({ icon, value }: { icon: string; value: string }) => (
+  <div className="flex items-start gap-2">
+    <Image src={icon} alt="" width={14} height={14} className="mt-0.5" />
+    <span className="text-gray-700 break-all sm:break-normal sm:truncate">
+      {value}
+    </span>
+  </div>
+);
+
+const Shortcut = ({
+  href,
+  label,
+  color,
+}: {
+  href: string;
+  label: string;
+  color: string;
+}) => (
+  <Link
+    href={href}
+    className={`p-3 rounded-lg text-center ${color} hover:opacity-80 transition`}
+  >
+    {label}
+  </Link>
+);
