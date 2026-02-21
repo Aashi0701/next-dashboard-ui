@@ -10,28 +10,29 @@ import RadixSelect from "@/components/ui/RadixSelect";
 /* ================= TYPES ================= */
 
 type Props = {
-  grades: { id: number; level: number }[];
   classes: { id: number; name: string }[];
 };
 
 /* ================= COMPONENT ================= */
 
-export default function StudentFilters({ grades, classes }: Props) {
+export default function StudentFilters({ classes }: Props) {
   const router = useRouter();
   const params = useSearchParams();
 
   const [open, setOpen] = useState(false);
 
-  const [grade, setGrade] = useState(params.get("grade") || "");
-  const [classId, setClassId] = useState(params.get("classId") || "");
+  const [classId, setClassId] = useState(
+    params.get("classId") || "",
+  );
 
   /* ================= ACTIONS ================= */
 
   const applyFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    grade ? query.set("grade", grade) : query.delete("grade");
-    classId ? query.set("classId", classId) : query.delete("classId");
+    classId
+      ? query.set("classId", classId)
+      : query.delete("classId");
 
     router.push("?" + query.toString());
     setOpen(false);
@@ -40,12 +41,10 @@ export default function StudentFilters({ grades, classes }: Props) {
   const resetFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    query.delete("grade");
     query.delete("classId");
 
     router.push("?" + query.toString());
 
-    setGrade("");
     setClassId("");
     setOpen(false);
   };
@@ -92,20 +91,6 @@ export default function StudentFilters({ grades, classes }: Props) {
           </div>
         }
       >
-        {/* GRADE */}
-        <div>
-          <label className="font-medium text-gray-700">Grade</label>
-          <RadixSelect
-            value={grade}
-            onChange={(v) => setGrade(v ?? "")}
-            placeholder="All Grades"
-            options={grades.map((g) => ({
-              value: String(g.id), // ✅ non-empty
-              label: String(g.level),
-            }))}
-          />
-        </div>
-
         {/* CLASS */}
         <div>
           <label className="font-medium text-gray-700">Class</label>
@@ -114,7 +99,7 @@ export default function StudentFilters({ grades, classes }: Props) {
             onChange={(v) => setClassId(v ?? "")}
             placeholder="All Classes"
             options={classes.map((c) => ({
-              value: String(c.id), // ✅ non-empty
+              value: String(c.id),
               label: c.name,
             }))}
           />

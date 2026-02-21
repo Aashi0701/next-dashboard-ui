@@ -6,37 +6,33 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserSex {
+  MALE
+  FEMALE
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+model AcademicYear {
+  id       Int     @id @default(autoincrement())
+  label    String  @unique // "2025-2026"
+  isActive Boolean @default(true)
+
+  classes  Class[]
+  students Student[]
+}
+
 model Admin {
   id           String    @id
   username     String
   img          String?
-  lastActiveAt DateTime? // 👈 MUST BE OPTIONAL FIRST
-}
-
-model Student {
-  id          String       @id
-  username    String       @unique
-  name        String
-  surname     String
-  email       String?      @unique
-  phone       String?      @unique
-  address     String
-  img         String?
-  bloodType   String
-  sex         UserSex
-  createdAt   DateTime     @default(now())
-  parentId    String
-  parent      Parent       @relation(fields: [parentId], references: [id])
-  classId     Int
-  class       Class        @relation(fields: [classId], references: [id])
-  gradeId     Int
-  grade       Grade        @relation(fields: [gradeId], references: [id])
-  attendances Attendance[]
-  results     Result[]
-  birthday    DateTime?
-
-  // Fees
-  studentFees StudentFee[]
+  lastActiveAt DateTime?
 }
 
 model Teacher {
@@ -51,10 +47,70 @@ model Teacher {
   bloodType String
   sex       UserSex
   createdAt DateTime  @default(now())
-  subjects  Subject[]
-  lessons   Lesson[]
-  classes   Class[]
   birthday  DateTime?
+
+  supervisedClasses Class[]  @relation("ClassSupervisor")
+  subjects  Subject[] @relation("TeacherSubjects")
+  lessons           Lesson[]
+}
+
+model Grade {
+  id    Int @id @default(autoincrement())
+  level Int @unique // Nursery=0, JrKG=1, SrKG=2, Grade1=3...
+
+  classes Class[]
+}
+
+model Class {
+  id       Int    @id @default(autoincrement())
+  name     String
+  capacity Int
+
+  gradeId Int?
+  grade   Grade? @relation(fields: [gradeId], references: [id])
+
+  academicYearId Int
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  supervisorId String
+  supervisor   Teacher @relation("ClassSupervisor", fields: [supervisorId], references: [id])
+
+  students      Student[]
+  lessons       Lesson[]
+  events        Event[]
+  announcements Announcement[]
+  feeStructures FeeStructure[]
+
+  @@unique([name, academicYearId])
+}
+
+model Student {
+  id        String    @id
+  username  String    @unique
+  name      String
+  surname   String
+  email     String?
+  phone     String?   @unique
+  address   String
+  img       String?
+  bloodType String
+  sex       UserSex
+  birthday  DateTime?
+
+  classId Int
+  class   Class @relation(fields: [classId], references: [id])
+
+  academicYearId Int
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  parentId String
+  parent   Parent @relation(fields: [parentId], references: [id])
+
+  attendances Attendance[]
+  results     Result[]
+  studentFees StudentFee[]
+
+  createdAt DateTime @default(now())
 }
 
 model Parent {
@@ -70,37 +126,12 @@ model Parent {
   img       String?
 }
 
-model Grade {
-  id    Int @id @default(autoincrement())
-  level Int @unique
-
-  students Student[]
-  classess Class[]
-}
-
-model Class {
-  id       Int    @id @default(autoincrement())
-  name     String @unique
-  capacity Int
-
-  supervisorId  String?
-  supervisor    Teacher?       @relation(fields: [supervisorId], references: [id])
-  lessons       Lesson[]
-  students      Student[]
-  gradeId       Int
-  grade         Grade          @relation(fields: [gradeId], references: [id])
-  events        Event[]
-  announcements Announcement[]
-
-  // Fees
-  feeStructures FeeStructure[]
-}
-
 model Subject {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
-  teachers Teacher[]
-  lessons  Lesson[]
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  teachers Teacher[] @relation("TeacherSubjects")
+  lessons Lesson[]
 }
 
 model Lesson {
@@ -110,15 +141,35 @@ model Lesson {
   startTime DateTime
   endTime   DateTime
 
-  subjectId   Int
-  subject     Subject      @relation(fields: [subjectId], references: [id])
-  classId     Int
-  class       Class        @relation(fields: [classId], references: [id])
-  teacherId   String
-  teacher     Teacher      @relation(fields: [teacherId], references: [id])
+  classId Int
+  class   Class @relation(fields: [classId], references: [id])
+
+  subjectId Int
+  subject   Subject @relation(fields: [subjectId], references: [id])
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id])
+
   exams       Exam[]
   assignments Assignment[]
   attendances Attendance[]
+
+  @@index([teacherId])
+  @@index([classId])
+}
+
+model Attendance {
+  id      Int      @id @default(autoincrement())
+  date    DateTime
+  present Boolean
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  lessonId Int
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([studentId, lessonId, date])
 }
 
 model Exam {
@@ -155,17 +206,6 @@ model Result {
   student      Student     @relation(fields: [studentId], references: [id])
 }
 
-model Attendance {
-  id      Int      @id @default(autoincrement())
-  date    DateTime
-  present Boolean
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id])
-  lessonId  Int
-  lesson    Lesson  @relation(fields: [lessonId], references: [id])
-}
-
 model Event {
   id          Int      @id @default(autoincrement())
   title       String
@@ -191,6 +231,9 @@ model Announcement {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
+  whatsappSent   Boolean   @default(false)
+  whatsappSentAt DateTime?
+
   @@index([date])
   @@index([classId])
 }
@@ -208,19 +251,6 @@ model AnnouncementRead {
   @@index([announcementId])
 }
 
-enum UserSex {
-  MALE
-  FEMALE
-}
-
-enum Day {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-}
-
 model Message {
   id         Int      @id @default(autoincrement())
   content    String
@@ -232,10 +262,6 @@ model Message {
   @@index([senderId])
   @@index([receiverId])
 }
-
-/**
- * FEES & PAYMENTS
- */
 
 model FeeStructure {
   id        Int       @id @default(autoincrement())
@@ -294,9 +320,6 @@ model Payment {
   @@index([paidAt])
 }
 
-/**
- * --- existing enums kept as-is ---
- */
 enum FeeType {
   ADMISSION
   TERM
@@ -309,9 +332,6 @@ enum TermType {
   TERM_2
 }
 
-/**
- * --- NEW enums for payment workflow ---
- */
 enum FeeStatus {
   PENDING // no payment yet
   PARTIAL // some amount paid

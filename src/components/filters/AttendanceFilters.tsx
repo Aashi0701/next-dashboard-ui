@@ -10,6 +10,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 import RadixSelect from "@/components/ui/RadixSelect";
 import FilterDrawer from "@/components/filters/FilterDrawer";
+import Image from "next/image";
 
 /* ================= COMPONENT ================= */
 
@@ -28,10 +29,10 @@ export default function AttendanceFilters({
   const [present, setPresent] = useState(params.get("present") || "");
 
   const [dateFrom, setDateFrom] = useState<Dayjs | null>(
-    params.get("dateFrom") ? dayjs(params.get("dateFrom")) : null
+    params.get("dateFrom") ? dayjs(params.get("dateFrom")) : null,
   );
   const [dateTo, setDateTo] = useState<Dayjs | null>(
-    params.get("dateTo") ? dayjs(params.get("dateTo")) : null
+    params.get("dateTo") ? dayjs(params.get("dateTo")) : null,
   );
 
   /* ================= APPLY ================= */
@@ -47,9 +48,7 @@ export default function AttendanceFilters({
     dateFrom
       ? q.set("dateFrom", dateFrom.format("YYYY-MM-DD"))
       : q.delete("dateFrom");
-    dateTo
-      ? q.set("dateTo", dateTo.format("YYYY-MM-DD"))
-      : q.delete("dateTo");
+    dateTo ? q.set("dateTo", dateTo.format("YYYY-MM-DD")) : q.delete("dateTo");
 
     router.push("?" + q.toString());
     setOpen(false);
@@ -83,7 +82,7 @@ export default function AttendanceFilters({
   /* ================= UNIQUE CLASSES ================= */
 
   const uniqueClasses = Array.from(
-    new Map(lessons.map((l: any) => [l.class.id, l.class])).values()
+    new Map(lessons.map((l: any) => [l.class.id, l.class])).values(),
   );
 
   /* ================= UI ================= */
@@ -95,7 +94,7 @@ export default function AttendanceFilters({
         onClick={() => setOpen(true)}
         className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm rounded-2xl bg-purple-500 text-white hover:bg-indigo-500 transition"
       >
-        <img src="/filter1.png" width={14} alt="" />
+        <Image src="/filter1.png" alt="Filter" width={14} height={14} />
         Filter
       </button>
 
@@ -104,7 +103,7 @@ export default function AttendanceFilters({
         onClick={() => setOpen(true)}
         className="md:hidden w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
       >
-        <img src="/filter1.png" width={14} alt="" />
+        <Image src="/filter1.png" alt="Filter" width={14} height={14} />
       </button>
 
       <LocalizationProvider dateAdapter={AdapterDayjs}>

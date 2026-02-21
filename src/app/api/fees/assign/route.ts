@@ -1,9 +1,18 @@
-// src/lib/receipt/generateQrSvg.ts
-import QRCode from "qrcode";
+import { generateQrSvg } from "@/lib/receipt/generateQrSvg";
 
-export async function generateQrSvg(url: string) {
-  return QRCode.toString(url, {
-    type: "svg",
-    margin: 0,
+export async function POST(req: Request) {
+  const { url } = await req.json();
+
+  if (!url) {
+    return new Response("URL missing", { status: 400 });
+  }
+
+  const svg = await generateQrSvg(url);
+
+  return new Response(svg, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml",
+    },
   });
 }

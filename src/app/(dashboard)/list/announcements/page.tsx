@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { Announcement, Class, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 
 import Pagination from "@/components/Pagination";
@@ -13,9 +13,14 @@ import AnnouncementTableClient from "./AnnouncementTableClient";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 
 /* ---------------- TYPES ---------------- */
-type AnnouncementList = Announcement & {
-  class: Class | null;
-  reads: { id: number }[];
+type AnnouncementList = Prisma.AnnouncementGetPayload<{
+  include: {
+    class: true;
+    reads: {
+      select: { id: true };
+    };
+  };
+}> & {
   actions?: React.ReactNode;
 };
 
@@ -41,15 +46,23 @@ export default async function AnnouncementListPage({
   let roleWhere: Prisma.AnnouncementWhereInput = {};
 
   if (role === "teacher" && userId) {
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: userId },
-      select: { classes: { select: { id: true } } },
+    const teacherClasses = await prisma.class.findMany({
+      where: {
+        supervisorId: userId,
+      },
+      select: {
+        id: true,
+      },
     });
 
     roleWhere = {
       OR: [
         { classId: null },
-        { classId: { in: teacher?.classes.map((c) => c.id) ?? [] } },
+        {
+          classId: {
+            in: teacherClasses.map((c) => c.id),
+          },
+        },
       ],
     };
   }
@@ -98,10 +111,10 @@ export default async function AnnouncementListPage({
     sortBy === "title"
       ? { title: sort }
       : sortBy === "class"
-      ? { class: { name: sort } }
-      : sortBy === "date"
-      ? { date: sort }
-      : { date: "desc" };
+        ? { class: { name: sort } }
+        : sortBy === "date"
+          ? { date: sort }
+          : { date: "desc" };
 
   /* FETCH DATA */
   const [rawData, count] = await prisma.$transaction([
@@ -127,7 +140,7 @@ export default async function AnnouncementListPage({
       `📢 *School Announcement*\n\n` +
         `*${item.title}*\n` +
         `Class: ${item.class?.name || "All Classes"}\n` +
-        `Date: ${new Date(item.date).toLocaleDateString("en-IN")}`
+        `Date: ${new Date(item.date).toLocaleDateString("en-IN")}`,
     );
 
     return {
@@ -197,7 +210,9 @@ export default async function AnnouncementListPage({
           <TableSearch />
           <AnnouncementFilters classes={classes} />
           <AnnouncementSort />
-          {role === "admin" && <FormContainer table="announcement" type="create" />}
+          {role === "admin" && (
+            <FormContainer table="announcement" type="create" />
+          )}
         </div>
       </div>
 

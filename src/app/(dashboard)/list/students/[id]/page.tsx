@@ -166,9 +166,13 @@ const SingleStudentPage = async ({
                 <Info icon="/blood.png" value={student.bloodType} />
                 <Info
                   icon="/date.png"
-                  value={new Intl.DateTimeFormat("en-GB").format(
-                    student.birthday,
-                  )}
+                  value={
+                    student.birthday
+                      ? new Intl.DateTimeFormat("en-GB").format(
+                          student.birthday,
+                        )
+                      : "-"
+                  }
                 />
                 <Info icon="/mail.png" value={student.email || "-"} />
                 <Info icon="/phone.png" value={student.phone || "-"} />

@@ -13,6 +13,27 @@ const StudentPage = async () => {
     },
   });
 
+  const selectedDate = new Date();
+
+  const holidaysRaw = await prisma.holiday.findMany({
+    select: {
+      title: true,
+      date: true,
+      isFullDay: true,
+    },
+  });
+
+  // Convert to Map<string, { title, isFullDay }>
+  const holidays = new Map(
+    holidaysRaw.map((h) => [
+      `${h.date.getFullYear()}-${String(h.date.getMonth() + 1).padStart(
+        2,
+        "0",
+      )}-${String(h.date.getDate()).padStart(2, "0")}`,
+      { title: h.title, isFullDay: h.isFullDay },
+    ]),
+  );
+
   return (
     <div className="p-4 flex gap-4 flex-col xl:flex-row min-w-0 max-w-full overflow-x-hidden">
       {/* LEFT */}
@@ -25,10 +46,7 @@ const StudentPage = async () => {
           {/* ✅ ONLY scrollable area */}
           <div className="overflow-x-auto">
             <div className="min-w-[720px]">
-              <BigCalendarContainer
-                type="classId"
-                id={classItem[0].id}
-              />
+              <BigCalendarContainer type="classId" id={classItem[0].id} />
             </div>
           </div>
         </div>
@@ -36,7 +54,7 @@ const StudentPage = async () => {
 
       {/* RIGHT */}
       <div className="w-full xl:w-1/3 min-w-0 flex flex-col gap-6">
-        <EventCalendar />
+        <EventCalendar selectedDate={selectedDate} holidays={holidays} />
         <Announcements />
       </div>
     </div>

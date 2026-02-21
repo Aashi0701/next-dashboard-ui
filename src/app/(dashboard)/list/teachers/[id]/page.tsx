@@ -30,7 +30,6 @@ const SingleTeacherPage = async ({
         select: {
           subjects: true,
           lessons: true,
-          classes: true,
         },
       },
     },
@@ -77,6 +76,12 @@ const SingleTeacherPage = async ({
     end: l.endTime,
     type: "CLASS",
   }));
+
+  const classCount = await prisma.class.count({
+    where: {
+      supervisorId: teacher.id,
+    },
+  });
 
   /* ---------- MAP HOLIDAYS ---------- */
   const holidayEvents: CalendarEvent[] = holidays.map((h) => {
@@ -152,9 +157,11 @@ const SingleTeacherPage = async ({
               <Info icon="/blood.png" value={teacher.bloodType} />
               <Info
                 icon="/date.png"
-                value={new Intl.DateTimeFormat("en-GB").format(
-                  teacher.birthday,
-                )}
+                value={
+                  teacher.birthday
+                    ? new Intl.DateTimeFormat("en-GB").format(teacher.birthday)
+                    : "-"
+                }
               />
               <Info icon="/mail.png" value={teacher.email || "-"} />
               <Info icon="/phone.png" value={teacher.phone || "-"} />
@@ -177,7 +184,7 @@ const SingleTeacherPage = async ({
           />
           <Stat
             icon="/singleClass.png"
-            value={teacher._count.classes}
+            value={classCount}
             label="Classes"
           />
         </div>

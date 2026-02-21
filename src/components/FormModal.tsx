@@ -33,10 +33,6 @@ import { FormContainerProps } from "./FormContainer";
 import AssignFeeForm from "./forms/AssignFeeForm";
 import ModalPortal from "./ModalPortal";
 
-/* ------------------------------------------------------------------ */
-/* TYPES */
-/* ------------------------------------------------------------------ */
-
 type TableKey = FormContainerProps["table"];
 type MutationType = "create" | "update";
 type ServerAction = (prev: any, formData: FormData) => Promise<any>;
@@ -47,10 +43,6 @@ type FormFactory = (
   data?: any,
   relatedData?: any,
 ) => JSX.Element;
-
-/* ------------------------------------------------------------------ */
-/* DELETE ACTIONS (PROFILE EXCLUDED INTENTIONALLY) */
-/* ------------------------------------------------------------------ */
 
 const deleteActionMap: Partial<Record<TableKey, ServerAction>> = {
   subject: deleteSubject,
@@ -68,10 +60,6 @@ const deleteActionMap: Partial<Record<TableKey, ServerAction>> = {
   holiday: deleteHoliday,
   fee: deleteFee,
 };
-
-/* ------------------------------------------------------------------ */
-/* FORMS (DYNAMIC IMPORTS) */
-/* ------------------------------------------------------------------ */
 
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"));
 const StudentForm = dynamic(() => import("./forms/StudentForm"));
@@ -191,29 +179,16 @@ const FormModal = ({
       const action = deleteActionMap[table];
       if (!action) return null;
 
-      const [state, formAction] = useActionState(action, {
-        success: false,
-        error: false,
-      });
-
-      useEffect(() => {
-        if (state.success) {
-          toast(`${table} deleted successfully`);
-          setOpen(false);
-          router.refresh();
-        }
-      }, [state]);
-
       return (
-        <form action={formAction} className="p-4 flex flex-col gap-4">
-          <input type="hidden" name="id" value={id} />
-          <p className="text-center font-medium">
-            This {table} will be deleted permanently. Confirm?
-          </p>
-          <button className="bg-red-600 text-white py-2 rounded-md">
-            Delete
-          </button>
-        </form>
+        <DeleteForm
+          table={table}
+          id={String(id)}
+          action={action}
+          onSuccess={() => {
+            setOpen(false);
+            router.refresh();
+          }}
+        />
       );
     }
 
@@ -273,13 +248,6 @@ const FormModal = ({
 
               <Form />
 
-              {/* CLOSE BUTTON */}
-              <button
-                onClick={() => setOpen(false)}
-                className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100"
-              >
-                <Image src="/close.png" alt="close" width={15} height={15} />
-              </button>
             </div>
           </div>
         </ModalPortal>
@@ -289,3 +257,37 @@ const FormModal = ({
 };
 
 export default FormModal;
+
+function DeleteForm({
+  table,
+  id,
+  action,
+  onSuccess,
+}: {
+  table: TableKey;
+  id: string;
+  action: ServerAction;
+  onSuccess: () => void;
+}) {
+  const [state, formAction] = useActionState(action, {
+    success: false,
+    error: false,
+  });
+
+  useEffect(() => {
+    if (state.success) {
+      toast(`${table} deleted successfully`);
+      onSuccess();
+    }
+  }, [state, table, onSuccess]);
+
+  return (
+    <form action={formAction} className="p-4 flex flex-col gap-4">
+      <input type="hidden" name="id" value={id} />
+      <p className="text-center font-medium">
+        This {table} will be deleted permanently. Confirm?
+      </p>
+      <button className="bg-red-600 text-white py-2 rounded-md">Delete</button>
+    </form>
+  );
+}

@@ -6,11 +6,19 @@ export const classSchema = z.object({
 
   name: z.string().min(1, "Class name is required"),
 
-  capacity: z.number().min(1, "Capacity must be at least 1"),
+  capacity: z
+    .number({
+      message: "Capacity is required",
+    })
+    .min(1, "Capacity must be at least 1"),
 
-  gradeId: z.number().min(1, "Grade is required"),
+  gradeId: z.number().optional(),
 
-  supervisorId: z.string().min(1, "Supervisor is required"),
+  supervisorId: z
+    .string({
+      message: "Supervisor is required",
+    })
+    .min(1, "Supervisor is required"),
 });
 
 export type ClassSchema = z.infer<typeof classSchema>;

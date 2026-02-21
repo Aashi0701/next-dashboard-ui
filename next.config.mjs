@@ -1,12 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: "./src/app",
-  },
-
-  reactCompiler: {
-    removeJsxTransformInImports: true,
-  },
 
   images: {
     remotePatterns: [

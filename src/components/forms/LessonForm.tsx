@@ -12,15 +12,8 @@ import {
 import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  lessonSchema,
-  LessonFormValues,
-} from "@/lib/formValidationSchemas";
-import {
-  createLesson,
-  updateLesson,
-  ActionState,
-} from "@/lib/actions";
+import { lessonSchema, LessonFormValues } from "@/lib/formValidationSchemas";
+import { createLesson, updateLesson, ActionState } from "@/lib/actions";
 
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -29,7 +22,7 @@ import InputField from "../InputField";
 import RadixSelect from "@/components/ui/RadixSelect";
 import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
 import FormStepper from "@/components/ui/FormStepper";
-
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ================= STEPS ================= */
@@ -138,9 +131,12 @@ export default function LessonForm({
         <input type="hidden" {...methods.register("classId")} />
         <input type="hidden" {...methods.register("teacherId")} />
 
-        <h1 className="text-base sm:text-xl font-semibold">
-          {type === "create" ? "Create Lesson" : "Update Lesson"}
-        </h1>
+        <div className="relative">
+          <ModalCloseButton onClose={() => setOpen(false)} />
+          <h1 className="text-lg font-semibold">
+            {type === "create" ? "Create Class" : "Update Class"}
+          </h1>
+        </div>
 
         <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
 

@@ -81,8 +81,9 @@ export default function HomePage() {
       () => setIndex((prev) => (prev + 1) % taglines.length),
       2500,
     );
+
     return () => clearInterval(timer);
-  }, []);
+  }, [taglines.length]);
 
   /* ---------------- HANDLERS ---------------- */
   const onSubmit = (data: ContactFormData) => {
@@ -322,7 +323,13 @@ export default function HomePage() {
               />
             </div>
             <div className="rope-image">
-              <Image src="/node.png" alt="Rope" width={28} height={10} className="h-auto w-auto"/>
+              <Image
+                src="/node.png"
+                alt="Rope"
+                width={28}
+                height={10}
+                className="h-auto w-auto"
+              />
             </div>
             <div className="cloth-banner text-xs sm:text-sm">
               <span>Admissions Open – 2026–27</span>
@@ -707,7 +714,7 @@ export default function HomePage() {
           ></div>
 
           <p className="text-gray-600 font-semibold text-sm sm:text-base max-w-xl mx-auto mb-8 sm:mb-12">
-            We'd love to connect with you. Reach out for admissions, campus
+            We&apos;d love to connect with you. Reach out for admissions, campus
             visits, or general queries.
           </p>
 
@@ -720,7 +727,7 @@ export default function HomePage() {
                 Address
               </h4>
               <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                Mohan's Elite Appartments, Khanamet, <br />
+                Mohan&apos;s Elite Appartments, Khanamet, <br />
                 Hyderabad Telangana – 500084
               </p>
             </div>
@@ -841,7 +848,7 @@ export default function HomePage() {
             <h4 className="text-lg font-semibold mb-3">Contact</h4>
             <ul className="space-y-2 text-black text-sm">
               <li>
-                📍 Mohan's Elite Appartments Khanamet, Hyderabad
+                📍 Mohan&apos;s Elite Appartments Khanamet, Hyderabad
                 Telangana-500084
               </li>
               <li>📞 +91 79895 99833</li>

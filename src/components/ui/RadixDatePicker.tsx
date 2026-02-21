@@ -1,16 +1,14 @@
 "use client";
 
 import * as React from "react";
-import dayjs from "dayjs";
 import * as Popover from "@radix-ui/react-popover";
+import dayjs from "dayjs";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 
-const MIN_AGE = 18;
-
 interface Props {
   value?: Date;
-  onChange?: (v?: Date) => void;
+  onChange?: (date?: Date) => void;
   placeholder?: string;
 }
 
@@ -22,15 +20,12 @@ export default function RadixDatePicker({
   const [open, setOpen] = React.useState(false);
 
   const today = new Date();
-  const minDate = new Date(today.getFullYear() - 80, 0, 1);
-  const latestAllowed = new Date(
-    today.getFullYear() - MIN_AGE,
-    today.getMonth(),
-    today.getDate()
-  );
+  const fromDate = new Date(today.getFullYear() - 80, 0, 1); // DOB range
+  const toDate = today; // ❌ no future DOBs
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
+      {/* ===== Trigger ===== */}
       <Popover.Trigger asChild>
         <button
           type="button"
@@ -53,28 +48,59 @@ export default function RadixDatePicker({
         </button>
       </Popover.Trigger>
 
-      {/* ✅ PORTAL — OUTSIDE FORM */}
+      {/* ===== Calendar ===== */}
       <Popover.Portal>
         <Popover.Content
           side="bottom"
-          align="center"
+          align="start"
           sideOffset={8}
-          collisionPadding={16}
-          className="z-[99999] w-[300px] p-0 rounded-3xl overflow-hidden border bg-white shadow-2xl"
+          className="
+    z-[99999]
+    rounded-2xl
+    border
+    bg-white
+    shadow-xl
+    p-2
+    overflow-visible
+  "
         >
           <Calendar
             mode="single"
             selected={value}
-            defaultMonth={value}
-            captionLayout="dropdown"
-            fromDate={minDate}
-            toDate={latestAllowed}
             onSelect={(date) => {
               onChange?.(date);
               setOpen(false);
             }}
-            className="p-3"
+            fromDate={fromDate}
+            toDate={toDate}
+            captionLayout="dropdown"
+            className="rounded-md"
           />
+
+          {/* Footer */}
+          <div className="flex justify-between px-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onChange?.(today);
+                setOpen(false);
+              }}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Today
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onChange?.(undefined);
+                setOpen(false);
+              }}
+              className="text-xs text-red-500 hover:underline"
+            >
+              Clear
+            </button>
+          </div>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

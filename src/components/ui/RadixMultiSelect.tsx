@@ -29,10 +29,7 @@ export default function RadixMultiSelect({
     }
   };
 
-  const label =
-    value.length === 0
-      ? placeholder
-      : `${value.length} selected`;
+  const label = value.length === 0 ? placeholder : `${value.length} selected`;
 
   return (
     <Popover.Root>
@@ -40,6 +37,12 @@ export default function RadixMultiSelect({
       <Popover.Trigger asChild>
         <button
           type="button"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
           className="
             w-full h-9 sm:h-10
             px-3
@@ -89,9 +92,7 @@ export default function RadixMultiSelect({
                 "
               >
                 {opt.label}
-                {checked && (
-                  <Check className="w-4 h-4 text-purple-600" />
-                )}
+                {checked && <Check className="w-4 h-4 text-purple-600" />}
               </button>
             );
           })}

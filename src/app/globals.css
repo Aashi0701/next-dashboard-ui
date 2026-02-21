@@ -415,7 +415,6 @@
   opacity: 1;
 }
 
-
 /* =======================
    Calendar Wrapper
 ======================= */
@@ -1168,4 +1167,16 @@
 /* Optional: thinner success border */
 .Toastify__toast--success {
   border-left: 3px solid #22c55e;
+}
+
+/* Completely hide scrollbars but keep scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;   /* IE / Edge */
+  scrollbar-width: none;      /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }

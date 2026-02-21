@@ -47,7 +47,28 @@ export const createClass = async (
   data: ClassSchema,
 ): Promise<ActionState> => {
   try {
-    await prisma.class.create({ data });
+    // 🔐 Determine academic year on the server
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { isActive: true }, // or however you mark current year
+      select: { id: true },
+    });
+
+    if (!academicYear) {
+      return {
+        success: false,
+        error: "No active academic year found",
+      };
+    }
+
+    await prisma.class.create({
+      data: {
+        name: data.name,
+        capacity: data.capacity,
+        supervisorId: data.supervisorId,
+        academicYearId: academicYear.id, // ✅ REQUIRED
+      },
+    });
+
     return { success: true };
   } catch (error) {
     if (
@@ -56,7 +77,7 @@ export const createClass = async (
     ) {
       return {
         success: false,
-        error: "A class with this name already exists",
+        error: "A class with this name already exists for this academic year",
       };
     }
 
@@ -343,9 +364,7 @@ export const createTeacher = async (
     console.error("createTeacher error:", error);
     return {
       success: false,
-      error:
-        error?.errors?.[0]?.message ??
-        "Failed to create teacher",
+      error: error?.errors?.[0]?.message ?? "Failed to create teacher",
     };
   }
 };
@@ -442,9 +461,9 @@ export const createStudent = async (
   data: StudentFormValues,
 ): Promise<ActionState> => {
   try {
-    // 🔍 phone uniqueness check (only if provided)
+    /* ================= PHONE UNIQUENESS ================= */
     if (data.phone) {
-      const existingPhone = await prisma.student.findUnique({
+      const existingPhone = await prisma.student.findFirst({
         where: { phone: data.phone },
       });
 
@@ -456,23 +475,33 @@ export const createStudent = async (
       }
     }
 
-    // 🔍 class capacity check
+    /* ================= ACADEMIC YEAR ================= */
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    if (!academicYear) {
+      return {
+        success: false,
+        error: "No active academic year found",
+      };
+    }
+
+    /* ================= CLASS CAPACITY ================= */
     const classItem = await prisma.class.findUnique({
       where: { id: data.classId },
       include: { _count: { select: { students: true } } },
     });
 
-    if (
-      classItem &&
-      classItem.capacity === classItem._count.students
-    ) {
+    if (classItem && classItem.capacity <= classItem._count.students) {
       return {
         success: false,
         error: "Class capacity is already full",
       };
     }
 
-    // 👤 create Clerk user
+    /* ================= CLERK USER ================= */
     const user = await clerkAdmin.users.createUser({
       username: data.username,
       password: data.password || undefined,
@@ -481,37 +510,41 @@ export const createStudent = async (
       publicMetadata: { role: "student" },
     });
 
-    // ✅ BUILD PRISMA DATA SAFELY
-    const studentData: Prisma.StudentCreateInput = {
-      id: user.id,
-      username: data.username,
-      name: data.name,
-      surname: data.surname,
-      email: data.email || null,
-      phone: data.phone || null,
-      address: data.address,
-      img: data.img || null,
-      bloodType: data.bloodType,
-      sex: data.sex,
-      grade: { connect: { id: data.gradeId } },
-      class: { connect: { id: data.classId } },
-      parent: { connect: { id: data.parentId } },
-    };
+    /* ================= PRISMA CREATE ================= */
+    await prisma.student.create({
+      data: {
+        id: user.id,
+        username: data.username,
+        name: data.name,
+        surname: data.surname,
+        email: data.email || null,
+        phone: data.phone || null,
+        address: data.address,
+        img: data.img || null,
+        bloodType: data.bloodType,
+        sex: data.sex,
+        birthday: data.birthday,
 
-    if (data.birthday) {
-      studentData.birthday = data.birthday;
-    }
+        class: {
+          connect: { id: data.classId },
+        },
 
-    await prisma.student.create({ data: studentData });
+        parent: {
+          connect: { id: data.parentId },
+        },
+
+        academicYear: {
+          connect: { id: academicYear.id },
+        },
+      },
+    });
 
     return { success: true };
   } catch (error: any) {
     console.error("createStudent error:", error);
     return {
       success: false,
-      error:
-        error?.errors?.[0]?.message ??
-        "Failed to create student",
+      error: error?.errors?.[0]?.message ?? "Failed to create student",
     };
   }
 };
@@ -542,7 +575,6 @@ export const updateStudent = async (
       img: data.img || null,
       bloodType: data.bloodType,
       sex: data.sex,
-      grade: { connect: { id: data.gradeId } },
       class: { connect: { id: data.classId } },
       parent: { connect: { id: data.parentId } },
     };
@@ -984,10 +1016,7 @@ export async function deleteAttendance(
 }
 
 // FeeForm
-export async function createFee(
-  _prevState: ActionState, 
-  data: FeeSchemaType
-) {
+export async function createFee(_prevState: ActionState, data: FeeSchemaType) {
   try {
     await prisma.feeStructure.create({
       data: {
@@ -1031,10 +1060,7 @@ export async function updateFee(
   }
 }
 
-export async function deleteFee(
-  _prevState: ActionState,
-  formData: FormData
-) {
+export async function deleteFee(_prevState: ActionState, formData: FormData) {
   const id = Number(formData.get("id"));
   try {
     await prisma.feeStructure.delete({ where: { id } });
@@ -1168,9 +1194,7 @@ export const createAnnouncement = async (
       description: data.description,
       date: data.date,
       classId:
-        data.classId && data.classId !== "ALL"
-          ? Number(data.classId)
-          : null,
+        data.classId && data.classId !== "ALL" ? Number(data.classId) : null,
     };
 
     await prisma.announcement.create({
@@ -1197,9 +1221,7 @@ export const updateAnnouncement = async (
       description: data.description,
       date: data.date,
       classId:
-        data.classId && data.classId !== "ALL"
-          ? Number(data.classId)
-          : null,
+        data.classId && data.classId !== "ALL" ? Number(data.classId) : null,
     };
 
     await prisma.announcement.update({
@@ -1289,10 +1311,7 @@ export async function updateEvent(
   }
 }
 
-export const deleteEvent = async (
-  _prevState: ActionState,
-  data: FormData,
-) => {
+export const deleteEvent = async (_prevState: ActionState, data: FormData) => {
   try {
     const id = Number(data.get("id"));
 

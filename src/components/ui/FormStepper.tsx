@@ -18,11 +18,12 @@ export default function FormStepper({
   step,
   errorSteps = [],
 }: StepperProps) {
-  const CIRCLE = 32; // matches w-8 h-8
+  // 🔑 MOBILE-FIRST SIZE
+  const CIRCLE = 26; // mobile circle size (w-6 h-6)
 
   return (
-    <div className="relative mb-6">
-      {/* CONNECTOR LINE (center-to-center) */}
+    <div className="relative mb-4 sm:mb-6">
+      {/* CONNECTOR LINE */}
       <div
         className="absolute h-[2px] bg-gray-200"
         style={{
@@ -36,9 +37,7 @@ export default function FormStepper({
           initial={{ width: 0 }}
           animate={{
             width:
-              steps.length > 1
-                ? `${(step / (steps.length - 1)) * 100}%`
-                : "0%",
+              steps.length > 1 ? `${(step / (steps.length - 1)) * 100}%` : "0%",
           }}
           transition={{ duration: 0.35, ease: "easeInOut" }}
         />
@@ -52,43 +51,54 @@ export default function FormStepper({
           const hasError = errorSteps[i];
 
           return (
-            <div key={label} className="flex flex-col items-center gap-2">
+            <div key={label} className="flex flex-col items-center gap-1.5">
+              {/* STEP CIRCLE */}
               <motion.div
-                animate={{ scale: active ? 1.15 : 1 }}
+                animate={{ scale: active ? 1.1 : 1 }}
                 transition={{
                   type: "spring",
                   stiffness: 420,
                   damping: 24,
                 }}
                 className={`
-                  relative w-8 h-8 rounded-full flex items-center justify-center z-10
+                  relative z-10
+                  w-6 h-6 sm:w-8 sm:h-8       /* 🔑 smaller mobile */
+                  rounded-full
+                  flex items-center justify-center
+                  text-[10px] sm:text-xs     /* 🔑 smaller text */
+                  font-medium
                   ${
                     completed
                       ? "bg-green-600 text-white"
                       : active
-                      ? "bg-blue-600 text-white"
-                      : hasError
-                      ? "bg-red-100 text-red-600"
-                      : "bg-gray-200 text-gray-500"
+                        ? "bg-blue-600 text-white"
+                        : hasError
+                          ? "bg-red-100 text-red-600"
+                          : "bg-gray-200 text-gray-500"
                   }
                 `}
               >
-                {completed ? <Check size={14} /> : i + 1}
+                {completed ? <Check size={12} /> : i + 1}
 
-                {/* 🔴 ERROR DOT */}
+                {/* ERROR DOT */}
                 {hasError && !active && !completed && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </motion.div>
 
+              {/* LABEL */}
               <span
-                className={`text-xs font-medium ${
-                  active
-                    ? "text-blue-600"
-                    : hasError
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
+                className={`
+                  text-[10px] sm:text-xs
+                  font-medium
+                  ${
+                    active
+                      ? "text-blue-600"
+                      : hasError
+                        ? "text-red-500"
+                        : "text-gray-400"
+                  }
+                `}
               >
                 {label}
               </span>

@@ -38,8 +38,12 @@ const StudentListPage = async ({
   const { page, sort, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
 
-  const { sessionClaims } = await auth();
+  const { sessionClaims, userId } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
+
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
 
   /* ================= TABLE STRUCTURE ================= */
 
@@ -51,8 +55,8 @@ const StudentListPage = async ({
       className: "hidden md:table-cell",
     },
     {
-      header: "Grade",
-      accessor: "grade",
+      header: "Class",
+      accessor: "class",
       className: "hidden md:table-cell",
     },
     ...(role === "admin"
@@ -127,10 +131,14 @@ const StudentListPage = async ({
         </td>
 
         {/* STUDENT ID */}
-        <td className="p-4 hidden md:table-cell truncate">{item.username}</td>
+        <td className="p-4 hidden md:table-cell truncate">
+          {item.username}
+        </td>
 
-        {/* GRADE */}
-        <td className="p-4 hidden md:table-cell">{item.class.name[0]}</td>
+        {/* CLASS */}
+        <td className="p-4 hidden md:table-cell">
+          {item.class.name}
+        </td>
 
         {/* FEE STATUS */}
         {role === "admin" && (
@@ -142,48 +150,29 @@ const StudentListPage = async ({
             )}
 
             {feeStatus !== "NOT_ASSIGNED" && (
-              <div className="relative group inline-block">
-                <span
-                  className={`
-            px-2 py-1 rounded-full text-xs cursor-default
-            ${
-              feeStatus === "PAID"
-                ? "bg-green-100 text-green-700"
-                : "bg-yellow-100 text-yellow-700"
-            }
-          `}
-                  title={`₹${totalPaid.toLocaleString()} / ₹${totalFee.toLocaleString()}`}
-                >
-                  {feeStatus === "PAID" ? "Paid" : "Pending"}
-                </span>
-
-                {/* TOOLTIP */}
-                <div
-                  className="
-            absolute z-20
-            left-1/2 -translate-x-1/2
-            top-full mt-2
-            hidden group-hover:block
-            whitespace-nowrap
-            rounded-md
-            bg-gray-900
-            px-3 py-1.5
-            text-xs text-white
-            shadow-lg
-          "
-                >
-                  ₹{totalPaid.toLocaleString()} / ₹{totalFee.toLocaleString()}
-                </div>
-              </div>
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${
+                  feeStatus === "PAID"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}
+                title={`₹${totalPaid} / ₹${totalFee}`}
+              >
+                {feeStatus === "PAID" ? "Paid" : "Pending"}
+              </span>
             )}
           </td>
         )}
 
         {/* PHONE */}
-        <td className="p-4 hidden lg:table-cell truncate">{item.phone}</td>
+        <td className="p-4 hidden lg:table-cell truncate">
+          {item.phone}
+        </td>
 
         {/* ADDRESS */}
-        <td className="p-4 hidden lg:table-cell truncate">{item.address}</td>
+        <td className="p-4 hidden lg:table-cell truncate">
+          {item.address}
+        </td>
 
         {/* ACTIONS */}
         {role === "admin" && (
@@ -207,23 +196,54 @@ const StudentListPage = async ({
 
   const query: Prisma.StudentWhereInput = {};
 
+  /* 🔐 ROLE-BASED SCOPE */
+  if (role === "teacher") {
+    query.class = {
+      lessons: {
+        some: {
+          teacherId: userId,
+        },
+      },
+    };
+  }
+
+  /* 🔍 QUERY PARAMS */
   for (const [key, value] of Object.entries(queryParams)) {
     if (!value) continue;
 
     switch (key) {
-      case "teacherId":
-        query.class = {
-          lessons: { some: { teacherId: value } },
+      case "search":
+        query.name = {
+          contains: value,
+          mode: "insensitive",
         };
         break;
-      case "search":
-        query.name = { contains: value, mode: "insensitive" };
-        break;
-      case "grade":
-        query.gradeId = Number(value);
-        break;
+
       case "classId":
-        query.classId = Number(value);
+        if (role === "teacher") {
+          query.class = {
+            AND: [
+              { id: Number(value) },
+              {
+                lessons: {
+                  some: { teacherId: userId },
+                },
+              },
+            ],
+          };
+        } else {
+          query.classId = Number(value);
+        }
+        break;
+
+      case "teacherId":
+        if (role === "admin") {
+          query.class = {
+            lessons: {
+              some: { teacherId: value },
+            },
+          };
+        }
         break;
     }
   }
@@ -237,18 +257,15 @@ const StudentListPage = async ({
       orderBy = { name: "asc" };
       break;
     case "date":
-      orderBy = { createdAt: "desc" };
-      break;
     default:
       orderBy = { createdAt: "desc" };
   }
 
   /* ================= FILTER DATA ================= */
 
-  const [grades, classes] = await Promise.all([
-    prisma.grade.findMany({ orderBy: { level: "asc" } }),
-    prisma.class.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const classes = await prisma.class.findMany({
+    orderBy: { name: "asc" },
+  });
 
   /* ================= DATA ================= */
 
@@ -257,13 +274,9 @@ const StudentListPage = async ({
       where: query,
       include: {
         class: true,
-
-        // Needed for mobile StudentCard
         _count: {
           select: { studentFees: true },
         },
-
-        // Needed for fee calculation
         studentFees: {
           select: {
             totalAmount: true,
@@ -275,7 +288,6 @@ const StudentListPage = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
     }),
-
     prisma.student.count({ where: query }),
   ]);
 
@@ -283,7 +295,6 @@ const StudentListPage = async ({
 
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
-      {/* TOP BAR */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <h1 className="text-base md:text-lg font-semibold text-gray-900">
           Students
@@ -291,25 +302,22 @@ const StudentListPage = async ({
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
-          <StudentFilters grades={grades} classes={classes} />
+          <StudentFilters classes={classes} />
           <StudentSort />
           {role === "admin" && <FormContainer table="student" type="create" />}
         </div>
       </div>
 
-      {/* DESKTOP TABLE */}
       <div className="hidden md:block mt-4">
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 
-      {/* MOBILE CARDS */}
       <div className="md:hidden mt-4 space-y-3">
         {data.map((item) => (
           <StudentCard key={item.id} item={item} role={role} />
         ))}
       </div>
 
-      {/* PAGINATION */}
       <Pagination page={p} count={count} />
     </div>
   );

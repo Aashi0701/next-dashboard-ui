@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useClerk } from "@clerk/nextjs";
 
-const INACTIVITY_LIMIT = 10 * 60 * 1000; // 1 minute
+const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes
 const WARNING_DURATION = 30 * 1000; // 30 seconds
 
 export function useAutoLogout() {
@@ -15,12 +15,12 @@ export function useAutoLogout() {
 
   const [showWarning, setShowWarning] = useState(false);
 
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (warningTimer.current) clearTimeout(warningTimer.current);
-  };
+  }, []);
 
-  const startTimers = () => {
+  const startTimers = useCallback(() => {
     clearTimers();
 
     inactivityTimer.current = window.setTimeout(() => {
@@ -30,21 +30,21 @@ export function useAutoLogout() {
         signOut({ redirectUrl: "/" });
       }, WARNING_DURATION);
     }, INACTIVITY_LIMIT);
-  };
+  }, [clearTimers, signOut]);
 
-  const recordActivity = () => {
-    // 🚫 Ignore activity while warning is shown
+  const recordActivity = useCallback(() => {
+    // Ignore activity while warning is shown
     if (showWarning) return;
 
     lastActivity.current = Date.now();
     startTimers();
-  };
+  }, [showWarning, startTimers]);
 
-  const stayLoggedIn = () => {
+  const stayLoggedIn = useCallback(() => {
     setShowWarning(false);
     lastActivity.current = Date.now();
     startTimers();
-  };
+  }, [startTimers]);
 
   useEffect(() => {
     startTimers();
@@ -55,7 +55,6 @@ export function useAutoLogout() {
       window.addEventListener(e, recordActivity, { passive: true })
     );
 
-    // Handle tab switching
     const handleVisibility = () => {
       if (!document.hidden) {
         recordActivity();
@@ -71,7 +70,7 @@ export function useAutoLogout() {
       );
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [showWarning]);
+  }, [recordActivity, startTimers, clearTimers]);
 
   return {
     showWarning,

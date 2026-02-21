@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { categoryConfig, getTimeIcon } from "./EventIcons";
 
 export default function EventCard({ event }: any) {
@@ -8,7 +8,9 @@ export default function EventCard({ event }: any) {
   const category = String(rawCategory).toLowerCase();
   const config = categoryConfig[category] || categoryConfig.default;
 
-  const eventTime = new Date(event.startTime);
+  const eventTime = useMemo(() => {
+    return new Date(event.startTime);
+  }, [event.startTime]);
 
   // CLIENT-ONLY STATES
   const [isPast, setIsPast] = useState<boolean | null>(null);
@@ -38,9 +40,8 @@ export default function EventCard({ event }: any) {
       return;
     }
 
-    // Future day calculation
     const diffDays = Math.ceil(
-      (eventTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (eventTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     setLabel(`Starts in ${diffDays} day${diffDays > 1 ? "s" : ""}`);
@@ -51,7 +52,7 @@ export default function EventCard({ event }: any) {
 
   useEffect(() => {
     if (!isToday || isPast === true) return;
-    if (isToday === null || isPast === null) return; // Wait until hydration done
+    if (isToday === null || isPast === null) return;
 
     const timer = setInterval(() => {
       const now = new Date();
@@ -70,7 +71,7 @@ export default function EventCard({ event }: any) {
       setCountdown(
         `${h.toString().padStart(2, "0")}h ${m
           .toString()
-          .padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
+          .padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`,
       );
     }, 1000);
 
@@ -79,9 +80,7 @@ export default function EventCard({ event }: any) {
 
   // While values aren't initialized (during SSR), show placeholder
   if (isPast === null || isToday === null) {
-    return (
-      <div className="opacity-0 h-10 w-full" />
-    );
+    return <div className="opacity-0 h-10 w-full" />;
   }
 
   return (
@@ -101,9 +100,7 @@ export default function EventCard({ event }: any) {
       {/* CARD */}
       <div className="flex-1 p-4 rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200">
         <div className="flex justify-between items-center">
-          <h3 className="font-semibold text-sm">
-            {event.title}
-          </h3>
+          <h3 className="font-semibold text-sm">{event.title}</h3>
 
           {/* BADGE */}
           <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">

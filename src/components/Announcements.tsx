@@ -11,7 +11,6 @@ const Announcements = async () => {
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
-  /* ✅ FIX: Explicitly typed array */
   let announcements: AnnouncementWithClass[] = [];
 
   /* -------------------------
@@ -26,23 +25,21 @@ const Announcements = async () => {
   }
 
   /* -------------------------
-     TEACHER → GLOBAL + OWN CLASSES
+     TEACHER → GLOBAL + SUPERVISED CLASSES
   -------------------------- */
   else if (role === "teacher" && userId) {
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: userId },
-      select: {
-        classes: { select: { id: true } },
-      },
+    const teacherClasses = await prisma.class.findMany({
+      where: { supervisorId: userId },
+      select: { id: true },
     });
 
-    const classIds = teacher?.classes.map((c) => c.id) ?? [];
+    const classIds = teacherClasses.map((c) => c.id);
 
     announcements = await prisma.announcement.findMany({
       where: {
         OR: [
-          { classId: null },                // global announcements
-          { classId: { in: classIds } },    // their classes
+          { classId: null },              // global
+          { classId: { in: classIds } },  // supervised classes
         ],
       },
       include: { class: true },

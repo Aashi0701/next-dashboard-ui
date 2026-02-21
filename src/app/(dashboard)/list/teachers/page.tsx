@@ -15,8 +15,10 @@ import TeacherSort from "@/components/filters/TeacherSort";
 import TeacherCard from "@/components/mobile/TeacherCard";
 
 type TeacherList = Teacher & {
-  subjects: Subject[];
-  classes: Class[];
+  lessons: {
+    subject: Subject;
+  }[];
+  supervisedClasses: Class[];
 };
 
 const TeacherListPage = async ({
@@ -89,25 +91,19 @@ const TeacherListPage = async ({
         </div>
       </td>
 
-      <td className="p-4 hidden md:table-cell truncate">
-        {item.username}
-      </td>
+      <td className="p-4 hidden md:table-cell truncate">{item.username}</td>
 
       <td className="p-4 hidden md:table-cell truncate">
-        {item.subjects.map((s) => s.name).join(", ")}
+        {[...new Set(item.lessons.map((l) => l.subject.name))].join(", ")}
       </td>
 
       <td className="p-4 hidden md:table-cell truncate">
-        {item.classes.map((c) => c.name).join(", ")}
+        {item.supervisedClasses.map((c) => c.name).join(", ")}
       </td>
 
-      <td className="p-4 hidden lg:table-cell truncate">
-        {item.phone}
-      </td>
+      <td className="p-4 hidden lg:table-cell truncate">{item.phone}</td>
 
-      <td className="p-4 hidden lg:table-cell truncate">
-        {item.address}
-      </td>
+      <td className="p-4 hidden lg:table-cell truncate">{item.address}</td>
 
       {role === "admin" && (
         <td className="p-4 text-center">
@@ -135,10 +131,16 @@ const TeacherListPage = async ({
         query.name = { contains: value, mode: "insensitive" };
         break;
       case "classId":
-        query.classes = { some: { id: Number(value) } };
+        query.supervisedClasses = {
+          some: { id: Number(value) },
+        };
         break;
       case "subjectId":
-        query.subjects = { some: { id: Number(value) } };
+        query.lessons = {
+          some: {
+            subjectId: Number(value),
+          },
+        };
         break;
     }
   }
@@ -152,8 +154,7 @@ const TeacherListPage = async ({
     address: { address: order },
   };
 
-  const orderBy =
-    (sortBy && sortableFields[sortBy]) || { createdAt: order };
+  const orderBy = (sortBy && sortableFields[sortBy]) || { createdAt: order };
 
   /* ================= FILTER DATA ================= */
   const [subjects, classes] = await Promise.all([
@@ -166,8 +167,12 @@ const TeacherListPage = async ({
     prisma.teacher.findMany({
       where: query,
       include: {
-        subjects: true,
-        classes: true,
+        lessons: {
+          include: {
+            subject: true,
+          },
+        },
+        supervisedClasses: true,
       },
       orderBy,
       take: ITEM_PER_PAGE,

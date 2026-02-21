@@ -222,7 +222,6 @@ const FormContainer = async ({
               where: { id: currentUserId },
               include: {
                 class: { select: { name: true } },
-                grade: { select: { level: true } },
               },
             }),
           };

@@ -10,10 +10,11 @@ import {
 } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import RadixDatePicker from "../ui/RadixDatePicker";
 import RadixSelect from "../ui/RadixSelect";
 import { studentSchema, StudentFormValues } from "@/lib/formValidationSchemas";
-import { createStudent, updateStudent } from "@/lib/actions";
+import { createStudent, updateStudent, ActionState } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import InputField from "../InputField";
@@ -21,7 +22,8 @@ import { CldUploadWidget } from "next-cloudinary";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera } from "lucide-react";
 import FormStepper from "@/components/ui/FormStepper";
-import { ActionState } from "@/lib/actions";
+import Image from "next/image";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 const steps = ["Authentication", "Personal", "Academic"];
 
@@ -35,13 +37,12 @@ export default function StudentForm({
   data?: Partial<StudentFormValues>;
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: {
-    grades: any[];
     classes: any[];
     parents: any[];
   };
 }) {
   const router = useRouter();
-  const { grades = [], classes = [], parents = [] } = relatedData || {};
+  const { classes = [], parents = [] } = relatedData || {};
 
   const [step, setStep] = useState(0);
   const [img, setImg] = useState<any>(null);
@@ -54,7 +55,6 @@ export default function StudentForm({
     mode: "onChange",
     defaultValues: {
       ...data,
-      gradeId: data?.gradeId ?? 0,
       classId: data?.classId ?? 0,
     },
   });
@@ -65,7 +65,7 @@ export default function StudentForm({
     trigger,
     watch,
     register,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = methods;
 
   /* ================= ACTION ================= */
@@ -81,7 +81,7 @@ export default function StudentForm({
     const fields: (keyof StudentFormValues)[][] = [
       ["username", "email", "password"],
       ["name", "surname", "phone", "address", "bloodType", "birthday", "sex"],
-      ["parentId", "gradeId", "classId"],
+      ["parentId", "classId"],
     ];
 
     const valid = await trigger(fields[step]);
@@ -99,15 +99,6 @@ export default function StudentForm({
     );
   });
 
-  const {
-    formState: { errors },
-  } = methods;
-
-  const errorSteps = [
-    Boolean(errors.username || errors.email || errors.phone),
-    Boolean(errors.name || errors.surname || errors.address),
-  ];
-
   useEffect(() => {
     if (state.success) {
       toast.success(
@@ -123,16 +114,26 @@ export default function StudentForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Student" : "Update Student"}
-        </h1>
+        <div className="relative">
+          <ModalCloseButton onClose={() => setOpen(false)} />
+          <h1 className="text-lg font-semibold">
+            {type === "create" ? "Create Student" : "Update Student"}
+          </h1>
+        </div>
 
-        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
+        <FormStepper
+          steps={steps}
+          step={step}
+          errorSteps={[
+            Boolean(errors.username || errors.email || errors.phone),
+            Boolean(errors.name || errors.surname || errors.address),
+          ]}
+        />
 
         {/* SCROLL AREA */}
-        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
+        <div className="min-h-[160px]">
           <AnimatePresence mode="wait">
-            {/* STEP 1 */}
+            {/* STEP 1 – AUTH */}
             {step === 0 && (
               <motion.div
                 key="auth"
@@ -144,6 +145,7 @@ export default function StudentForm({
                 <InputField label="Username" name="username" />
                 <InputField label="Email" name="email" />
                 <InputField label="Password" name="password" type="password" />
+
                 <CldUploadWidget
                   uploadPreset="school"
                   onUploadAdded={() => setUploading(true)}
@@ -152,73 +154,36 @@ export default function StudentForm({
                     setUploading(false);
                     widget.close();
                   }}
-                  onError={() => {
-                    setUploading(false);
-                  }}
+                  onError={() => setUploading(false)}
                 >
                   {({ open }) => (
                     <div className="sm:col-span-2">
-                      {/* PREVIEW */}
-                      {img && (
+                      {img ? (
                         <div className="mb-3 flex items-center gap-4">
-                          <img
+                          <Image
                             src={img.secure_url}
                             alt="Avatar"
-                            className="w-16 h-16 rounded-full object-cover border"
+                            width={64}
+                            height={64}
+                            className="rounded-full object-cover border"
                           />
-
-                          <div className="flex flex-col gap-1">
-                            <span className="text-green-600 text-xs sm:text-sm font-medium">
-                              Photo uploaded ✓
-                            </span>
-
-                            <div className="flex gap-3 text-xs">
-                              <button
-                                type="button"
-                                onClick={() => open()}
-                                className="text-blue-600 hover:underline"
-                              >
-                                Replace
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setImg(null)}
-                                className="text-red-500 hover:underline"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setImg(null)}
+                            className="text-red-500 text-sm"
+                          >
+                            Remove
+                          </button>
                         </div>
-                      )}
-
-                      {/* UPLOAD BUTTON */}
-                      {!img && (
+                      ) : (
                         <button
                           type="button"
                           onClick={() => open()}
                           disabled={uploading}
-                          className="
-            w-full h-11
-            flex items-center justify-center gap-2
-            border rounded-xl
-            bg-gray-50 hover:bg-gray-100
-            text-sm sm:text-base
-            disabled:opacity-50
-          "
+                          className="w-full h-11 border rounded-xl flex items-center justify-center gap-2"
                         >
-                          {uploading ? (
-                            <>
-                              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                              Uploading…
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
-                              <span>Upload Photo</span>
-                            </>
-                          )}
+                          <Camera className="w-4 h-4" />
+                          Upload Photo
                         </button>
                       )}
                     </div>
@@ -227,7 +192,7 @@ export default function StudentForm({
               </motion.div>
             )}
 
-            {/* STEP 2 */}
+            {/* STEP 2 – PERSONAL */}
             {step === 1 && (
               <motion.div
                 key="personal"
@@ -238,6 +203,7 @@ export default function StudentForm({
                 <InputField label="Phone" name="phone" />
                 <InputField label="Address" name="address" />
                 <InputField label="Blood Type" name="bloodType" />
+
                 <RadixDatePicker
                   value={watch("birthday")}
                   onChange={(d) =>
@@ -258,58 +224,50 @@ export default function StudentForm({
               </motion.div>
             )}
 
-            {/* STEP 3 */}
+            {/* STEP 3 – ACADEMIC */}
             {step === 2 && (
               <motion.div
                 key="academic"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
-                <select
-                  {...register("parentId")}
-                  className="h-11 rounded-xl border px-3 text-sm"
-                >
-                  <option value="">Select Parent</option>
-                  {parents.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.surname}
-                    </option>
-                  ))}
-                </select>
+                {/* PARENT */}
+                <RadixSelect
+                  value={watch("parentId")}
+                  onChange={(v) => {
+                    if (!v) return;
+                    setValue("parentId", v, { shouldValidate: true });
+                  }}
+                  placeholder="Select Parent"
+                  options={parents.map((p) => ({
+                    value: p.id,
+                    label: `${p.name} ${p.surname}`,
+                  }))}
+                />
 
-                <select
-                  {...register("gradeId", { valueAsNumber: true })}
-                  className="h-11 rounded-xl border px-3 text-sm"
-                >
-                  <option value={0}>Select Grade</option>
-                  {grades.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.level}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  {...register("classId", { valueAsNumber: true })}
-                  className="h-11 rounded-xl border px-3 text-sm"
-                >
-                  <option value={0}>Select Class</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                {/* CLASS */}
+                <RadixSelect
+                  value={watch("classId") ? String(watch("classId")) : ""}
+                  onChange={(v) => {
+                    if (!v) return;
+                    setValue("classId", Number(v), {
+                      shouldValidate: true,
+                    });
+                  }}
+                  placeholder="Select Class"
+                  options={classes.map((c) => ({
+                    value: String(c.id),
+                    label: c.name,
+                  }))}
+                />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {state.error && (
-          <p className="text-xs text-red-500 mt-2">{state.error}</p>
-        )}
+        {state.error && <p className="text-xs text-red-500">{state.error}</p>}
 
-        {/* ================= ACTION BAR ================= */}
-        <div className="sticky bottom-0 bg-white px-5 py-3 flex justify-between border-t">
+        {/* ACTION BAR */}
+        <div className="flex justify-between border-t pt-3">
           {step > 0 && (
             <button type="button" onClick={() => setStep(step - 1)}>
               Back
@@ -324,7 +282,7 @@ export default function StudentForm({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg"
             >
               {isSubmitting ? "Saving..." : "Submit"}
             </button>
