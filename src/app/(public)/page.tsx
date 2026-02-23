@@ -329,15 +329,30 @@ export default function HomePage() {
         {/* ================= CONTENT ================= */}
         <div className="relative z-40 w-full max-w-3xl px-4 sm:px-6 text-center text-white">
           {/* Logo */}
-          <div className="flex justify-center mb-4 sm:mb-8">
-            <div className="bg-white/25 backdrop-blur-md p-2.5 sm:p-4 rounded-full shadow-2xl animate-float-soft pongal-glow">
+          {/* ================= HERO LOGO ================= */}
+          <div className="relative z-40 flex justify-center mb-6 sm:mb-10 mt-6 sm:mt-10">
+            <div
+              className="
+      bg-white/30
+      backdrop-blur-md
+      p-3 sm:p-4
+      rounded-full
+      shadow-2xl
+      animate-float-soft
+      pongal-glow
+    "
+            >
               <Image
                 src="/my_logo.png"
                 alt="TrueSunshine Logo"
-                width={70}
-                height={70}
-                className="sm:w-[125px] sm:h-[125px]"
+                width={96}
+                height={96}
                 priority
+                className="
+        w-[80px] h-[80px]
+        sm:w-[110px] sm:h-[110px]
+        object-contain
+      "
               />
             </div>
           </div>
@@ -527,32 +542,14 @@ export default function HomePage() {
       {/* TESTIMONIALS */}
       <section
         id="testimonials"
-        className="
-    relative
-    py-16 sm:py-20 px-4 sm:px-10
-    bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF]
-  "
-      >
+        className="relative py-14 sm:py-16 px-4 sm:px-10 bg-gradient-to-b from-indigo-200 to-purple-200">
         <div className="max-w-4xl mx-auto text-center">
           {/* Heading */}
-          <h3
-            className="
-        text-2xl sm:text-3xl lg:text-4xl
-        font-extrabold mb-4
-        bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-        bg-clip-text text-transparent
-      "
-          >
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
             What Parents Say
           </h3>
 
-          <div
-            className="
-        mx-auto w-20 h-1 rounded-full
-        bg-gradient-to-r from-indigo-400 to-pink-400
-        mb-12
-      "
-          />
+          <div className="mx-auto w-20 h-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 mb-12"/>
 
           {/* Swiper Wrapper */}
           <div className="relative max-w-5xl mx-auto">
@@ -597,23 +594,15 @@ export default function HomePage() {
       {/* Gallery Section*/}
       <section
         id="gallery"
-        className="bg-gradient-to-b from-indigo-200 to-rose-200 py-6 sm:py-14 px-4 sm:px-6 text-center"
+        className="bg-gradient-to-b from-indigo-200 to-purple-200 py-6 sm:py-14 px-4 sm:px-6 text-center"
       >
         {/* Title */}
-        <h3
-          className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4
-    bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-    bg-clip-text text-transparent"
-        >
+        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
           Gallery
         </h3>
 
         {/* Decorative Divider */}
-        <div
-          className="mx-auto w-24 h-1 rounded-full
-    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-    mb-8 sm:mb-10"
-        />
+        <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10"/>
 
         <div className="max-w-7xl mx-auto">
           <Swiper
@@ -630,7 +619,7 @@ export default function HomePage() {
             breakpoints={{
               640: { slidesPerView: 2, spaceBetween: 20 },
               720: { slidesPerView: 3, spaceBetween: 22 },
-              1024: { slidesPerView: 6, spaceBetween: 24 },
+              1024: { slidesPerView: 5, spaceBetween: 24 },
             }}
             className="rounded-xl px-10"
           >
