@@ -8,7 +8,6 @@ import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId } from "react";
 import "swiper/css";
 import "swiper/css/autoplay";
 import "swiper/css/pagination";
@@ -31,6 +30,9 @@ export default function HomePage() {
   const today = new Date();
   const month = today.getMonth(); // 0 = Jan
   const date = today.getDate();
+  const [activeGalleryImage, setActiveGalleryImage] = useState<string | null>(
+    null,
+  );
 
   type Festival = "pongal" | "christmas" | "diwali" | null;
 
@@ -89,50 +91,6 @@ export default function HomePage() {
   const onSubmit = (data: ContactFormData) => {
     alert("Message sent successfully!");
     reset();
-  };
-
-  const PongalKite = ({ className = "" }) => {
-    const gradientId = useId();
-
-    return (
-      <svg
-        viewBox="0 0 48 72"
-        xmlns="http://www.w3.org/2000/svg"
-        className={className}
-      >
-        {/* Kite body */}
-        <polygon
-          points="24,0 48,24 24,48 0,24"
-          fill={`url(#${gradientId})`}
-          stroke="#FF9800"
-          strokeWidth="1.5"
-        />
-
-        {/* Knot */}
-        <circle cx="24" cy="24" r="3" fill="#FFF3CD" />
-
-        {/* Tail string */}
-        <line
-          x1="24"
-          y1="48"
-          x2="24"
-          y2="70"
-          stroke="#FFF3CD"
-          strokeWidth="1.5"
-        />
-
-        {/* Tail bows */}
-        <path d="M20 56 L28 56" stroke="#FF7043" strokeWidth="2" />
-        <path d="M20 62 L28 62" stroke="#FFD54F" strokeWidth="2" />
-
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="48" y2="48">
-            <stop offset="0%" stopColor="#FF6F00" />
-            <stop offset="100%" stopColor="#FFD54F" />
-          </linearGradient>
-        </defs>
-      </svg>
-    );
   };
 
   const [googleReviews, setGoogleReviews] = useState<any[]>([]);
@@ -456,109 +414,73 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Mission Section */}
+      {/* Mission & Vision – Premium Editorial Layout */}
       <section
         id="mission"
-        className="relative py-14 sm:py-18 px-4 sm:px-12 overflow-hidden
-             bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100"
+        className="relative bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF] py-10 sm:py-18 px-4 sm:px-10"
       >
-        {/* Ambient background glow */}
-        <div className="absolute -top-24 -left-32 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-32 w-72 h-72 bg-pink-300/30 rounded-full blur-3xl" />
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+          {/* LEFT – Cartoon Illustration */}
+          <div className="hidden lg:flex justify-center relative">
+            <img
+              src="/mission_vision.png"
+              alt="Mission and Vision illustration"
+              className="w-[740px] opacity-95 drop-shadow-2xl select-none float-slow"
+            />
+          </div>
 
-        <div className="relative max-w-6xl mx-auto text-center">
-          {/* Heading */}
-          <h3
-            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4
-                 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-                 bg-clip-text text-transparent"
-          >
-            Our Mission & Vision
-          </h3>
-
-          {/* Divider */}
-          <div
-            className="mx-auto w-24 h-1 rounded-full
-                    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-                    mb-8 sm:mb-10"
-          ></div>
-
-          {/* Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 md:gap-12">
-            {/* ===== Mission Card ===== */}
-            <div
-              className="
-      group
-      p-5 sm:p-7 md:p-9
-      rounded-2xl sm:rounded-3xl
-      bg-white/95 backdrop-blur-md
-      shadow-md sm:shadow-lg
-      border border-white/40
-      transition-all duration-300
-      hover:-translate-y-1 hover:shadow-2xl
-      text-center md:text-left
-    "
-            >
-              <div
-                className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 mx-auto md:mx-0 mb-4 sm:mb-6 flex items-center justify-center
-        rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 shadow-inner"
+          {/* RIGHT – Text Content */}
+          <div>
+            {/* Section Header */}
+            <div className="max-w-2xl mb-14 sm:mb-20">
+              <h2
+                className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+          bg-clip-text text-transparent mb-3 text-center"
               >
-                <Image
-                  src="/mission.png"
-                  alt="Mission Icon"
-                  width={40}
-                  height={40}
-                />
-              </div>
+                Mission & Vision
+              </h2>
 
-              <h4 className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-700 mb-3 sm:mb-4">
+              <div
+                className="mx-auto w-24 h-1 rounded-full
+          bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
+          mb-8 sm:mb-10"
+              ></div>
+
+              <p className="mt-5 text-purple-900/70 text-xs sm:text-sm lg:text-base">
+                At TrueSunshine, every decision we make is guided by a clear
+                purpose — nurturing confident learners and compassionate global
+                citizens.
+              </p>
+            </div>
+
+            {/* Mission */}
+            <div className="relative mb-12">
+              <span className="absolute -top-8 left-0 text-7xl font-bold text-indigo-200/60">
+                01
+              </span>
+
+              <h3 className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4">
                 Our Mission
-              </h4>
+              </h3>
 
-              <p className="text-gray-600 text-xs sm:text-base leading-relaxed">
+              <p className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base">
                 To inspire self-motivated learners through the Montessori
-                philosophy — cultivating independence, curiosity, empathy, and
+                philosophy — fostering independence, curiosity, empathy, and
                 respect for themselves, others, and the environment.
               </p>
             </div>
 
-            {/* ===== Vision Card ===== */}
-            <div
-              className="
-      group
-      p-5 sm:p-7 md:p-9
-      rounded-2xl sm:rounded-3xl
-      bg-white/95 backdrop-blur-md
-      shadow-md sm:shadow-lg
-      border border-white/40
-      transition-all duration-300
-      hover:-translate-y-1 hover:shadow-2xl
-      text-center md:text-left
-    "
-            >
-              <div
-                className="
-        w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20
-        mx-auto md:mx-0 mb-4 sm:mb-6
-        flex items-center justify-center
-        rounded-xl sm:rounded-2xl
-        bg-gradient-to-br from-rose-100 to-pink-200
-        shadow-inner
-      "
-              >
-                <Image
-                  src="/vision.png"
-                  alt="Vision Icon"
-                  width={40}
-                  height={40}
-                />
-              </div>
+            {/* Vision */}
+            <div className="relative">
+              <span className="absolute -top-8 left-0 text-7xl font-bold text-pink-200/60">
+                02
+              </span>
 
-              <h4 className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-700 mb-3 sm:mb-4">
+              <h3 className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4">
                 Our Vision
-              </h4>
+              </h3>
 
-              <p className="text-gray-600 text-xs sm:text-base leading-relaxed">
+              <p className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base">
                 To become a leading Montessori institution that nurtures
                 confident, compassionate, and capable lifelong learners who
                 create a positive impact on the world.
@@ -571,44 +493,59 @@ export default function HomePage() {
       {/* TESTIMONIALS */}
       <section
         id="testimonials"
-        className="relative py-12 px-4 sm:px-10
-             bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100"
+        className="
+    relative
+    py-16 sm:py-20 px-4 sm:px-10
+    bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF]
+  "
       >
         <div className="max-w-4xl mx-auto text-center">
           {/* Heading */}
           <h3
-            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4
-                 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-                 bg-clip-text text-transparent"
+            className="
+        text-2xl sm:text-3xl lg:text-4xl
+        font-extrabold mb-4
+        bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+        bg-clip-text text-transparent
+      "
           >
             What Parents Say
           </h3>
 
           <div
-            className="mx-auto w-20 h-1 rounded-full
-                    bg-gradient-to-r from-indigo-400 to-pink-400 mb-14"
+            className="
+        mx-auto w-20 h-1 rounded-full
+        bg-gradient-to-r from-indigo-400 to-pink-400
+        mb-12
+      "
           />
 
-          {/* Swiper */}
-          <div className="relative max-w-6xl mx-auto testimonial-swiper">
+          {/* Swiper Wrapper */}
+          <div className="relative max-w-5xl mx-auto">
+            {/* Soft background glow */}
+            <div className="absolute inset-0 -z-10 flex justify-center">
+              <div className="w-72 h-72 bg-purple-200/40 rounded-full blur-3xl" />
+            </div>
+
             <Swiper
               modules={[Autoplay, Pagination]}
               loop={canLoopTestimonials}
               autoplay={
                 canLoopTestimonials
                   ? {
-                      delay: 3500,
+                      delay: 3800,
                       pauseOnMouseEnter: true,
                       disableOnInteraction: false,
                     }
                   : false
               }
               pagination={{ clickable: true }}
+              className="testimonial-swiper"
             >
               {displayedReviews.map((review, i) => (
                 <SwiperSlide
                   key={i}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center px-2"
                 >
                   <CenteredTestimonialCard
                     text={review.text}
@@ -619,9 +556,6 @@ export default function HomePage() {
                 </SwiperSlide>
               ))}
             </Swiper>
-
-            {/* Pagination OUTSIDE slide flow */}
-            <div className="testimonial-pagination" />
           </div>
         </div>
       </section>
@@ -634,8 +568,8 @@ export default function HomePage() {
         {/* Title */}
         <h3
           className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4
-                 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-                 bg-clip-text text-transparent"
+    bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+    bg-clip-text text-transparent"
         >
           Gallery
         </h3>
@@ -643,9 +577,9 @@ export default function HomePage() {
         {/* Decorative Divider */}
         <div
           className="mx-auto w-24 h-1 rounded-full
-                    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-                    mb-8 sm:mb-10"
-        ></div>
+    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
+    mb-8 sm:mb-10"
+        />
 
         <div className="max-w-7xl mx-auto">
           <Swiper
@@ -664,29 +598,54 @@ export default function HomePage() {
               720: { slidesPerView: 3, spaceBetween: 22 },
               1024: { slidesPerView: 6, spaceBetween: 24 },
             }}
-            className="rounded-xl"
+            className="rounded-xl px-10"
           >
             {images.map((img, i) => (
               <SwiperSlide key={i}>
-                <div className="overflow-hidden rounded-xl shadow-md hover:shadow-xl transition">
-                  <Image
-                    src={`/${img}`}
-                    alt={`Montessori Gallery ${i + 1}`}
-                    width={600}
-                    height={400}
-                    className="
-                object-cover w-full
-                h-40          /* 📱 mobile */
-                sm:h-46       /* 📱 tablets */
-                lg:h-50       /* 💻 desktop */
-              "
-                  />
+                <div
+                  onClick={() => setActiveGalleryImage(`/${img}`)}
+                  className="relative cursor-pointer overflow-hidden rounded-xl shadow-md hover:shadow-xl transition group"
+                >
+                  {/* Image (aspect ratio safe for tablet) */}
+                  <div className="relative w-full aspect-[4/3]">
+                    <Image
+                      src={`/${img}`}
+                      alt={`TrueSunshine Gallery ${i + 1}`}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+
+                  {/* Caption Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
+                    <p className="text-xs text-white text-left">
+                      Montessori Activities · TrueSunshine Preschool
+                    </p>
+                  </div>
                 </div>
               </SwiperSlide>
             ))}
           </Swiper>
         </div>
       </section>
+
+      {/* ================= GALLERY LIGHTBOX ================= */}
+      {activeGalleryImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center px-4"
+          onClick={() => setActiveGalleryImage(null)}
+        >
+          <div className="relative max-w-5xl w-full">
+            <Image
+              src={activeGalleryImage}
+              alt="Gallery Preview"
+              width={1400}
+              height={900}
+              className="rounded-xl object-contain w-full max-h-[85vh]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Contact Us Section*/}
       <section
@@ -923,7 +882,8 @@ export default function HomePage() {
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="pointer-events-auto fixed bottom-16 right-4 sm:bottom-20 sm:right-6 bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
-        text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up">
+        text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up"
+          >
             <span className="text-xl sm:text-2xl font-bold">↑</span>
           </button>
         )}
