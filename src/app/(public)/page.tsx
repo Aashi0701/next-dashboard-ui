@@ -196,7 +196,7 @@ export default function HomePage() {
               className="rounded-full p-1"
             />
             <span
-              className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+              className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-500
                  bg-clip-text text-transparent"
             >
               TrueSunshine
@@ -296,7 +296,7 @@ export default function HomePage() {
       </nav>
 
       {/* HERO SECTION */}
-      <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[80vh] sm:min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Background Image */}
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -311,7 +311,7 @@ export default function HomePage() {
         <div className="hidden sm:block absolute top-24 right-0 w-[500px] h-[500px] bg-indigo-400/30 rounded-full blur-3xl" />
 
         {/* Airplane */}
-        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden mt-2 sm:mt-4 md:mt-6 lg:mt-8">
           <div className="airplane-move">
             <div className="airplane-flip">
               <Image
@@ -341,13 +341,13 @@ export default function HomePage() {
         <div className="relative z-40 w-full max-w-3xl px-4 sm:px-6 text-center text-white">
           {/* Logo */}
           <div className="flex justify-center mb-4 sm:mb-8">
-            <div className="bg-white/25 backdrop-blur-md p-2.5 sm:p-4 rounded-full shadow-xl animate-float-soft pongal-glow">
+            <div className="bg-white/25 backdrop-blur-md p-2.5 sm:p-4 rounded-full shadow-2xl animate-float-soft pongal-glow">
               <Image
                 src="/my_logo.png"
                 alt="TrueSunshine Logo"
                 width={70}
                 height={70}
-                className="sm:w-[110px] sm:h-[110px]"
+                className="sm:w-[125px] sm:h-[125px]"
                 priority
               />
             </div>
@@ -429,7 +429,7 @@ export default function HomePage() {
             {/* Image with responsive size */}
             <div className="p-1 rounded-full glowing-ring mb-4 sm:mb-6">
               <Image
-                src="/alekhya.jpg"
+                src="/alekhya_toon.jpg"
                 alt="Chairman"
                 width={180}
                 height={180}
@@ -661,6 +661,7 @@ export default function HomePage() {
             }}
             breakpoints={{
               640: { slidesPerView: 2, spaceBetween: 20 },
+              720: { slidesPerView: 3, spaceBetween: 22 },
               1024: { slidesPerView: 6, spaceBetween: 24 },
             }}
             className="rounded-xl"
@@ -899,20 +900,20 @@ export default function HomePage() {
       <div className="fixed inset-0 pointer-events-none z-[9999]">
         {/* WhatsApp */}
         <a
-          href="https://wa.me/919876543210"
+          href="https://wa.me/7989599833"
           target="_blank"
           rel="noopener noreferrer"
           className="pointer-events-auto fixed bottom-4 right-4 sm:bottom-6 sm:right-6
-            bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 text-white
-            w-8 h-8              /* 📱 mobile */
-            sm:w-10 sm:h-10        /* 📱 tablet+ */
+            bg-gray-300 text-white
+            w-10 h-10              /* 📱 mobile */
+            sm:w-12 sm:h-12        /* 📱 tablet+ */
             rounded-full flex items-center justify-center shadow-xl hover:scale-20 transition-all duration-300 animate-pulse-soft"
         >
           <Image
             src="/whatsapp.png"
             alt="WhatsApp"
-            width={20} /* 📱 mobile */
-            height={20}
+            width={26} /* 📱 mobile */
+            height={26}
             className="sm:w-[28px] sm:h-[28px]" /* tablet+ */
           />
         </a>
@@ -921,26 +922,9 @@ export default function HomePage() {
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="
-        pointer-events-auto
-        fixed bottom-12 right-4
-        sm:bottom-20 sm:right-6
-
-        bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
-        text-white
-
-        w-8 h-8               /* 📱 mobile */
-        sm:w-10 sm:h-10       /* 📱 tablet+ */
-
-        rounded-full
-        flex items-center justify-center
-        shadow-xl
-        hover:scale-110
-        transition-all duration-300
-        animate-fade-in-up
-      "
-          >
-            <span className="text-sm sm:text-base">↑</span>
+            className="pointer-events-auto fixed bottom-16 right-4 sm:bottom-20 sm:right-6 bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
+        text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up">
+            <span className="text-xl sm:text-2xl font-bold">↑</span>
           </button>
         )}
       </div>
