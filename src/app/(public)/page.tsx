@@ -139,6 +139,37 @@ export default function HomePage() {
     fetchReviews();
   }, []);
 
+  const handleShareImage = async (imageUrl: string) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "TrueSunshine Gallery",
+          text: "Check out this moment from TrueSunshine Preschool",
+          url: window.location.origin + imageUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.origin + imageUrl);
+        alert("Image link copied to clipboard!");
+      }
+    } catch (err) {
+      console.error("Share failed:", err);
+    }
+  };
+
+  const [showGalleryControls, setShowGalleryControls] = useState(true);
+
+  useEffect(() => {
+    if (!activeGalleryImage) return;
+
+    setShowGalleryControls(true);
+
+    const timer = setTimeout(() => {
+      setShowGalleryControls(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [activeGalleryImage]);
+
   return (
     <main className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 text-gray-800 font-sans">
       {/* Responsive Navbar */}
@@ -269,7 +300,7 @@ export default function HomePage() {
         <div className="hidden sm:block absolute top-24 right-0 w-[500px] h-[500px] bg-indigo-400/30 rounded-full blur-3xl" />
 
         {/* Airplane */}
-        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden mt-2 sm:mt-4 md:mt-6 lg:mt-8">
+        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden mt-1 sm:mt-2 md:mt-3 lg:mt-4">
           <div className="airplane-move">
             <div className="airplane-flip">
               <Image
@@ -414,7 +445,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Mission & Vision – Premium Editorial Layout */}
+      {/* Mission & Vision */}
       <section
         id="mission"
         className="relative bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF] py-10 sm:py-18 px-4 sm:px-10"
@@ -422,10 +453,13 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
           {/* LEFT – Cartoon Illustration */}
           <div className="hidden lg:flex justify-center relative">
-            <img
+            <Image
               src="/mission_vision.png"
               alt="Mission and Vision illustration"
-              className="w-[740px] opacity-95 drop-shadow-2xl select-none float-slow"
+              width={740}
+              height={740}
+              priority={false}
+              className="opacity-95 drop-shadow-2xl select-none float-slow"
             />
           </div>
 
@@ -634,8 +668,14 @@ export default function HomePage() {
         <div
           className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center px-4"
           onClick={() => setActiveGalleryImage(null)}
+          onMouseMove={() => setShowGalleryControls(true)}
+          onTouchStart={() => setShowGalleryControls(true)}
         >
-          <div className="relative max-w-5xl w-full">
+          <div
+            className="relative max-w-5xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image */}
             <Image
               src={activeGalleryImage}
               alt="Gallery Preview"
@@ -643,6 +683,62 @@ export default function HomePage() {
               height={900}
               className="rounded-xl object-contain w-full max-h-[85vh]"
             />
+
+            {/* CLOSE BUTTON */}
+            {showGalleryControls && (
+              <button
+                onClick={() => setActiveGalleryImage(null)}
+                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-lg hover:scale-110 transition"
+                title="Close"
+              >
+                <Image src="/close.png" alt="Close" width={18} height={18} />
+              </button>
+            )}
+
+            {/* ACTION BUTTONS */}
+            {showGalleryControls && (
+              <div className="absolute top-4 right-4 flex gap-3">
+                {/* Download */}
+                <a
+                  href={activeGalleryImage}
+                  download
+                  className="
+              w-10 h-10
+              rounded-full
+              bg-white/90 backdrop-blur
+              flex items-center justify-center
+              shadow-lg
+              hover:scale-110
+              transition
+            "
+                  title="Download"
+                >
+                  <Image
+                    src="/downloads.png"
+                    alt="Download"
+                    width={18}
+                    height={18}
+                  />
+                </a>
+
+                {/* Share */}
+                <button
+                  onClick={() => handleShareImage(activeGalleryImage)}
+                  className="
+              w-10 h-10
+              rounded-full
+              bg-white/90 backdrop-blur
+              flex items-center justify-center
+              shadow-lg
+              hover:scale-110
+              transition
+            "
+                  title="Share"
+                >
+                  <Image src="/share.png" alt="Share" width={18} height={18} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -650,74 +746,74 @@ export default function HomePage() {
       {/* Contact Us Section*/}
       <section
         id="contact"
-        className="relative bg-gradient-to-b from-indigo-200 to-rose-200 py-6 sm:py-16 lg:py-10 px-4 sm:px-8 lg:px-12 text-center overflow-hidden"
+        className="
+    relative
+    bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF]
+    py-12 sm:py-18 px-4 sm:px-10
+    overflow-hidden
+  "
       >
-        {/* Soft background shapes */}
-        <div className="absolute -top-20 -left-16 w-40 h-40 sm:w-60 sm:h-60 bg-amber-100 blur-3xl opacity-40" />
-        <div className="absolute bottom-0 right-0 w-48 h-48 sm:w-72 sm:h-72 bg-rose-100 blur-3xl opacity-30" />
+        {/* Soft background glow */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-200/40 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-pink-200/30 rounded-full blur-3xl" />
 
-        <div className="relative z-10 max-w-6xl mx-auto">
+        <div className="relative max-w-6xl mx-auto text-center">
           {/* Title */}
           <h3
-            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-2
-                 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-                 bg-clip-text text-transparent"
+            className="
+        text-2xl sm:text-3xl lg:text-4xl
+        font-extrabold mb-3
+        bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+        bg-clip-text text-transparent
+      "
           >
             Contact Us
           </h3>
 
-          {/* Decorative Divider */}
-          <div
-            className="mx-auto w-24 h-1 rounded-full
-                    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-                    mb-8 sm:mb-10"
-          ></div>
+          {/* Divider */}
+          <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-6" />
 
-          <p className="text-gray-600 font-semibold text-sm sm:text-base max-w-xl mx-auto mb-8 sm:mb-12">
-            We&apos;d love to connect with you. Reach out for admissions, campus
+          <p className="text-purple-900/70 text-sm sm:text-base max-w-xl mx-auto mb-12">
+            We’d love to connect with you. Reach out for admissions, campus
             visits, or general queries.
           </p>
 
-          {/* ================= CONTACT CARDS ================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-16">
+          {/* ================= CONTACT INFO CARDS ================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14">
             {/* Address */}
-            <div className="bg-amber-50 p-4 sm:p-6 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="text-amber-700 text-2xl mb-2">📍</div>
-              <h4 className="font-semibold text-base sm:text-lg mb-1">
-                Address
-              </h4>
-              <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                Mohan&apos;s Elite Appartments, Khanamet, <br />
-                Hyderabad Telangana – 500084
+            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+              <div className="text-2xl mb-3">📍</div>
+              <h4 className="font-semibold text-indigo-800 mb-1">Address</h4>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Mohan&apos;s Elite Apartments, Khanamet <br />
+                Hyderabad, Telangana – 500084
               </p>
             </div>
 
             {/* Phone */}
-            <div className="bg-rose-50 p-4 sm:p-6 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="text-rose-600 text-2xl mb-2">📞</div>
-              <h4 className="font-semibold text-base sm:text-lg mb-1">Phone</h4>
+            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+              <div className="text-2xl mb-3">📞</div>
+              <h4 className="font-semibold text-indigo-800 mb-1">Phone</h4>
               <p className="text-gray-600 text-sm">+91 79895 99833</p>
             </div>
 
             {/* Email */}
-            <div className="bg-amber-50 p-4 sm:p-6 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="text-amber-700 text-2xl mb-2">📧</div>
-              <h4 className="font-semibold text-base sm:text-lg mb-1">Email</h4>
-              <p className="text-gray-600 text-xs sm:text-sm break-words">
+            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+              <div className="text-2xl mb-3">📧</div>
+              <h4 className="font-semibold text-indigo-800 mb-1">Email</h4>
+              <p className="text-gray-600 text-sm break-words">
                 truesunshine.playschools@gmail.com
               </p>
             </div>
           </div>
 
           {/* ================= MAP + FORM ================= */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
             {/* Map */}
-            <div className="w-full h-60 sm:h-72 rounded-xl overflow-hidden shadow-md">
+            <div className="rounded-2xl overflow-hidden shadow-lg bg-white">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3805.97106829474!2d78.38164457414304!3d17.461098800679487!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93d6209e0f0d%3A0x95c9fe94d6e83177!2sMohan&#39;s%20Elite%20Apartment!5e0!3m2!1sen!2sin!4v1763088792805!5m2!1sen!2sin"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3805.97106829474!2d78.38164457414304!3d17.461098800679487!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93d6209e0f0d%3A0x95c9fe94d6e83177!2sMohan's%20Elite%20Apartment!5e0!3m2!1sen!2sin!4v1763088792805!5m2!1sen!2sin"
+                className="w-full h-64 sm:h-72 border-0"
                 allowFullScreen
                 loading="lazy"
               />
@@ -726,9 +822,9 @@ export default function HomePage() {
             {/* Form */}
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="bg-white p-5 sm:p-8 rounded-xl shadow-md space-y-3 sm:space-y-4"
+              className="bg-white/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-lg space-y-4 text-left"
             >
-              <h4 className="text-base sm:text-lg font-semibold text-amber-700 mb-1">
+              <h4 className="text-lg font-semibold text-indigo-700">
                 Send Us a Message
               </h4>
 
@@ -736,26 +832,33 @@ export default function HomePage() {
                 type="text"
                 placeholder="Your Name"
                 {...register("name")}
-                className="w-full p-2.5 sm:p-3 text-sm border rounded-md focus:ring-2 focus:ring-amber-500"
+                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
               />
 
               <input
                 type="email"
                 placeholder="Your Email"
                 {...register("email")}
-                className="w-full p-2.5 sm:p-3 text-sm border rounded-md focus:ring-2 focus:ring-amber-500"
+                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
               />
 
               <textarea
                 placeholder="Your Message"
-                rows={3}
+                rows={4}
                 {...register("message")}
-                className="w-full p-2.5 sm:p-3 text-sm border rounded-md focus:ring-2 focus:ring-amber-500"
+                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
               />
 
               <button
                 type="submit"
-                className="w-full py-2.5 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-purple-600 to-pink-500 hover:bg-amber-700 text-white font-semibold rounded-md transition"
+                className="
+            w-full py-3
+            bg-gradient-to-r from-purple-600 to-pink-500
+            text-white font-semibold
+            rounded-md
+            hover:scale-[1.02]
+            transition
+          "
               >
                 Send Message
               </button>
@@ -862,10 +965,7 @@ export default function HomePage() {
           href="https://wa.me/7989599833"
           target="_blank"
           rel="noopener noreferrer"
-          className="pointer-events-auto fixed bottom-4 right-4 sm:bottom-6 sm:right-6
-            bg-gray-300 text-white
-            w-10 h-10              /* 📱 mobile */
-            sm:w-12 sm:h-12        /* 📱 tablet+ */
+          className="pointer-events-auto fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-none text-white w-10 h-10 sm:w-12 sm:h-12
             rounded-full flex items-center justify-center shadow-xl hover:scale-20 transition-all duration-300 animate-pulse-soft"
         >
           <Image
@@ -873,7 +973,7 @@ export default function HomePage() {
             alt="WhatsApp"
             width={26} /* 📱 mobile */
             height={26}
-            className="sm:w-[28px] sm:h-[28px]" /* tablet+ */
+            className="sm:w-[38px] sm:h-[38px]" /* tablet+ */
           />
         </a>
 
@@ -881,8 +981,7 @@ export default function HomePage() {
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="pointer-events-auto fixed bottom-16 right-4 sm:bottom-20 sm:right-6 bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
-        text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up"
+            className="pointer-events-auto fixed bottom-18 right-4 sm:bottom-24 sm:right-6 bg-gray-600 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up"
           >
             <span className="text-xl sm:text-2xl font-bold">↑</span>
           </button>
