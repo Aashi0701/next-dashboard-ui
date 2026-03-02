@@ -18,7 +18,8 @@ export default function TeacherProfile({ teacher }: { teacher: Teacher }) {
         <FormContainer
           table="profile"
           type="update"
-          relatedData={{ profile: teacher }}
+          data={teacher}
+          id={teacher.id}
         />
       }
     />

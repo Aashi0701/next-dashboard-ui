@@ -137,9 +137,7 @@ const forms: Record<TableKey, FormFactory> = {
     <EventForm close={close} type={t!} data={d} relatedData={r} />
   ),
   holiday: (close, t, d) => <HolidayForm close={close} type={t!} data={d} />,
-  profile: (close, _t, _d, r) => (
-    <ProfileForm relatedData={r} onClose={close} />
-  ),
+  profile: (close, _t, data) => <ProfileForm profile={data} onClose={close} />,
 };
 
 const iconMap: Record<string, string> = {

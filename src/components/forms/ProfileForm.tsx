@@ -4,16 +4,26 @@ import { useActionState, useEffect, useRef } from "react";
 import { updateAdminProfile, updateTeacherProfile } from "@/lib/actions";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
+type Profile =
+  | {
+      id: string;
+      username: string;
+    }
+  | {
+      id: string;
+      name: string;
+      surname: string;
+      phone?: string | null;
+    };
+
 export default function ProfileForm({
-  relatedData,
+  profile,
   onClose,
 }: {
-  relatedData: any;
+  profile: Profile;
   onClose: () => void;
 }) {
-  const profile = relatedData.profile;
-
-  const isAdmin = "username" in profile && !("name" in profile);
+  const isAdmin = "username" in profile;
   const isTeacher = "name" in profile;
 
   const action = isAdmin ? updateAdminProfile : updateTeacherProfile;
@@ -28,7 +38,7 @@ export default function ProfileForm({
   useEffect(() => {
     if (state.success && !closedRef.current) {
       closedRef.current = true;
-      onClose(); // ✅ correct
+      onClose();
     }
   }, [state.success, onClose]);
 
@@ -56,16 +66,19 @@ export default function ProfileForm({
             name="name"
             defaultValue={profile.name}
             className="border p-2 rounded-md"
+            placeholder="First name"
           />
           <input
             name="surname"
             defaultValue={profile.surname}
             className="border p-2 rounded-md"
+            placeholder="Surname"
           />
           <input
             name="phone"
             defaultValue={profile.phone ?? ""}
             className="border p-2 rounded-md"
+            placeholder="Phone"
           />
         </>
       )}

@@ -20,9 +20,8 @@ export default function AdminProfileServer({
         <FormContainer
           table="profile"
           type="update"
-          data={admin}        // ✅ REQUIRED
-          id={admin.id}       // ✅ REQUIRED
-          relatedData={{ profile: admin }}
+          data={admin}
+          id={admin.id} 
         />
       }
     />

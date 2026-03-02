@@ -18,7 +18,8 @@ export default function ParentProfile({ parent }: { parent: Parent }) {
         <FormContainer
           table="profile"
           type="update"
-          relatedData={{ profile: parent }}
+          data={parent}
+          id={parent.id}
         />
       }
     />
