@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
-
-import { useForm, FormProvider } from "react-hook-form";
+import { startTransition, useActionState, useEffect, useState } from "react";
+import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -17,45 +9,46 @@ import {
   EventFormInput,
   EventFormValues,
 } from "@/lib/formValidationSchemas";
-
 import { createEvent, updateEvent, ActionState } from "@/lib/actions";
-import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
 
-import FormStepper from "@/components/ui/FormStepper";
-import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
-import RadixSelect from "@/components/ui/RadixSelect";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
+import CollapsibleSection from "@/components/CollapsibleSection";
 import InputField from "../InputField";
+import RadixSelect from "@/components/ui/RadixSelect";
+import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { CalendarDays } from "lucide-react";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
-/* ================= STEPS ================= */
+/* ================= TYPES ================= */
 
-const steps = ["Basic Info", "Schedule"];
-
-/* ================= FORM ================= */
+type Section = "details" | "schedule";
 
 export default function EventForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: EventFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: {
     classes: { id: number; name: string }[];
   };
 }) {
   const router = useRouter();
-  const { classes = [] } = relatedData || {};
-  const [step, setStep] = useState(0);
+  const classes = relatedData?.classes ?? [];
+
+  /* ================= COLLAPSIBLE STATE ================= */
+
+  const [openSection, setOpenSection] = useState<Section>("details");
 
   /* ================= RHF ================= */
 
-  const methods = useForm<EventFormValues>({
-    resolver: zodResolver(eventSchema) as any,
+  const methods = useForm<EventFormInput>({
+    resolver: zodResolver(eventSchema),
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
@@ -65,16 +58,22 @@ export default function EventForm({
       classId: data?.classId ?? undefined,
       category: data?.category ?? "default",
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
-  const {
-    watch,
-    setValue,
-    trigger,
-    handleSubmit,
-    formState: { isSubmitting, errors },
-  } = methods;
+  const { handleSubmit, setValue, control, watch } = methods;
+
+  /* ================= WATCH DATES ================= */
+
+  const startTime = useWatch({
+    control,
+    name: "startTime",
+  }) as Date | undefined;
+
+  const endTime = useWatch({
+    control,
+    name: "endTime",
+  }) as Date | undefined;
 
   /* ================= ACTION ================= */
 
@@ -83,154 +82,145 @@ export default function EventForm({
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  /* ================= SUBMIT ================= */
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof EventFormInput)[][] = [
-      ["title", "description"],
-      ["startTime", "endTime"],
-    ];
-
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
-  };
-
-  /* ================= FINAL SUBMIT ================= */
-
-  const submitFinal = handleSubmit((values) => {
+  const onSubmit = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
 
-  /* ================= SUCCESS ================= */
+  /* ================= EFFECT ================= */
 
   useEffect(() => {
-    if (!state.success) return;
+    if (state.success) {
+      toast.success(
+        `Event ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
+      router.refresh();
+    }
 
-    toast.success(
-      `Event ${type === "create" ? "created" : "updated"} successfully`,
-    );
-    setOpen(false);
-    router.refresh();
-  }, [state.success, type, router, setOpen]);
+    if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state, close, router, type]);
 
   /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
-      {/* ❌ NO onSubmit */}
-      <form className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Event" : "Update Event"}
-        </h1>
-
-        <FormStepper
-          steps={steps}
-          step={step}
-          errorSteps={[
-            Boolean(errors.title || errors.description),
-            Boolean(errors.startTime || errors.endTime),
-          ]}
-        />
-
-        <div className="min-h-[180px]">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div key="basic" className="space-y-4">
-                <InputField label="Title" name="title" />
-                <InputField label="Description" name="description" />
-
-                <RadixSelect
-                  placeholder="Select category"
-                  value={watch("category")}
-                  onChange={(v) =>
-                    setValue("category", v, { shouldValidate: true })
-                  }
-                  options={[
-                    { value: "default", label: "Default" },
-                    { value: "holiday", label: "Holiday" },
-                    { value: "exam", label: "Exam" },
-                    { value: "competition", label: "Competition" },
-                    { value: "meeting", label: "Meeting" },
-                    { value: "celebration", label: "Celebration" },
-                  ]}
-                />
-
-                <RadixSelect
-                  placeholder="Select class"
-                  value={
-                    watch("classId") !== undefined
-                      ? String(watch("classId"))
-                      : "__general__"
-                  }
-                  onChange={(v) =>
-                    setValue(
-                      "classId",
-                      v === "__general__" ? undefined : Number(v),
-                      { shouldValidate: true },
-                    )
-                  }
-                  options={[
-                    { value: "__general__", label: "General Event" },
-                    ...classes.map((c) => ({
-                      value: String(c.id),
-                      label: c.name,
-                    })),
-                  ]}
-                />
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div key="schedule" className="space-y-4">
-                <RadixDateTimePicker
-                  value={watch("startTime")}
-                  onChange={(d) =>
-                    d &&
-                    setValue("startTime", d, {
-                      shouldValidate: true,
-                    })
-                  }
-                />
-
-                <RadixDateTimePicker
-                  value={watch("endTime")}
-                  onChange={(d) =>
-                    d &&
-                    setValue("endTime", d, {
-                      shouldValidate: true,
-                    })
-                  }
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[60vh]">
+        {/* HEADER */}
+        <div className="shrink-0 px-4 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Event" : "Update Event"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Event details, schedule, and class visibility
+          </p>
         </div>
 
-        {step === steps.length - 1 && state.error && (
-          <p className="text-xs text-red-500">{state.error}</p>
-        )}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {/* DETAILS */}
+          <CollapsibleSection
+            title="Event Details"
+            icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
+            open={openSection === "details"}
+            onToggle={() => setOpenSection("details")}
+          >
+            <div className="space-y-4">
+              <InputField label="Title" name="title" />
+              <InputField label="Description" name="description" />
 
-        <div className="flex justify-between py-4">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep((s) => s - 1)}>
-              Back
-            </button>
-          )}
+              <RadixSelect
+                placeholder="Select category"
+                value={watch("category")}
+                onChange={(v) =>
+                  setValue("category", v, { shouldValidate: true })
+                }
+                options={[
+                  { value: "default", label: "Default" },
+                  { value: "holiday", label: "Holiday" },
+                  { value: "exam", label: "Exam" },
+                  { value: "competition", label: "Competition" },
+                  { value: "meeting", label: "Meeting" },
+                  { value: "celebration", label: "Celebration" },
+                ]}
+              />
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={submitFinal}
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
-            >
-              {isSubmitting ? "Saving..." : "Submit"}
-            </button>
-          )}
+              <RadixSelect
+                placeholder="Select class (optional)"
+                value={
+                  watch("classId") !== undefined
+                    ? String(watch("classId"))
+                    : "__general__"
+                }
+                onChange={(v) =>
+                  setValue(
+                    "classId",
+                    v === "__general__" ? undefined : Number(v),
+                    { shouldValidate: true },
+                  )
+                }
+                options={[
+                  { value: "__general__", label: "General Event" },
+                  ...classes.map((c) => ({
+                    value: String(c.id),
+                    label: c.name,
+                  })),
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {/* SCHEDULE */}
+          <CollapsibleSection
+            title="Schedule"
+            icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
+            open={openSection === "schedule"}
+            onToggle={() => setOpenSection("schedule")}
+          >
+            <div className="space-y-4">
+              <RadixDateTimePicker
+                value={startTime}
+                onChange={(d) =>
+                  d &&
+                  setValue("startTime", d, {
+                    shouldValidate: true,
+                  })
+                }
+              />
+
+              <RadixDateTimePicker
+                value={endTime}
+                onChange={(d) =>
+                  d &&
+                  setValue("endTime", d, {
+                    shouldValidate: true,
+                  })
+                }
+              />
+            </div>
+          </CollapsibleSection>
+        </div>
+
+        {/* FOOTER */}
+        <div className="shrink-0 border-t px-4 py-3 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={close}
+            className="text-xs text-gray-600"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs"
+          >
+            {type === "create" ? "Create Event" : "Update Event"}
+          </button>
         </div>
       </form>
     </FormProvider>

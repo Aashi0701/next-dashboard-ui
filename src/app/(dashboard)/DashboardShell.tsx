@@ -30,7 +30,7 @@ export default function DashboardShell({
       <aside className="hidden lg:flex flex-col h-screen w-[16%] xl:w-[14%] bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 border-r p-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 mb-6 px-2">
           <Image src="/my_logo.png" alt="logo" width={32} height={32} />
-          <span className="font-bold">TrueSunshine</span>
+          <span className="font-bold sm:text-xs">TrueSunshine</span>
         </Link>
 
         {/* menu only scrolls internally if needed */}
@@ -67,7 +67,7 @@ export default function DashboardShell({
       <section className="flex flex-col flex-1 overflow-hidden">
         <NavbarClient onMenuClick={() => setMobileMenuOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+        <main className="flex-1 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-2 sm:p-3">
           {showBack && <BackButton label="Back to Teachers" />}
           {children}
         </main>

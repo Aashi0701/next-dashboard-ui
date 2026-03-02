@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z, ZodType } from "zod";
 
 // Class
 export const classSchema = z.object({
@@ -29,13 +29,7 @@ export const lessonSchema = z.object({
 
   name: z.string().min(1, "Lesson name is required"),
 
-  day: z.enum([
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-  ]),
+  day: z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]),
 
   startTime: z.date({
     message: "Start time is required",
@@ -60,9 +54,7 @@ export const subjectSchema = z.object({
 
   name: z.string().min(1, "Subject name is required"),
 
-  teachers: z
-    .array(z.string())
-    .min(1, "At least one teacher must be assigned"),
+  teachers: z.array(z.string()).min(1, "At least one teacher must be assigned"),
 });
 
 export type SubjectSchema = z.infer<typeof subjectSchema>;
@@ -76,10 +68,7 @@ export const teacherSchema = z.object({
     .max(20, "Username must be at most 20 characters")
     .regex(/^\S+$/, "Username cannot contain spaces"),
 
-  email: z
-    .string()
-    .email("Invalid email address")
-    .or(z.literal("")),
+  email: z.string().email("Invalid email address").or(z.literal("")),
 
   password: z
     .string()
@@ -96,21 +85,13 @@ export const teacherSchema = z.object({
 
   /* ================= PERSONAL ================= */
 
-  name: z
-    .string()
-    .min(1, "First name is required"),
+  name: z.string().min(1, "First name is required"),
 
-  surname: z
-    .string()
-    .min(1, "Last name is required"),
+  surname: z.string().min(1, "Last name is required"),
 
-  address: z
-    .string()
-    .min(1, "Address is required"),
+  address: z.string().min(1, "Address is required"),
 
-  bloodType: z
-    .string()
-    .min(1, "Blood type is required"),
+  bloodType: z.string().min(1, "Blood type is required"),
 
   /* ⭐ optional but valid date */
   birthday: z.date().optional(),
@@ -124,6 +105,7 @@ export const teacherSchema = z.object({
   img: z.string().optional(),
 
   subjects: z.array(z.string()).optional(),
+  supervisedClasses: z.array(z.string()).optional(),
 });
 
 export type TeacherFormValues = z.infer<typeof teacherSchema>;
@@ -132,22 +114,10 @@ export type TeacherFormValues = z.infer<typeof teacherSchema>;
 export const studentSchema = z.object({
   id: z.string().optional(),
 
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be at most 20 characters"),
-
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .optional()
-    .or(z.literal("")),
-
   name: z.string().min(1, "First name is required"),
   surname: z.string().min(1, "Last name is required"),
 
   email: z.string().email("Invalid email").optional().or(z.literal("")),
-
   phone: z.string().optional().or(z.literal("")),
 
   address: z.string().min(1, "Address is required"),
@@ -156,12 +126,11 @@ export const studentSchema = z.object({
 
   bloodType: z.string().min(1, "Blood type is required"),
 
-  birthday: z.date().optional(), // ✅ optional like Teacher
+  birthday: z.date().optional(),
 
   sex: z.enum(["MALE", "FEMALE"]),
 
-  gradeId: z.number().min(1, "Grade is required"),
-  classId: z.number().min(1, "Class is required"),
+  classId: z.number().int().positive("Class is required"),
 
   parentId: z.string().min(1, "Parent is required"),
 });
@@ -170,19 +139,31 @@ export type StudentFormValues = z.infer<typeof studentSchema>;
 
 // Parent
 export const parentSchema = z.object({
-  id: z.string().optional(),
+    id: z.string().optional(),
 
-  username: z.string().min(1, "Username is required"),
+    username: z.string().min(1, "Username is required"),
 
-  name: z.string().min(1, "First name is required"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .optional()
+      .or(z.literal("")),
 
-  surname: z.string().min(1, "Last name is required"),
+    name: z.string().min(1, "First name is required"),
+    surname: z.string().min(1, "Last name is required"),
 
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+    email: z.string().email("Invalid email").optional().or(z.literal("")),
 
-  phone: z.string().min(1, "Phone is required"),
-
-  address: z.string().min(1, "Address is required"),
+    phone: z.string().min(1, "Phone is required"),
+    address: z.string().min(1, "Address is required"),
+  }).superRefine((data, ctx) => {
+    if (!data.id && !data.password) {
+      ctx.addIssue({
+        path: ["password"],
+        message: "Password is required",
+        code: z.ZodIssueCode.custom,
+      });
+    }
 });
 
 export type ParentFormValues = z.infer<typeof parentSchema>;
@@ -190,7 +171,7 @@ export type ParentFormValues = z.infer<typeof parentSchema>;
 // Exam
 export const examSchema = z.object({
   id: z.coerce.number().optional(),
-  title: z.string().min(1, "Title name is required"),
+  title: z.string().min(1, "Exam title is required"),
   startTime: z.coerce.date({ message: "Start time is required" }),
   endTime: z.coerce.date({ message: "End time is required" }),
   lessonId: z.coerce.number().min(1, "Lesson is required"),
@@ -236,11 +217,22 @@ export const resultSchema = z
 export type ResultFormValues = z.infer<typeof resultSchema>;
 
 // Attendance
+export const normalizeDate = (d: Date) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
 export const attendanceSchema = z.object({
   id: z.coerce.number().optional(),
-  studentId: z.string().min(1),
-  lessonId: z.coerce.number(),
-  date: z.coerce.date(),
+
+  studentId: z.string().min(1, "Student is required"),
+
+  lessonId: z.coerce.number({
+    message: "Lesson is required",
+  }),
+
+  date: z.coerce
+    .date({ message: "Date is required" })
+    .transform(normalizeDate), // ⭐ IMPORTANT
+
   present: z.coerce.boolean(),
 });
 
@@ -262,7 +254,7 @@ export const FeeSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export type FeeFormInput = z.input<typeof FeeSchema>;   // server boundary only
+export type FeeFormInput = z.input<typeof FeeSchema>; // server boundary only
 export type FeeSchemaType = z.infer<typeof FeeSchema>;
 
 // AssignFee
@@ -297,22 +289,14 @@ export const assignFeeSchema = z
 export type AssignFeeFormInput = z.input<typeof assignFeeSchema>;
 export type AssignFeeValues = z.infer<typeof assignFeeSchema>;
 
-// Event
-export const eventSchema = z.object({
-  id: z.coerce.number().optional(),
-
-  title: z.string().min(1, "Title is required"),
-  description: z.string().min(1, "Description is required"),
-
-  startTime: z.coerce.date(),
-  endTime: z.coerce.date(),
-
-  classId: z.coerce.number().optional().nullable(),
-  category: z.string().optional(),
-});
-
-export type EventFormInput = z.input<typeof eventSchema>;
-export type EventFormValues = z.infer<typeof eventSchema>;
+// Announcement
+export type AnnouncementSchema = {
+  id?: number;
+  title: string;
+  description: string;
+  date: Date;
+  classId: number | null;
+};
 
 export const announcementFormSchema = z.object({
   id: z.number().optional(),
@@ -330,13 +314,22 @@ export const announcementFormSchema = z.object({
 export type AnnouncementFormInput = z.input<typeof announcementFormSchema>;
 export type AnnouncementFormValues = z.infer<typeof announcementFormSchema>;
 
-export type AnnouncementSchema = {
-  id?: number;
-  title: string;
-  description: string;
-  date: Date;
-  classId: number | null;
-};
+// Event
+export const eventSchema = z.object({
+  id: z.coerce.number().optional(),
+
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+
+  classId: z.coerce.number().optional().nullable(),
+  category: z.string().optional(),
+});
+
+export type EventFormInput = z.input<typeof eventSchema>;
+export type EventFormValues = z.infer<typeof eventSchema>;
 
 export const holidaySchema = z.object({
   id: z.number().optional(),

@@ -1,38 +1,34 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { holidaySchema, HolidayFormInput } from "@/lib/formValidationSchemas";
-import { createHoliday, updateHoliday } from "@/lib/actions";
-import { ActionState } from "@/lib/actions";
+import {
+  holidaySchema,
+  HolidayFormInput,
+} from "@/lib/formValidationSchemas";
+import { createHoliday, updateHoliday, ActionState } from "@/lib/actions";
 
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
-import FormStepper from "@/components/ui/FormStepper";
+import CollapsibleSection from "@/components/CollapsibleSection";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
+import InputField from "../InputField";
 import RadixDatePicker from "@/components/ui/RadixDatePicker";
 import RadixSelect from "@/components/ui/RadixSelect";
-import InputField from "../InputField";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 
-const steps = ["Details", "Type"];
+/* ================= TYPES ================= */
+
+type Section = "details" | "type";
 
 export default function HolidayForm({
   type,
   data,
-  setOpen,
+  close,
 }: {
   type: "create" | "update";
   data?: {
@@ -41,11 +37,13 @@ export default function HolidayForm({
     date: Date;
     isFullDay: boolean;
   };
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-  const submittedRef = useRef(false);
+
+  /* ================= COLLAPSIBLE STATE ================= */
+
+  const [openSection, setOpenSection] = useState<Section>("details");
 
   /* ================= RHF ================= */
 
@@ -57,48 +55,21 @@ export default function HolidayForm({
       date: data?.date ? new Date(data.date) : new Date(),
       isFullDay: data?.isFullDay ? "FULL" : "HALF",
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
-  const {
-    control,
-    watch,
-    trigger,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = methods;
+  const { control, handleSubmit } = methods;
 
-  /* ================= SERVER ACTIONS ================= */
+  /* ================= ACTION ================= */
 
-  const [createState, createAction] = useActionState<ActionState, any>(
-    createHoliday,
+  const [state, formAction] = useActionState<ActionState, any>(
+    type === "create" ? createHoliday : updateHoliday,
     { success: false },
   );
-
-  const [updateState, updateAction] = useActionState<ActionState, any>(
-    updateHoliday,
-    { success: false },
-  );
-
-  const state = type === "create" ? createState : updateState;
-
-  /* ================= STEP VALIDATION ================= */
-
-  const nextStep = async () => {
-    const fields: (keyof HolidayFormInput)[][] = [
-      ["title", "date"],
-      ["isFullDay"],
-    ];
-
-    const valid = await trigger(fields[step]);
-    if (valid) setStep((s) => s + 1);
-  };
 
   /* ================= SUBMIT ================= */
 
   const onSubmit = handleSubmit((values) => {
-    submittedRef.current = true;
-
     startTransition(() => {
       const payload = {
         title: values.title,
@@ -107,122 +78,111 @@ export default function HolidayForm({
       };
 
       if (type === "create") {
-        createAction(payload);
+        formAction(payload);
       } else {
-        updateAction({ id: data!.id, ...payload });
+        formAction({ id: data!.id, ...payload });
       }
     });
   });
 
-  /* ================= SUCCESS EFFECT ================= */
+  /* ================= EFFECT ================= */
 
   useEffect(() => {
-    if (!submittedRef.current) return;
-    if (!state.success) return;
+    if (state.success) {
+      toast.success(
+        `Holiday ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
+      router.refresh();
+    }
 
-    toast.success(
-      `Holiday ${type === "create" ? "created" : "updated"} successfully`,
-    );
-
-    submittedRef.current = false;
-    setOpen(false);
-    router.refresh();
-  }, [state.success, type, router, setOpen]);
+    if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state, router, close, type]);
 
   /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
-      <form
-        onSubmit={onSubmit}
-        className="flex flex-col gap-4"
-      >
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Holiday" : "Update Holiday"}
-        </h1>
-
-        <FormStepper
-          steps={steps}
-          step={step}
-          errorSteps={[
-            Boolean(errors.title || errors.date),
-            Boolean(errors.isFullDay),
-          ]}
-        />
-
-        <div className="min-h-[160px]">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div
-                key="details"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                className="space-y-4"
-              >
-                <InputField label="Holiday Title" name="title" />
-
-                <Controller
-                  name="date"
-                  control={control}
-                  render={({ field }) => (
-                    <RadixDatePicker
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div
-                key="type"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                className="space-y-4"
-              >
-                <Controller
-                  name="isFullDay"
-                  control={control}
-                  render={({ field }) => (
-                    <RadixSelect
-                      placeholder="Holiday type"
-                      value={field.value}
-                      onChange={field.onChange}
-                      options={[
-                        { value: "FULL", label: "Full Day" },
-                        { value: "HALF", label: "Half Day" },
-                      ]}
-                    />
-                  )}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[60vh]">
+        {/* HEADER */}
+        <div className="shrink-0 px-4 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Holiday" : "Update Holiday"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Holiday details and type
+          </p>
         </div>
 
-        <div className="flex justify-between py-4">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
-          )}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {/* DETAILS */}
+          <CollapsibleSection
+            title="Holiday Details"
+            icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
+            open={openSection === "details"}
+            onToggle={() => setOpenSection("details")}
+          >
+            <div className="space-y-4">
+              <InputField label="Holiday Title" name="title" />
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
-            >
-              {isSubmitting ? "Saving..." : "Submit"}
-            </button>
-          )}
+              <Controller
+                name="date"
+                control={control}
+                render={({ field }) => (
+                  <RadixDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {/* TYPE */}
+          <CollapsibleSection
+            title="Holiday Type"
+            icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
+            open={openSection === "type"}
+            onToggle={() => setOpenSection("type")}
+          >
+            <Controller
+              name="isFullDay"
+              control={control}
+              render={({ field }) => (
+                <RadixSelect
+                  placeholder="Holiday type"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={[
+                    { value: "FULL", label: "Full Day" },
+                    { value: "HALF", label: "Half Day" },
+                  ]}
+                />
+              )}
+            />
+          </CollapsibleSection>
+        </div>
+
+        {/* FOOTER */}
+        <div className="shrink-0 border-t px-4 py-3 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={close}
+            className="text-xs text-gray-600"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs"
+          >
+            {type === "create" ? "Create Holiday" : "Update Holiday"}
+          </button>
         </div>
       </form>
     </FormProvider>

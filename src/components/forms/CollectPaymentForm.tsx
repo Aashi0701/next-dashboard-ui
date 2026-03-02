@@ -12,7 +12,6 @@ export enum PaymentMode {
   BANK_TRANSFER = "BANK_TRANSFER",
 }
 
-
 type FormValues = {
   studentFeeId: number;
   amount: number;

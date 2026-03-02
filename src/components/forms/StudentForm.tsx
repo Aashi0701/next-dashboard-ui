@@ -1,100 +1,109 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useEffect,
-  useState,
-  startTransition,
-  useActionState,
-} from "react";
+import { useEffect, useState, startTransition, useActionState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import RadixDatePicker from "../ui/RadixDatePicker";
-import RadixSelect from "../ui/RadixSelect";
 import { studentSchema, StudentFormValues } from "@/lib/formValidationSchemas";
 import { createStudent, updateStudent, ActionState } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import InputField from "../InputField";
-import { CldUploadWidget } from "next-cloudinary";
-import { motion, AnimatePresence } from "framer-motion";
-import { Camera } from "lucide-react";
-import FormStepper from "@/components/ui/FormStepper";
-import Image from "next/image";
+import RadixDOBPicker from "@/components/ui/RadixDOBPicker";
+import RadixSelect from "../ui/RadixSelect";
+import CollapsibleSection from "../CollapsibleSection";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-const steps = ["Authentication", "Personal", "Academic"];
+import { CldUploadWidget } from "next-cloudinary";
+import Image from "next/image";
+import { Camera } from "lucide-react";
+
+type Section = "personal" | "academic";
 
 export default function StudentForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: Partial<StudentFormValues>;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: {
-    classes: any[];
-    parents: any[];
+    classes: { id: number; name: string }[];
+    parents: { id: string; name: string; surname: string }[];
   };
 }) {
   const router = useRouter();
-  const { classes = [], parents = [] } = relatedData || {};
-
-  const [step, setStep] = useState(0);
-  const [img, setImg] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
-
-  /* ================= RHF ================= */
+  const classes = relatedData?.classes ?? [];
+  const parents = relatedData?.parents ?? [];
 
   const methods = useForm<StudentFormValues>({
     resolver: zodResolver(studentSchema),
-    mode: "onChange",
     defaultValues: {
       ...data,
-      classId: data?.classId ?? 0,
+      classId: data?.classId ?? undefined,
+      parentId: data?.parentId ?? undefined,
     },
+    mode: "onSubmit",
   });
 
   const {
     handleSubmit,
-    setValue,
-    trigger,
     watch,
-    register,
-    formState: { isSubmitting, errors },
+    setValue,
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
 
-  /* ================= ACTION ================= */
+  const [img, setImg] = useState<any>(data?.img ?? null);
+  const [openSection, setOpenSection] = useState<Section>("personal");
+
+  const sectionFields: Record<Section, readonly (keyof StudentFormValues)[]> = {
+    personal: [
+      "name",
+      "surname",
+      "email",
+      "phone",
+      "address",
+      "bloodType",
+      "birthday",
+      "sex",
+    ],
+    academic: ["parentId", "classId"],
+  };
 
   const [state, formAction] = useActionState<ActionState, StudentFormValues>(
     type === "create" ? createStudent : updateStudent,
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  /* Auto-open section with first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstError = Object.keys(errors)[0] as keyof StudentFormValues;
 
-  const nextStep = async () => {
-    const fields: (keyof StudentFormValues)[][] = [
-      ["username", "email", "password"],
-      ["name", "surname", "phone", "address", "bloodType", "birthday", "sex"],
-      ["parentId", "classId"],
-    ];
+      const section = (
+        Object.entries(sectionFields) as [
+          Section,
+          readonly (keyof StudentFormValues)[],
+        ][]
+      ).find(([, fields]) => fields.includes(firstError))?.[0];
 
-    const valid = await trigger(fields[step]);
-    if (valid) setStep((s) => s + 1);
-  };
+      if (section) setOpenSection(section);
 
-  /* ================= SUBMIT ================= */
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[name="${firstError}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [errors, submitCount]);
 
   const onSubmit = handleSubmit((values) => {
     startTransition(() =>
       formAction({
         ...values,
-        img: img?.secure_url ?? values.img,
+        img:
+          typeof img === "string" ? img.trim() || undefined : img?.secure_url,
       }),
     );
   });
@@ -104,189 +113,191 @@ export default function StudentForm({
       toast.success(
         `Student ${type === "create" ? "created" : "updated"} successfully`,
       );
-      setOpen(false);
+      close();
       router.refresh();
     }
-  }, [state, router, setOpen, type]);
-
-  /* ================= UI ================= */
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <div className="relative">
-          <ModalCloseButton onClose={() => setOpen(false)} />
-          <h1 className="text-lg font-semibold">
+      <form className="flex flex-col h-[70vh] max-h-[75vh]" onSubmit={onSubmit}>
+        {/* ===== HEADER (FIXED) ===== */}
+        <div className="shrink-0 px-4 sm:px-6 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
             {type === "create" ? "Create Student" : "Update Student"}
           </h1>
+          <p className="text-xs text-gray-500">
+            Manage student personal and academic details
+          </p>
         </div>
 
-        <FormStepper
-          steps={steps}
-          step={step}
-          errorSteps={[
-            Boolean(errors.username || errors.email || errors.phone),
-            Boolean(errors.name || errors.surname || errors.address),
-          ]}
-        />
+        {/* ===== CONTENT (SCROLL ONLY) ===== */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-24 space-y-4">
+          {/* PERSONAL */}
+          <CollapsibleSection
+            title="Personal Information"
+            description="Basic student details"
+            icon="👤"
+            open={openSection === "personal"}
+            onToggle={() => setOpenSection("personal")}
+          >
+            <div className="grid sm:grid-cols-2 gap-1.5 sm:gap-4">
+              <InputField label="First Name" name="name" />
+              <InputField label="Last Name" name="surname" />
+              <InputField label="Email" name="email" />
+              <InputField label="Phone" name="phone" type="phone" />
+              <InputField label="Address" name="address" />
+              <InputField label="Blood Type" name="bloodType" />
 
-        {/* SCROLL AREA */}
-        <div className="min-h-[160px]">
-          <AnimatePresence mode="wait">
-            {/* STEP 1 – AUTH */}
-            {step === 0 && (
-              <motion.div
-                key="auth"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              >
-                <InputField label="Username" name="username" />
-                <InputField label="Email" name="email" />
-                <InputField label="Password" name="password" type="password" />
-
-                <CldUploadWidget
-                  uploadPreset="school"
-                  onUploadAdded={() => setUploading(true)}
-                  onSuccess={(res, { widget }) => {
-                    setImg(res.info);
-                    setUploading(false);
-                    widget.close();
-                  }}
-                  onError={() => setUploading(false)}
-                >
-                  {({ open }) => (
-                    <div className="sm:col-span-2">
-                      {img ? (
-                        <div className="mb-3 flex items-center gap-4">
-                          <Image
-                            src={img.secure_url}
-                            alt="Avatar"
-                            width={64}
-                            height={64}
-                            className="rounded-full object-cover border"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setImg(null)}
-                            className="text-red-500 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => open()}
-                          disabled={uploading}
-                          className="w-full h-11 border rounded-xl flex items-center justify-center gap-2"
-                        >
-                          <Camera className="w-4 h-4" />
-                          Upload Photo
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </CldUploadWidget>
-              </motion.div>
-            )}
-
-            {/* STEP 2 – PERSONAL */}
-            {step === 1 && (
-              <motion.div
-                key="personal"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-              >
-                <InputField label="First Name" name="name" />
-                <InputField label="Last Name" name="surname" />
-                <InputField label="Phone" name="phone" />
-                <InputField label="Address" name="address" />
-                <InputField label="Blood Type" name="bloodType" />
-
-                <RadixDatePicker
+              <div className="sm:col-span-2">
+                <label className="text-[8px] sm:text-[11px] font-bold text-gray-600">
+                  Date of Birth
+                </label>
+                <RadixDOBPicker
                   value={watch("birthday")}
                   onChange={(d) =>
-                    setValue("birthday", d, { shouldValidate: true })
+                    setValue("birthday", d, {
+                      shouldValidate: true,
+                    })
                   }
                 />
+              </div>
 
+              <div className="w-full space-y-1">
+                <label className="text-[8px] sm:text-[11px] font-bold text-gray-600">
+                  Gender
+                </label>
                 <RadixSelect
                   value={watch("sex")}
                   onChange={(v) =>
-                    setValue("sex", v as any, { shouldValidate: true })
+                    setValue("sex", v as StudentFormValues["sex"], {
+                      shouldValidate: true,
+                    })
                   }
                   options={[
                     { value: "MALE", label: "Male" },
                     { value: "FEMALE", label: "Female" },
                   ]}
                 />
-              </motion.div>
-            )}
+              </div>
 
-            {/* STEP 3 – ACADEMIC */}
-            {step === 2 && (
-              <motion.div
-                key="academic"
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              {/* PHOTO */}
+              <CldUploadWidget
+                uploadPreset="school"
+                onSuccess={(res) => setImg(res.info)}
               >
-                {/* PARENT */}
-                <RadixSelect
-                  value={watch("parentId")}
-                  onChange={(v) => {
-                    if (!v) return;
-                    setValue("parentId", v, { shouldValidate: true });
-                  }}
-                  placeholder="Select Parent"
-                  options={parents.map((p) => ({
-                    value: p.id,
-                    label: `${p.name} ${p.surname}`,
-                  }))}
-                />
+                {({ open }) => (
+                  <div className="sm:col-span-2">
+                    {(
+                      typeof img === "string" ? img.trim() : img?.secure_url
+                    ) ? (
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={typeof img === "string" ? img : img.secure_url}
+                          alt="Avatar"
+                          width={56}
+                          height={56}
+                          className="rounded-full border"
+                        />
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => open()}
+                            className="text-xs text-blue-600"
+                          >
+                            Replace photo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setImg(undefined)}
+                            className="text-[11px] text-red-500"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => open()}
+                        className="w-full h-10 border rounded-lg bg-gray-50 text-xs flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Upload photo
+                      </button>
+                    )}
+                  </div>
+                )}
+              </CldUploadWidget>
+            </div>
+          </CollapsibleSection>
 
-                {/* CLASS */}
-                <RadixSelect
-                  value={watch("classId") ? String(watch("classId")) : ""}
-                  onChange={(v) => {
-                    if (!v) return;
-                    setValue("classId", Number(v), {
-                      shouldValidate: true,
-                    });
-                  }}
-                  placeholder="Select Class"
-                  options={classes.map((c) => ({
-                    value: String(c.id),
-                    label: c.name,
-                  }))}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* ACADEMIC */}
+          <CollapsibleSection
+            title="Academic Information"
+            description="Class and parent details"
+            icon="🎓"
+            open={openSection === "academic"}
+            onToggle={() => setOpenSection("academic")}
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <RadixSelect
+                value={watch("parentId") ?? ""}
+                onChange={(v) =>
+                  setValue("parentId", v ?? "", { shouldValidate: true })
+                }
+                placeholder="Select Parent"
+                options={parents.map((p) => ({
+                  value: p.id,
+                  label: `${p.name} ${p.surname}`,
+                }))}
+              />
+
+              <RadixSelect
+                value={watch("classId") ? String(watch("classId")) : ""}
+                onChange={(v) =>
+                  setValue("classId", Number(v), { shouldValidate: true })
+                }
+                placeholder="Select Class"
+                options={classes.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                }))}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
+          )}
         </div>
 
-        {state.error && <p className="text-xs text-red-500">{state.error}</p>}
-
-        {/* ACTION BAR */}
-        <div className="flex justify-between border-t pt-3">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
+        {/* ===== FOOTER (FIXED) ===== */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600"
+            >
+              Cancel
             </button>
-          )}
-
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
-            </button>
-          ) : (
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg"
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
-              {isSubmitting ? "Saving..." : "Submit"}
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Student"
+                  : "Update Student"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

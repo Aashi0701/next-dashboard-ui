@@ -1,6 +1,6 @@
 "use client";
 
-import { FiSend } from "react-icons/fi";
+import ActionMenuClient, { ActionType } from "@/components/ui/ActionMenuClient";
 
 export default function AnnouncementCard({
   item,
@@ -18,70 +18,58 @@ export default function AnnouncementCard({
     isUnread &&
     Date.now() - new Date(item.date).getTime() < 48 * 60 * 60 * 1000;
 
+  const onAction = (action: ActionType) => {
+    if (action === "whatsapp") onSend(item);
+    if (action === "edit" && item.onEdit) item.onEdit(item);
+    if (action === "delete" && item.onDelete) item.onDelete(item.id);
+  };
+
+  const actions: ActionType[] = [];
+
+  if (role === "admin") {
+    if (!item.whatsappSent) actions.push("whatsapp");
+    actions.push("edit");
+    actions.push("delete");
+  }
+
   return (
-    <div className="bg-white border rounded-xl p-4 shadow-sm space-y-3 mt-2">
-      {/* ===== HEADER ===== */}
+    <div className="bg-white rounded-xl px-4 py-3 border shadow-sm mt-2">
+      {/* ROW 1 */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-start gap-2 min-w-0 mt-1.5">
+          {/* ● UNREAD DOT */}
           {isUnread && (
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="mt-1 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
           )}
 
+          {/* TITLE */}
+          <button
+            onClick={() => onRead(item.id)}
+            className="text-left text-xs font-semibold text-gray-900 leading-tight truncate"
+          >
+            {item.title}
+          </button>
+
+          {/* [Latest] BADGE */}
           {isLatest && (
-            <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+            <span className="mt-0.5 px-2 py-0.5 text-[10px] rounded-full bg-blue-100 text-blue-700 shrink-0">
               Latest
             </span>
           )}
         </div>
 
-        <span className="text-xs text-gray-500">
+        {actions.length > 0 && (
+          <ActionMenuClient onAction={onAction} actions={actions} />
+        )}
+      </div>
+
+      {/* ROW 2 */}
+      <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+        <span className="truncate">{item.class?.name || "All Classes"}</span>
+        <span className="text-gray-400">
           {new Date(item.date).toLocaleDateString("en-IN")}
         </span>
       </div>
-
-      {/* ===== TITLE ===== */}
-      <button
-        onClick={() => onRead(item.id)}
-        className="text-left font-semibold text-sm text-gray-900 leading-snug"
-      >
-        {item.title}
-      </button>
-
-      {/* ===== META ===== */}
-      <div className="text-xs text-gray-500">
-        Class:{" "}
-        <span className="font-medium text-gray-700">
-          {item.class?.name || "All Classes"}
-        </span>
-      </div>
-
-      {/* ===== ACTIONS ===== */}
-      {role === "admin" && (
-        <div className="pt-3 border-t flex items-center justify-between gap-3">
-          {/* LEFT: WhatsApp */}
-          {!item.whatsappSent && (
-            <button
-              onClick={() => onSend(item)}
-              className="
-                flex items-center gap-2
-                px-3 py-1.5 text-xs rounded-full
-                bg-green-50 border border-green-200
-                text-green-700 hover:bg-green-100
-              "
-            >
-              <FiSend className="w-3.5 h-3.5" />
-              Send
-            </button>
-          )}
-
-          {/* RIGHT: EDIT / DELETE */}
-          {item.actions && (
-            <div className="flex items-center gap-2">
-              {item.actions}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

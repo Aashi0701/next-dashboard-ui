@@ -57,7 +57,7 @@ const SubjectListPage = async ({
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="subject" type="update" data={item} />
+            <FormContainer table="subject" type="update" data={item} id={item.id} />
             <FormContainer table="subject" type="delete" id={item.id} />
           </div>
         </td>
@@ -136,11 +136,21 @@ const SubjectListPage = async ({
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 
-      {/* ===== MOBILE CARDS ===== */}
-      <div className="md:hidden mt-4 space-y-4">
-        {data.map((item) => (
-          <SubjectCard key={item.id} item={item} role={role} />
-        ))}
+      <div className="md:hidden mt-3 space-y-3">
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <SubjectCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       {/* ===== PAGINATION ===== */}

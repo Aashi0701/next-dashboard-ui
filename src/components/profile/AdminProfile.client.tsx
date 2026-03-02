@@ -11,16 +11,22 @@ type AdminProfileProps = {
     img: string | null;
     lastActiveAt: Date | null;
   };
+  editSlot: React.ReactNode; // ⬅️ injected from server
 };
 
-export default function AdminProfile({ admin }: AdminProfileProps) {
+export default function AdminProfileClient({
+  admin,
+  editSlot,
+}: AdminProfileProps) {
   const initials = admin.username.slice(0, 2).toUpperCase();
   const { signOut } = useClerk();
 
   return (
     <div className="w-full px-3 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <h1 className="text-xl sm:text-2xl font-semibold mb-6">My Profile</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold mb-6">
+          My Profile
+        </h1>
 
         {/* GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -40,7 +46,9 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
               </div>
             )}
 
-            <p className="text-lg font-medium">{admin.username}</p>
+            <p className="text-lg font-medium">
+              {admin.username}
+            </p>
 
             <span className="mt-1 inline-block rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700">
               System Administrator
@@ -67,10 +75,10 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
             {/* ACCOUNT INFO */}
             <div className="bg-white rounded-xl border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-medium">Account Information</h2>
-                <button className="text-sm px-3 py-1 rounded-md border hover:bg-gray-50">
-                  Edit
-                </button>
+                <h2 className="font-medium">
+                  Account Information
+                </h2>
+                {editSlot}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -81,24 +89,32 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
 
                 <div>
                   <p className="text-gray-500">Username</p>
-                  <p className="font-medium">{admin.username}</p>
+                  <p className="font-medium">
+                    {admin.username}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-gray-500">User ID</p>
-                  <p className="font-medium break-all">{admin.id}</p>
+                  <p className="font-medium break-all">
+                    {admin.id}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-gray-500">Access</p>
-                  <p className="font-medium">Full System Access</p>
+                  <p className="font-medium">
+                    Full System Access
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* PRIVILEGES */}
             <div className="bg-white rounded-xl border p-6">
-              <h2 className="font-medium mb-4">Administrative Privileges</h2>
+              <h2 className="font-medium mb-4">
+                Administrative Privileges
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {[
@@ -109,7 +125,10 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
                   "Manage Fees",
                   "System Configuration",
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-2">
+                  <div
+                    key={item}
+                    className="flex items-center gap-2"
+                  >
                     <span className="w-2 h-2 rounded-full bg-green-500" />
                     {item}
                   </div>
@@ -119,12 +138,16 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
 
             {/* SECURITY */}
             <div className="bg-white rounded-xl border p-6">
-              <h2 className="font-medium mb-4">Quick Security Actions</h2>
+              <h2 className="font-medium mb-4">
+                Quick Security Actions
+              </h2>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between border rounded-lg p-4">
                   <div>
-                    <p className="font-medium text-sm">Password</p>
+                    <p className="font-medium text-sm">
+                      Password
+                    </p>
                     <p className="text-xs text-gray-500">
                       Update your password
                     </p>
@@ -136,13 +159,17 @@ export default function AdminProfile({ admin }: AdminProfileProps) {
 
                 <div className="flex items-center justify-between border rounded-lg p-4">
                   <div>
-                    <p className="font-medium text-sm">Sign out</p>
+                    <p className="font-medium text-sm">
+                      Sign out
+                    </p>
                     <p className="text-xs text-gray-500">
                       Sign out from this device
                     </p>
                   </div>
                   <button
-                    onClick={() => signOut({ redirectUrl: "/" })}
+                    onClick={() =>
+                      signOut({ redirectUrl: "/" })
+                    }
                     className="border border-red-400 text-red-600 rounded-md px-3 py-1 text-sm"
                   >
                     Logout

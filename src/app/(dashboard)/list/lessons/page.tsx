@@ -6,7 +6,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Lesson, Prisma, Subject, Teacher } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
 import LessonFilters from "@/components/filters/LessonFilters";
 import LessonSort from "@/components/filters/LessonSort";
 import LessonCard from "@/components/mobile/LessonCard";
@@ -40,7 +39,7 @@ const LessonListPage = async ({
 
   /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
-    { header: "Lesson Name", accessor: "name"},
+    { header: "Lesson Name", accessor: "name" },
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
     {
@@ -71,6 +70,7 @@ const LessonListPage = async ({
             <FormContainer
               table="lesson"
               type="update"
+              id={item.id} // ✅ REQUIRED
               data={item}
               relatedData={relatedData}
             />
@@ -158,9 +158,19 @@ const LessonListPage = async ({
           <TableSearch />
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <LessonFilters subjects={subjects} teachers={teachers} classes={classes} />
+            <LessonFilters
+              subjects={subjects}
+              teachers={teachers}
+              classes={classes}
+            />
             <LessonSort />
-            {role === "admin" && <FormContainer table="lesson" type="create" relatedData={relatedData} />}
+            {role === "admin" && (
+              <FormContainer
+                table="lesson"
+                type="create"
+                relatedData={relatedData}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -172,25 +182,20 @@ const LessonListPage = async ({
 
       {/* ===== MOBILE CARDS ===== */}
       <div className="md:hidden mt-3 space-y-3">
-        {data.map((item) => (
-          <LessonCard
-            key={item.id}
-            item={item}
-            actions={
-              role === "admin" && (
-                <>
-                  <FormContainer
-                    table="lesson"
-                    type="update"
-                    data={item}
-                    relatedData={relatedData}
-                  />
-                  <FormContainer table="lesson" type="delete" id={item.id} />
-                </>
-              )
-            }
-          />
-        ))}
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <LessonCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       {/* ===== PAGINATION ===== */}

@@ -1,45 +1,49 @@
-// components/mobile/AttendanceCard.tsx
-"use client";
+import FormContainer from "@/components/FormContainer";
+import AttendanceCardClient from "./AttendanceCardClient";
+
+type AttendanceItem = {
+  id: number;
+  student: string;
+  class: string;
+  date: string;
+  status: "Present" | "Absent";
+};
 
 export default function AttendanceCard({
   item,
-  actions,
+  role,
+  action,
 }: {
-  item: {
-    student: string;
-    class: string;
-    date: string;
-    status: "Present" | "Absent";
-  };
-  actions?: React.ReactNode;
+  item: AttendanceItem;
+  role?: string;
+  action?: "edit" | "delete";
 }) {
   return (
-    <div className="bg-white border rounded-lg px-3 py-2 shadow-sm">
-      {/* TOP ROW */}
-      <div className="flex justify-between items-center">
-        <p className="font-medium text-sm truncate">
-          {item.student}
-        </p>
+    <>
+      {/* CLIENT UI */}
+      <AttendanceCardClient item={item} role={role} />
 
-        <span
-          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-            item.status === "Present"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {item.status}
-        </span>
-      </div>
+      {/* SERVER MODALS */}
+      {action === "edit" && (
+        <FormContainer
+          key={`edit-${item.id}`}
+          table="attendance"
+          type="update"
+          data={item}
+          id={item.id}
+          trigger={null}
+        />
+      )}
 
-      {/* BOTTOM ROW */}
-      <div className="flex justify-between items-center mt-1">
-        <p className="text-xs text-gray-500 truncate">
-          {item.class} • {item.date}
-        </p>
-
-        {actions}
-      </div>
-    </div>
+      {action === "delete" && (
+        <FormContainer
+          key={`delete-${item.id}`}
+          table="attendance"
+          type="delete"
+          id={item.id}
+          trigger={null}
+        />
+      )}
+    </>
   );
 }

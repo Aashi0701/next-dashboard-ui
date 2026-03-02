@@ -34,6 +34,14 @@ export type Attendance = {
   status: "PRESENT" | "ABSENT";
 };
 
+export type AttendanceItem = {
+  id: number;
+  student: string;
+  class: string;
+  date: string;
+  status: "Present" | "Absent";
+};
+
 export type Holiday = {
   id: string;
   title: string;

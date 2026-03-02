@@ -2,14 +2,12 @@ import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-
 import prisma from "@/lib/prisma";
 import { Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { auth } from "@clerk/nextjs/server";
-
 import TeacherFilters from "@/components/filters/TeacherFilters";
 import TeacherSort from "@/components/filters/TeacherSort";
 import TeacherCard from "@/components/mobile/TeacherCard";
@@ -108,11 +106,26 @@ const TeacherListPage = async ({
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
+            {/* VIEW */}
             <Link href={`/list/teachers/${item.id}`}>
-              <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-                <Image src="/eye.png" alt="" width={16} height={16} />
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
+              >
+                <Image src="/eye.png" alt="View" width={16} height={16} />
               </button>
             </Link>
+
+            {/* EDIT */}
+            <FormContainer
+              table="teacher"
+              type="update"
+              id={item.id}
+              data={item}
+              relatedData={{ subjects, classes }}
+            />
+
+            {/* DELETE */}
             <FormContainer table="teacher" type="delete" id={item.id} />
           </div>
         </td>
@@ -196,7 +209,11 @@ const TeacherListPage = async ({
             <TeacherFilters subjects={subjects} classes={classes} />
             <TeacherSort />
             {role === "admin" && (
-              <FormContainer table="teacher" type="create" />
+              <FormContainer
+                table="teacher"
+                type="create"
+                relatedData={{ subjects, classes }}
+              />
             )}
           </div>
         </div>
@@ -208,10 +225,21 @@ const TeacherListPage = async ({
       </div>
 
       {/* ===== MOBILE CARDS ===== */}
-      <div className="md:hidden mt-4 space-y-4 w-full overflow-x-hidden">
-        {data.map((item) => (
-          <TeacherCard key={item.id} item={item} role={role} />
-        ))}
+      <div className="md:hidden mt-3 space-y-3">
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <TeacherCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       {/* ===== PAGINATION ===== */}

@@ -14,7 +14,7 @@ export default function BackButton({
       onClick={() => router.back()}
       className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition"
     >
-      <span className="text-xs font-bold">←</span>
+      <span className="text-xs font-extrabold">←</span>
       {label}
     </button>
   );

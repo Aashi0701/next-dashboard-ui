@@ -50,11 +50,6 @@ const StudentListPage = async ({
   const columns = [
     { header: "Info", accessor: "info" },
     {
-      header: "Student ID",
-      accessor: "studentId",
-      className: "hidden md:table-cell",
-    },
-    {
       header: "Class",
       accessor: "class",
       className: "hidden md:table-cell",
@@ -130,15 +125,8 @@ const StudentListPage = async ({
           </div>
         </td>
 
-        {/* STUDENT ID */}
-        <td className="p-4 hidden md:table-cell truncate">
-          {item.username}
-        </td>
-
         {/* CLASS */}
-        <td className="p-4 hidden md:table-cell">
-          {item.class.name}
-        </td>
+        <td className="p-4 hidden md:table-cell">{item.class.name}</td>
 
         {/* FEE STATUS */}
         {role === "admin" && (
@@ -165,25 +153,31 @@ const StudentListPage = async ({
         )}
 
         {/* PHONE */}
-        <td className="p-4 hidden lg:table-cell truncate">
-          {item.phone}
-        </td>
+        <td className="p-4 hidden lg:table-cell truncate">{item.phone}</td>
 
         {/* ADDRESS */}
-        <td className="p-4 hidden lg:table-cell truncate">
-          {item.address}
-        </td>
+        <td className="p-4 hidden lg:table-cell truncate">{item.address}</td>
 
         {/* ACTIONS */}
         {role === "admin" && (
           <td className="p-4 text-center">
             <div className="flex justify-center gap-2">
+              {/* VIEW */}
               <Link href={`/list/students/${item.id}`}>
                 <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-                  <Image src="/eye.png" alt="" width={16} height={16} />
+                  <Image src="/eye.png" alt="View" width={16} height={16} />
                 </button>
               </Link>
 
+              {/* EDIT */}
+              <FormContainer
+                table="student"
+                type="update"
+                data={item}
+                id={item.id}
+              />
+
+              {/* DELETE */}
               <FormContainer table="student" type="delete" id={item.id} />
             </div>
           </td>
@@ -313,9 +307,20 @@ const StudentListPage = async ({
       </div>
 
       <div className="md:hidden mt-4 space-y-3">
-        {data.map((item) => (
-          <StudentCard key={item.id} item={item} role={role} />
-        ))}
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <StudentCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       <Pagination page={p} count={count} />

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Table from "@/components/Table";
 import { FiSend } from "react-icons/fi";
 import AnnouncementCard from "@/components/mobile/AnnouncementCard";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
+import FormModal from "@/components/FormModal";
 
 export default function AnnouncementTableClient({
   data,
@@ -44,7 +46,7 @@ export default function AnnouncementTableClient({
       `📢 *School Announcement*\n\n` +
         `*${item.title}*\n` +
         `Class: ${item.class?.name || "All Classes"}\n` +
-        `Date: ${new Date(item.date).toLocaleDateString("en-IN")}`
+        `Date: ${new Date(item.date).toLocaleDateString("en-IN")}`,
     );
 
   /* ---------------- TABLE CONFIG ---------------- */
@@ -62,25 +64,16 @@ export default function AnnouncementTableClient({
           {
             header: "Last Sent",
             accessor: "whatsapp",
-            className: "text-center w-[170px]",
+            className: "text-center w-[140px]",
           },
           {
             header: "Actions",
             accessor: "actions",
-            className: "text-center w-[140px]",
+            className: "text-center w-[160px]",
           },
         ]
       : []),
   ];
-
-  const formatSentAt = (date: string) =>
-    new Date(date).toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
 
   const renderRow = (item: any) => {
     const isUnread = item.reads.length === 0;
@@ -120,12 +113,19 @@ export default function AnnouncementTableClient({
           {new Date(item.date).toLocaleDateString("en-IN")}
         </td>
 
+        {/* ACTIONS */}
         {/* LAST SENT */}
         {role === "admin" && (
           <td className="p-4 align-middle text-center">
-            {isSent ? (
+            {item.whatsappSent ? (
               <div className="text-[11px] text-gray-600">
-                {formatSentAt(item.whatsappSentAt)}
+                {new Date(item.whatsappSentAt).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </div>
             ) : (
               <span className="text-gray-400 text-sm">—</span>
@@ -137,16 +137,24 @@ export default function AnnouncementTableClient({
         {role === "admin" && (
           <td className="p-4 align-middle text-center">
             <div className="flex items-center justify-center gap-3">
-              {!isSent && (
+              {!item.whatsappSent && (
                 <button
                   onClick={() => setConfirmItem(item)}
                   className="w-9 h-9 flex items-center justify-center rounded-full
-                  bg-green-50 border border-green-200 hover:bg-green-100"
+          bg-green-50 border border-green-200 hover:bg-green-100"
                 >
                   <FiSend className="w-4 h-4 text-green-600" />
                 </button>
               )}
-              {item.actions}
+
+              <FormModal
+                table="announcement"
+                type="update"
+                id={item.id}
+                data={item}
+              />
+
+              <FormModal table="announcement" type="delete" id={item.id} />
             </div>
           </td>
         )}
@@ -168,34 +176,32 @@ export default function AnnouncementTableClient({
             key={item.id}
             item={item}
             role={role}
-            onSend={(i)  => setConfirmItem(i)}
+            onSend={(i) => setConfirmItem(i)}
             onRead={markAsRead}
           />
         ))}
       </div>
 
-      {/* EMPTY */}
-      {data.length === 0 && (
-        <p className="text-center text-sm text-gray-500 mt-6">
-          No announcements found
-        </p>
-      )}
-
       {/* CONFIRM MODAL */}
       {confirmItem && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-[380px] shadow-lg">
-            <h2 className="text-lg font-semibold mb-2">Send Announcement?</h2>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:w-[420px] rounded-t-2xl sm:rounded-xl px-4 py-4 sm:px-6 sm:py-5 shadow-xl">
+            <div className="relative">
+              <ModalCloseButton onClose={() => setConfirmItem(null)} />
+              <h2 className="text-sm sm:text-lg font-semibold mb-1">
+                Send Announcement?
+              </h2>
+            </div>
 
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-xs sm:text-sm text-gray-600 mb-4">
               WhatsApp will open. After sending, click{" "}
-              <b>“Mark as Sent”</b>.
+              <span className="font-medium">“Mark as Sent”</span>.
             </p>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
               <button
                 onClick={() => setConfirmItem(null)}
-                className="px-4 py-2 rounded-md border text-sm"
+                className="px-4 py-2 border rounded-md text-xs sm:text-sm"
               >
                 Cancel
               </button>
@@ -204,17 +210,17 @@ export default function AnnouncementTableClient({
                 onClick={() =>
                   window.open(
                     `https://wa.me/?text=${buildWhatsAppMessage(confirmItem)}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
-                className="px-4 py-2 rounded-md bg-green-600 text-white text-sm"
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-xs sm:text-sm"
               >
                 Open WhatsApp
               </button>
 
               <button
                 onClick={markWhatsAppSent}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-xs sm:text-sm"
               >
                 Mark as Sent
               </button>

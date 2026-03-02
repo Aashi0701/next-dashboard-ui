@@ -222,7 +222,7 @@ export default function HomePage() {
             {/* Login CTA */}
             <Link
               href="/sign-in"
-              className="ml-2 px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.03] transition-all"
+              className="ml-2 px-5 py-2 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.03] transition-all"
             >
               Login
             </Link>
@@ -293,7 +293,7 @@ export default function HomePage() {
         />
 
         {/* Gradient Overlay (slightly stronger for mobile readability) */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/80 via-purple-500/75 to-pink-400/80 sm:from-indigo-400/70 sm:via-purple-400/65 sm:to-pink-300/70" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/65 via-purple-400/60 to-rose-400/65 sm:from-indigo-400/70 sm:via-purple-400/65 sm:to-pink-300/70" />
 
         {/* Decorative Blobs (desktop only) */}
         <div className="hidden sm:block absolute -top-32 -left-32 w-[500px] h-[500px] bg-pink-400/30 rounded-full blur-3xl" />
@@ -331,29 +331,14 @@ export default function HomePage() {
           {/* Logo */}
           {/* ================= HERO LOGO ================= */}
           <div className="relative z-40 flex justify-center mb-6 sm:mb-10 mt-6 sm:mt-10">
-            <div
-              className="
-      bg-white/30
-      backdrop-blur-md
-      p-3 sm:p-4
-      rounded-full
-      shadow-2xl
-      animate-float-soft
-      pongal-glow
-    "
-            >
+            <div className="bg-white/30 backdrop-blur-md p-3 sm:p-4 rounded-full shadow-2xl animate-float-soft pongal-glow">
               <Image
                 src="/my_logo.png"
                 alt="TrueSunshine Logo"
                 width={96}
                 height={96}
                 priority
-                className="
-        w-[80px] h-[80px]
-        sm:w-[110px] sm:h-[110px]
-        object-contain
-      "
-              />
+                className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] object-contain"/>
             </div>
           </div>
 
@@ -373,14 +358,14 @@ export default function HomePage() {
             <Link
               href="https://forms.gle/iETUsNBC3C7UfD3E7"
               target="_blank"
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
+              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
             >
               Enroll Now →
             </Link>
 
             <Link
               href="#contact"
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
+              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
             >
               Contact Us →
             </Link>
@@ -397,7 +382,7 @@ export default function HomePage() {
           {/* ================= LEFT — ABOUT TEXT ================= */}
           <div className="flex-1 text-center md:text-left animate-fade-in-up">
             <h2
-              className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+              className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500
                  bg-clip-text text-transparent mb-3"
             >
               About TrueSunshine Preschool
@@ -483,7 +468,7 @@ export default function HomePage() {
             {/* Section Header */}
             <div className="max-w-2xl mb-14 sm:mb-20">
               <h2
-                className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
+                className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500
           bg-clip-text text-transparent mb-3 text-center"
               >
                 Mission & Vision
@@ -545,7 +530,7 @@ export default function HomePage() {
         className="relative py-14 sm:py-16 px-4 sm:px-10 bg-gradient-to-b from-indigo-200 to-purple-200">
         <div className="max-w-4xl mx-auto text-center">
           {/* Heading */}
-          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
             What Parents Say
           </h3>
 
@@ -597,7 +582,7 @@ export default function HomePage() {
         className="bg-gradient-to-b from-indigo-200 to-purple-200 py-6 sm:py-14 px-4 sm:px-6 text-center"
       >
         {/* Title */}
-        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
           Gallery
         </h3>
 
@@ -735,27 +720,14 @@ export default function HomePage() {
       {/* Contact Us Section*/}
       <section
         id="contact"
-        className="
-    relative
-    bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF]
-    py-12 sm:py-18 px-4 sm:px-10
-    overflow-hidden
-  "
-      >
+        className="relative bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF] py-12 sm:py-18 px-4 sm:px-10 overflow-hidden">
         {/* Soft background glow */}
         <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-200/40 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-72 h-72 bg-pink-200/30 rounded-full blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto text-center">
           {/* Title */}
-          <h3
-            className="
-        text-2xl sm:text-3xl lg:text-4xl
-        font-extrabold mb-3
-        bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500
-        bg-clip-text text-transparent
-      "
-          >
+          <h3 className=" text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
             Contact Us
           </h3>
 
@@ -770,7 +742,7 @@ export default function HomePage() {
           {/* ================= CONTACT INFO CARDS ================= */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14">
             {/* Address */}
-            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+            <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
               <div className="text-2xl mb-3">📍</div>
               <h4 className="font-semibold text-indigo-800 mb-1">Address</h4>
               <p className="text-gray-600 text-sm leading-relaxed">
@@ -780,14 +752,14 @@ export default function HomePage() {
             </div>
 
             {/* Phone */}
-            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+            <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
               <div className="text-2xl mb-3">📞</div>
               <h4 className="font-semibold text-indigo-800 mb-1">Phone</h4>
               <p className="text-gray-600 text-sm">+91 79895 99833</p>
             </div>
 
             {/* Email */}
-            <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
+            <div className="bg-white shadow-sm border border-stone-200 p-6 rounded-2xl hover:shadow-lg transition">
               <div className="text-2xl mb-3">📧</div>
               <h4 className="font-semibold text-indigo-800 mb-1">Email</h4>
               <p className="text-gray-600 text-sm break-words">
@@ -842,7 +814,7 @@ export default function HomePage() {
                 type="submit"
                 className="
             w-full py-3
-            bg-gradient-to-r from-purple-600 to-pink-500
+            bg-gradient-to-r from-rose-400 to-indigo-500
             text-white font-semibold
             rounded-md
             hover:scale-[1.02]

@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import prisma from "./prisma";
 import { clerkAdmin } from "./clerkAdmin";
 import { auth } from "@clerk/nextjs/server";
@@ -32,6 +33,7 @@ import path from "path";
 export type ActionState = {
   success: boolean;
   error?: string;
+  ts?: number;
 };
 
 type AnnouncementCreateData = {
@@ -461,7 +463,7 @@ export const createStudent = async (
   data: StudentFormValues,
 ): Promise<ActionState> => {
   try {
-    /* ================= PHONE UNIQUENESS ================= */
+    /* PHONE UNIQUENESS */
     if (data.phone) {
       const existingPhone = await prisma.student.findFirst({
         where: { phone: data.phone },
@@ -475,7 +477,7 @@ export const createStudent = async (
       }
     }
 
-    /* ================= ACADEMIC YEAR ================= */
+    /* ACTIVE ACADEMIC YEAR */
     const academicYear = await prisma.academicYear.findFirst({
       where: { isActive: true },
       select: { id: true },
@@ -488,7 +490,7 @@ export const createStudent = async (
       };
     }
 
-    /* ================= CLASS CAPACITY ================= */
+    /* CLASS CAPACITY */
     const classItem = await prisma.class.findUnique({
       where: { id: data.classId },
       include: { _count: { select: { students: true } } },
@@ -501,20 +503,9 @@ export const createStudent = async (
       };
     }
 
-    /* ================= CLERK USER ================= */
-    const user = await clerkAdmin.users.createUser({
-      username: data.username,
-      password: data.password || undefined,
-      firstName: data.name,
-      lastName: data.surname,
-      publicMetadata: { role: "student" },
-    });
-
-    /* ================= PRISMA CREATE ================= */
+    /* CREATE STUDENT */
     await prisma.student.create({
       data: {
-        id: user.id,
-        username: data.username,
         name: data.name,
         surname: data.surname,
         email: data.email || null,
@@ -525,26 +516,18 @@ export const createStudent = async (
         sex: data.sex,
         birthday: data.birthday,
 
-        class: {
-          connect: { id: data.classId },
-        },
-
-        parent: {
-          connect: { id: data.parentId },
-        },
-
-        academicYear: {
-          connect: { id: academicYear.id },
-        },
+        class: { connect: { id: data.classId } },
+        parent: { connect: { id: data.parentId } },
+        academicYear: { connect: { id: academicYear.id } },
       },
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("createStudent error:", error);
     return {
       success: false,
-      error: error?.errors?.[0]?.message ?? "Failed to create student",
+      error: "Failed to create student",
     };
   }
 };
@@ -559,14 +542,11 @@ export const updateStudent = async (
 
   try {
     await clerkAdmin.users.updateUser(data.id, {
-      username: data.username,
-      ...(data.password ? { password: data.password } : {}),
       firstName: data.name,
       lastName: data.surname,
     });
 
     const studentData: Prisma.StudentUpdateInput = {
-      username: data.username,
       name: data.name,
       surname: data.surname,
       email: data.email || null,
@@ -609,8 +589,9 @@ export const deleteStudent = async (
   }
 
   try {
-    await clerkAdmin.users.deleteUser(id);
-    await prisma.student.delete({ where: { id } });
+    await prisma.student.delete({
+      where: { id },
+    });
 
     return { success: true };
   } catch (error) {
@@ -628,10 +609,14 @@ export async function createParent(
   data: ParentFormValues,
 ): Promise<ActionState> {
   try {
+    const hashedPassword = await bcrypt.hash(data.password!, 12);
+
     await prisma.parent.create({
       data: {
         id: crypto.randomUUID(),
         username: data.username,
+        password: hashedPassword,
+
         name: data.name,
         surname: data.surname,
         email: data.email || null,
@@ -659,16 +644,23 @@ export async function updateParent(
   }
 
   try {
+    const updateData: any = {
+      username: data.username,
+      name: data.name,
+      surname: data.surname,
+      email: data.email || null,
+      phone: data.phone,
+      address: data.address,
+    };
+
+    // Only update password if provided
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 12);
+    }
+
     await prisma.parent.update({
       where: { id: data.id },
-      data: {
-        username: data.username,
-        name: data.name,
-        surname: data.surname,
-        email: data.email || null,
-        phone: data.phone,
-        address: data.address,
-      },
+      data: updateData,
     });
 
     return { success: true };
@@ -937,26 +929,58 @@ export async function deleteResult(
   }
 }
 
-// Attendance
+function normalizeDate(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 export async function createAttendance(
   _prevState: ActionState,
   data: AttendanceFormInput,
 ): Promise<ActionState> {
   try {
     const parsed = attendanceSchema.parse(data);
+    const normalizedDate = normalizeDate(parsed.date);
 
-    const { id, ...createData } = parsed;
-
-    await prisma.attendance.create({
-      data: createData,
+    await prisma.attendance.upsert({
+      where: {
+        studentId_lessonId_date: {
+          studentId: parsed.studentId,
+          lessonId: parsed.lessonId,
+          date: normalizedDate,
+        },
+      },
+      update: {
+        present: parsed.present,
+      },
+      create: {
+        studentId: parsed.studentId,
+        lessonId: parsed.lessonId,
+        date: normalizedDate,
+        present: parsed.present,
+      },
     });
 
-    return { success: true };
+    revalidatePath("/list/attendance");
+
+    return {
+      success: true,
+      ts: Date.now(),
+    };
   } catch (error: any) {
     console.error("Create Attendance Error:", error);
+
+    if (error.code === "P2002") {
+      return {
+        success: false,
+        error: "Attendance already exists for this student on this day",
+        ts: Date.now(),
+      };
+    }
+
     return {
       success: false,
       error: error?.message ?? "Failed to create attendance",
+      ts: Date.now(),
     };
   }
 }
@@ -969,22 +993,36 @@ export async function updateAttendance(
     const parsed = attendanceSchema.parse(data);
 
     if (!parsed.id) {
-      return { success: false, error: "Attendance ID is required" };
+      return {
+        success: false,
+        error: "Attendance ID is missing",
+        ts: Date.now(),
+      };
     }
 
-    const { id, ...updateData } = parsed;
-
     await prisma.attendance.update({
-      where: { id },
-      data: updateData,
+      where: { id: parsed.id },
+      data: {
+        present: parsed.present,
+        studentId: parsed.studentId,
+        lessonId: parsed.lessonId,
+        date: normalizeDate(parsed.date),
+      },
     });
 
-    return { success: true };
+    revalidatePath("/list/attendance");
+
+    return {
+      success: true,
+      ts: Date.now(),
+    };
   } catch (error: any) {
     console.error("Update Attendance Error:", error);
+
     return {
       success: false,
       error: error?.message ?? "Failed to update attendance",
+      ts: Date.now(),
     };
   }
 }
@@ -996,50 +1034,53 @@ export async function deleteAttendance(
   const id = Number(formData.get("id"));
 
   if (!id || Number.isNaN(id)) {
-    return { success: false, error: "Invalid attendance ID" };
-  }
-
-  try {
-    await prisma.attendance.delete({
-      where: { id },
-    });
-
-    revalidatePath("/list/attendance");
-    return { success: true };
-  } catch (error: any) {
-    console.error("Delete Attendance Error:", error);
     return {
       success: false,
-      error: error.message ?? "Failed to delete attendance",
+      error: "Invalid attendance ID",
+      ts: Date.now(),
     };
   }
+
+  await prisma.attendance.delete({
+    where: { id },
+  });
+
+  revalidatePath("/list/attendance");
+
+  return {
+    success: true,
+    ts: Date.now(),
+  };
 }
 
 // FeeForm
-export async function createFee(_prevState: ActionState, data: FeeSchemaType) {
+export async function createFee(
+  _prevState: ActionState,
+  data: FeeSchemaType,
+): Promise<ActionState> {
   try {
     await prisma.feeStructure.create({
       data: {
-        title: data.title, // ✅ correct
+        title: data.title,
         amount: data.amount,
-        classId: data.classId ?? null, // ✅ optional
-        type: data.type, // ✅ required by schema
-        term: data.term ?? null, // ✅ optional
+        classId: data.classId ?? null,
+        type: data.type,
+        term: data.term ?? null,
         isActive: true,
       },
     });
 
-    return { success: true, error: false };
+    return { success: true };
   } catch (e) {
     console.error(e);
-    return { success: false, error: true };
+    return { success: false, error: "Failed to create fee" };
   }
 }
 
 export async function updateFee(
   _prevState: ActionState,
   data: FeeSchemaType & { id: number },
-) {
+): Promise<ActionState> {
   try {
     await prisma.feeStructure.update({
       where: { id: data.id },
@@ -1053,10 +1094,10 @@ export async function updateFee(
       },
     });
 
-    return { success: true, error: false };
+    return { success: true };
   } catch (e) {
     console.error(e);
-    return { success: false, error: true };
+    return { success: false, error: "Failed to update fee" };
   }
 }
 

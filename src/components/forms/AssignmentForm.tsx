@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
-
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -16,8 +8,7 @@ import {
   assignmentSchema,
   AssignmentFormValues,
 } from "@/lib/formValidationSchemas";
-
-import { createAssignment, updateAssignment } from "@/lib/actions";
+import { createAssignment, updateAssignment, ActionState } from "@/lib/actions";
 
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -25,54 +16,48 @@ import { toast } from "react-toastify";
 import InputField from "../InputField";
 import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
 import RadixSelect from "@/components/ui/RadixSelect";
-import FormStepper from "@/components/ui/FormStepper";
+import CollapsibleSection from "../CollapsibleSection";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { ActionState } from "@/lib/actions";
-
-/* ===================================================== */
-
-const steps = ["Details", "Schedule"];
-
-/* ===================================================== */
+type Section = "details" | "schedule";
 
 export default function AssignmentForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: AssignmentFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: {
     lessons: { id: number; name: string }[];
   };
 }) {
   const router = useRouter();
-  const { lessons = [] } = relatedData || {};
-  const [step, setStep] = useState(0);
+  const lessons = relatedData?.lessons ?? [];
 
-  /* ================= RHF ================= */
+  const [openSection, setOpenSection] = useState<Section>("details");
+
+  /* ================= FORM ================= */
 
   const methods = useForm<AssignmentFormValues>({
     resolver: zodResolver(assignmentSchema) as any,
     defaultValues: {
+      id: data?.id,
       title: data?.title ?? "",
+      lessonId: data?.lessonId ?? undefined,
       startDate: data?.startDate ? new Date(data.startDate) : undefined,
       dueDate: data?.dueDate ? new Date(data.dueDate) : undefined,
-      lessonId: data?.lessonId,
-      ...(data?.id ? { id: data.id } : {}),
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
+    handleSubmit,
     watch,
     setValue,
-    trigger,
-    handleSubmit,
-    formState: { isSubmitting, isValid },
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
 
   /* ================= ACTION ================= */
@@ -82,17 +67,24 @@ export default function AssignmentForm({
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  /* ================= AUTO-OPEN ERROR SECTION ================= */
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof AssignmentFormValues)[][] = [
-      ["title", "lessonId"],
-      ["startDate", "dueDate"],
-    ];
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      if (errors.title || errors.lessonId) {
+        setOpenSection("details");
+      } else if (errors.startDate || errors.dueDate) {
+        setOpenSection("schedule");
+      }
 
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
-  };
+      requestAnimationFrame(() => {
+        const firstErrorField = Object.keys(errors)[0];
+        document
+          .querySelector(`[name="${firstErrorField}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [errors, submitCount]);
 
   /* ================= SUBMIT ================= */
 
@@ -100,125 +92,126 @@ export default function AssignmentForm({
     startTransition(() => formAction(values));
   });
 
-  /* ================= SUCCESS ================= */
+  /* ================= EFFECTS ================= */
 
   useEffect(() => {
-    if (!state.success) return;
+    if (state.success) {
+      toast.success(
+        `Assignment ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
+      router.refresh();
+    }
 
-    toast.success(
-      `Assignment ${type === "create" ? "created" : "updated"} successfully`,
-    );
-    setOpen(false);
-    router.refresh();
-  }, [state.success, type, router, setOpen]);
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        {/* HEADER */}
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Assignment" : "Update Assignment"}
-        </h1>
-
-        {/* STEPPER */}
-        <FormStepper steps={steps} step={step} />
-
-        {/* STEP CONTENT */}
-        <div className="relative min-h-[150px]">
-          <AnimatePresence mode="wait">
-            {/* STEP 1 — DETAILS */}
-            {step === 0 && (
-              <motion.div
-                key="details"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-4"
-              >
-                <InputField label="Title" name="title" />
-
-                <RadixSelect
-                  placeholder="Select lesson"
-                  value={
-                    watch("lessonId") ? String(watch("lessonId")) : undefined
-                  }
-                  onChange={(v) =>
-                    setValue("lessonId", Number(v), {
-                      shouldValidate: true,
-                    })
-                  }
-                  options={lessons.map((l) => ({
-                    value: String(l.id), // ✅ always non-empty
-                    label: l.name,
-                  }))}
-                />
-              </motion.div>
-            )}
-
-            {/* STEP 2 — SCHEDULE */}
-            {step === 1 && (
-              <motion.div
-                key="schedule"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-4"
-              >
-                <RadixDateTimePicker
-                  value={watch("startDate")}
-                  onChange={(d) =>
-                    setValue("startDate", d, {
-                      shouldValidate: true,
-                    })
-                  }
-                  placeholder="Start date & time"
-                />
-
-                <RadixDateTimePicker
-                  value={watch("dueDate")}
-                  onChange={(d) =>
-                    setValue("dueDate", d, {
-                      shouldValidate: true,
-                    })
-                  }
-                  placeholder="Due date & time"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[60vh] max-h-[75vh]">
+        {/* ===== HEADER (FIXED) ===== */}
+        <div className="shrink-0 px-4 sm:px-6 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Assignment" : "Update Assignment"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Assignment details and schedule
+          </p>
         </div>
 
-        {state.error && (
-          <p className="text-xs text-red-500 mt-2">
-            {state.error}
-          </p>
-        )}
+        {/* ===== CONTENT (SCROLLS) ===== */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          {/* DETAILS */}
+          <CollapsibleSection
+            title="Assignment Details"
+            description="Title and lesson mapping"
+            icon="📝"
+            open={openSection === "details"}
+            onToggle={() => setOpenSection("details")}
+          >
+            <div className="space-y-4">
+              <InputField label="Assignment Title" name="title" />
 
-        {/* ACTIONS */}
-        <div className="flex justify-between pt-4">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
+              <RadixSelect
+                value={watch("lessonId") ? String(watch("lessonId")) : ""}
+                onChange={(v) =>
+                  setValue("lessonId", Number(v), {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Select Lesson"
+                options={lessons.map((l) => ({
+                  value: String(l.id),
+                  label: l.name,
+                }))}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {/* SCHEDULE */}
+          <CollapsibleSection
+            title="Schedule"
+            description="Start and due date"
+            icon="⏰"
+            open={openSection === "schedule"}
+            onToggle={() => setOpenSection("schedule")}
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <RadixDateTimePicker
+                value={watch("startDate")}
+                onChange={(d) =>
+                  setValue("startDate", d, {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Start date & time"
+              />
+
+              <RadixDateTimePicker
+                value={watch("dueDate")}
+                onChange={(d) =>
+                  setValue("dueDate", d, {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Due date & time"
+              />
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
           )}
+        </div>
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
+        {/* ===== FOOTER (FIXED) ===== */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600"
+            >
+              Cancel
             </button>
-          ) : (
+
             <button
               type="submit"
-              disabled={!isValid || isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-40"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
-              {isSubmitting ? "Saving..." : "Submit"}
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Assignment"
+                  : "Update Assignment"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

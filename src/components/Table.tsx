@@ -23,6 +23,7 @@ const widthMap: Record<string, string> = {
   subject: "w-[20%]",
   class: "w-[16%]",
   teacher: "w-[22%]",
+  score: "w-[10%]",
   date: "w-[14%]",
   dueDate: "w-[14%]",
 

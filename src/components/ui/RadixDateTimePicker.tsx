@@ -17,7 +17,6 @@ export default function RadixDateTimePicker({
   placeholder = "Select date & time",
 }: Props) {
   const [open, setOpen] = useState(false);
-
   const date = value;
 
   const updateTime = (type: "hour" | "minute", val: number) => {
@@ -29,20 +28,10 @@ export default function RadixDateTimePicker({
   };
 
   return (
-    <Popover.Root
-      open={open}
-      onOpenChange={setOpen}
-      modal={false}   // ✅ CRITICAL: disable focus trap
-    >
+    <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
       <Popover.Trigger asChild>
         <button
           type="button"
-          onKeyDownCapture={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }}
           className="
             w-full h-10
             flex items-center justify-between
@@ -62,54 +51,56 @@ export default function RadixDateTimePicker({
         </button>
       </Popover.Trigger>
 
-      <Popover.Content
-        side="bottom"
-        align="start"
-        sideOffset={8}
-        className="
-          z-[9999]
-          w-auto rounded-xl border bg-white p-3 shadow-lg
-        "
-      >
-        {/* DATE */}
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(d) => d && onChange(d)}
-          // ❌ REMOVE initialFocus
-        />
-
-        {/* TIME */}
-        <div className="flex gap-2 mt-3">
-          <input
-            type="number"
-            min={0}
-            max={23}
-            value={date?.getHours() ?? ""}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            onChange={(e) => updateTime("hour", Number(e.target.value))}
-            placeholder="HH"
-            className="w-16 h-9 rounded-md border px-2 text-sm"
+      {/* ✅ THIS IS THE FIX */}
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          avoidCollisions
+          collisionPadding={16}
+          className="
+            z-[99999]
+            rounded-xl
+            border
+            bg-white
+            p-3
+            shadow-xl
+          "
+        >
+          {/* DATE */}
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => d && onChange(d)}
           />
 
-          <span className="pt-2">:</span>
+          {/* TIME */}
+          <div className="flex gap-2 mt-3">
+            <input
+              type="number"
+              min={0}
+              max={23}
+              value={date?.getHours() ?? ""}
+              onChange={(e) => updateTime("hour", Number(e.target.value))}
+              placeholder="HH"
+              className="w-16 h-9 rounded-md border px-2 text-sm"
+            />
 
-          <input
-            type="number"
-            min={0}
-            max={59}
-            value={date?.getMinutes() ?? ""}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            onChange={(e) => updateTime("minute", Number(e.target.value))}
-            placeholder="MM"
-            className="w-16 h-9 rounded-md border px-2 text-sm"
-          />
-        </div>
-      </Popover.Content>
+            <span className="pt-2">:</span>
+
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={date?.getMinutes() ?? ""}
+              onChange={(e) => updateTime("minute", Number(e.target.value))}
+              placeholder="MM"
+              className="w-16 h-9 rounded-md border px-2 text-sm"
+            />
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
     </Popover.Root>
   );
 }

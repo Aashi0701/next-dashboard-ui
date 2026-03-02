@@ -1,28 +1,22 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useEffect,
-  useState,
-} from "react";
-
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { FeeSchema, FeeSchemaType } from "@/lib/formValidationSchemas";
+import {
+  FeeSchema,
+  FeeFormInput,
+  FeeSchemaType,
+} from "@/lib/formValidationSchemas";
+import { createFee, updateFee, ActionState } from "@/lib/actions";
 
-import { createFee, updateFee } from "@/lib/actions";
-import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 import InputField from "../InputField";
 import RadixSelect from "@/components/ui/RadixSelect";
-import FormStepper from "@/components/ui/FormStepper";
-import { motion, AnimatePresence } from "framer-motion";
-
-const steps = ["Basic Info", "Classification"];
+import CollapsibleSection from "@/components/CollapsibleSection";
+import { Wallet } from "lucide-react";
 
 export default function FeeForm({
   type,
@@ -34,20 +28,15 @@ export default function FeeForm({
   data?: FeeSchemaType;
   close: () => void;
   relatedData?: {
-    classes?: {
-      id: number;
-      name: string;
-    }[];
+    classes?: { id: number; name: string }[];
   };
 }) {
-  const router = useRouter();
   const { classes = [] } = relatedData || {};
-  const [step, setStep] = useState(0);
 
-  /* ================= RHF (OUTPUT TYPE ONLY) ================= */
+  /* ================= RHF (IMPORTANT FIX HERE) ================= */
 
-  const methods = useForm<FeeSchemaType>({
-    resolver: zodResolver(FeeSchema) as any, // ✅ REQUIRED with z.coerce
+  const methods = useForm<FeeFormInput>({
+    resolver: zodResolver(FeeSchema),
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
@@ -57,169 +46,153 @@ export default function FeeForm({
       term: data?.term ?? null,
       isActive: data?.isActive ?? true,
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
     watch,
     setValue,
-    trigger,
     handleSubmit,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting },
   } = methods;
 
   const feeType = watch("type");
 
-  /* ================= STEP VALIDATION ================= */
+  /* ================= ACTION ================= */
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof FeeSchemaType)[][] = [
-      ["title", "amount"],
-      ["type", "term", "classId"],
-    ];
-
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
+  const feeAction = async (
+    prev: ActionState,
+    payload: FeeSchemaType,
+  ): Promise<ActionState> => {
+    return type === "create"
+      ? createFee(prev, payload)
+      : updateFee(prev, payload as FeeSchemaType & { id: number });
   };
+
+  const [state, formAction] = useActionState<ActionState, FeeSchemaType>(
+    feeAction,
+    { success: false },
+  );
 
   /* ================= SUBMIT ================= */
 
-  const submitFinal = handleSubmit((values) => {
-    startTransition(async () => {
-      const parsed = FeeSchema.parse(values);
-
-      const result =
-        type === "create"
-          ? await createFee({ success: false }, parsed)
-          : await updateFee(
-              { success: false },
-              {
-                ...parsed,
-                id: data!.id!, // ✅ GUARANTEED ID for update
-              },
-            );
-
-      if (result.success) {
-        toast.success(
-          `Fee ${type === "create" ? "created" : "updated"} successfully`,
-        );
-        close();
-        router.refresh();
-      } else if (result.error) {
-        toast.error(result.error);
-      }
-    });
+  const onSubmit = handleSubmit((values) => {
+    // values are FeeFormInput → resolver converts to FeeSchemaType
+    startTransition(() => formAction(values as FeeSchemaType));
   });
+
+  /* ================= EFFECT ================= */
+
+  useEffect(() => {
+    if (state.success) {
+      toast.success(
+        `Fee ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
+    }
+
+    if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state, close, type]);
 
   /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
-      <form className="flex flex-col gap-4 max-h-[85vh]">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Fee Structure" : "Update Fee Structure"}
-        </h1>
-
-        <FormStepper
-          steps={steps}
-          step={step}
-          errorSteps={[
-            Boolean(errors.title || errors.amount),
-            Boolean(errors.type || errors.term || errors.classId),
-          ]}
-        />
-
-        <div className="min-h-[180px]">
-          <AnimatePresence mode="wait">
-            {/* STEP 1 */}
-            {step === 0 && (
-              <motion.div key="basic" className="space-y-4">
-                <InputField label="Fee Title" name="title" />
-                <InputField label="Amount (₹)" name="amount" type="number" />
-              </motion.div>
-            )}
-
-            {/* STEP 2 */}
-            {step === 1 && (
-              <motion.div key="classification" className="space-y-4">
-                <RadixSelect
-                  placeholder="Select Fee Type"
-                  value={watch("type")}
-                  onChange={(v) =>
-                    setValue("type", v as FeeSchemaType["type"], {
-                      shouldValidate: true,
-                    })
-                  }
-                  options={[
-                    { value: "ADMISSION", label: "Admission" },
-                    { value: "TERM", label: "Term" },
-                    { value: "ANNUAL", label: "Annual" },
-                    { value: "MISC", label: "Miscellaneous" },
-                  ]}
-                />
-
-                {feeType === "TERM" && (
-                  <RadixSelect
-                    placeholder="Select term"
-                    value={watch("term") ?? ""}
-                    onChange={(v) =>
-                      setValue("term", v as FeeSchemaType["term"], {
-                        shouldValidate: true,
-                      })
-                    }
-                    options={[
-                      { value: "TERM_1", label: "Term 1" },
-                      { value: "TERM_2", label: "Term 2" },
-                    ]}
-                  />
-                )}
-
-                <RadixSelect
-                  placeholder="All Classes"
-                  value={
-                    watch("classId") !== null ? String(watch("classId")) : ""
-                  }
-                  onChange={(v) =>
-                    setValue("classId", v ? Number(v) : null, {
-                      shouldValidate: true,
-                    })
-                  }
-                  options={classes.map((cls) => ({
-                    value: String(cls.id),
-                    label: cls.name,
-                  }))}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[60vh]">
+        {/* HEADER */}
+        <div className="shrink-0 px-4 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create"
+              ? "Create Fee Structure"
+              : "Update Fee Structure"}
+          </h1>
         </div>
 
-        {/* ACTIONS */}
-        <div className="flex justify-between pt-4">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
-          )}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          <CollapsibleSection
+            title="Fee Details"
+            description="Amount, classification and class mapping"
+            icon={<Wallet className="h-4 w-4 text-purple-600" />}
+            open
+            onToggle={() => {}}
+          >
+            <div className="space-y-4">
+              <InputField label="Fee Title" name="title" />
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={submitFinal}
-              disabled={isSubmitting}
-              className="bg-blue-800 text-white px-6 py-2 rounded-lg disabled:opacity-40"
-            >
-              {isSubmitting
-                ? "Saving..."
-                : type === "create"
-                  ? "Create Fee"
-                  : "Update Fee"}
-            </button>
-          )}
+              <InputField
+                label="Amount (₹)"
+                name="amount"
+                type="number"
+              />
+
+              <RadixSelect
+                placeholder="Fee Type"
+                value={watch("type")}
+                onChange={(v) =>
+                  setValue("type", v as FeeFormInput["type"])
+                }
+                options={[
+                  { value: "ADMISSION", label: "Admission" },
+                  { value: "TERM", label: "Term" },
+                  { value: "ANNUAL", label: "Annual" },
+                  { value: "MISC", label: "Miscellaneous" },
+                ]}
+              />
+
+              {feeType === "TERM" && (
+                <RadixSelect
+                  placeholder="Select Term"
+                  value={watch("term") ?? ""}
+                  onChange={(v) =>
+                    setValue("term", v as FeeFormInput["term"])
+                  }
+                  options={[
+                    { value: "TERM_1", label: "Term 1" },
+                    { value: "TERM_2", label: "Term 2" },
+                  ]}
+                />
+              )}
+
+              <RadixSelect
+                placeholder="Applicable Class"
+                value={
+                  watch("classId") !== null
+                    ? String(watch("classId"))
+                    : ""
+                }
+                onChange={(v) =>
+                  setValue("classId", v ? Number(v) : null)
+                }
+                options={classes.map((cls) => ({
+                  value: String(cls.id),
+                  label: cls.name,
+                }))}
+              />
+            </div>
+          </CollapsibleSection>
+        </div>
+
+        {/* FOOTER */}
+        <div className="shrink-0 border-t px-4 py-3 flex justify-end gap-2">
+          <button type="button" onClick={close} className="text-xs">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs"
+          >
+            {isSubmitting
+              ? "Saving..."
+              : type === "create"
+              ? "Create Fee"
+              : "Update Fee"}
+          </button>
         </div>
       </form>
     </FormProvider>

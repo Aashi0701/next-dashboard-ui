@@ -85,12 +85,11 @@ model Class {
 }
 
 model Student {
-  id        String    @id
-  username  String    @unique
+  id        String   @id @default(cuid())
   name      String
   surname   String
   email     String?
-  phone     String?   @unique
+  phone     String?  @unique
   address   String
   img       String?
   bloodType String
@@ -116,11 +115,14 @@ model Student {
 model Parent {
   id        String    @id
   username  String    @unique
+  password  String
+
   name      String
   surname   String
   email     String?   @unique
   phone     String    @unique
   address   String
+
   createdAt DateTime  @default(now())
   students  Student[]
   img       String?

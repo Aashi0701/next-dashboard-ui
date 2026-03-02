@@ -4,8 +4,17 @@ import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import HolidayCard from "@/components/mobile/HolidayCard";
 import { auth } from "@clerk/nextjs/server";
+import TableSearch from "@/components/TableSearch";
+import { ITEM_PER_PAGE } from "@/lib/settings";
 
-export default async function HolidayListPage() {
+export default async function HolidayListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const p = params.page ? Number(params.page) : 1;
+
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
@@ -13,9 +22,15 @@ export default async function HolidayListPage() {
     return <div className="p-6">Unauthorized</div>;
   }
 
-  const holidays = await prisma.holiday.findMany({
-    orderBy: { date: "asc" },
-  });
+  /* ================= FETCH WITH PAGINATION ================= */
+  const [holidays, count] = await prisma.$transaction([
+    prisma.holiday.findMany({
+      orderBy: { date: "asc" },
+      take: ITEM_PER_PAGE,
+      skip: ITEM_PER_PAGE * (p - 1),
+    }),
+    prisma.holiday.count(),
+  ]);
 
   /* ================= TABLE COLUMNS ================= */
   const columns = [
@@ -36,13 +51,11 @@ export default async function HolidayListPage() {
         {new Date(h.date).toLocaleDateString("en-IN")}
       </td>
 
-      <td className="p-4">
-        {h.isFullDay ? "Full Day" : "Half Day"}
-      </td>
+      <td className="p-4">{h.isFullDay ? "Full Day" : "Half Day"}</td>
 
       <td className="p-4 text-center">
         <div className="flex justify-center gap-2">
-          <FormContainer table="holiday" type="update" data={h} />
+          <FormContainer table="holiday" type="update" data={h} id={h.id} />
           <FormContainer table="holiday" type="delete" id={h.id} />
         </div>
       </td>
@@ -57,7 +70,10 @@ export default async function HolidayListPage() {
           School Holidays
         </h1>
 
-        <FormContainer table="holiday" type="create" />
+        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
+          <TableSearch />
+          <FormContainer table="holiday" type="create" />
+        </div>
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
@@ -68,9 +84,12 @@ export default async function HolidayListPage() {
       {/* ===== MOBILE LIST ===== */}
       <div className="md:hidden mt-3 space-y-3">
         {holidays.map((h) => (
-          <HolidayCard key={h.id} item={h} />
+          <HolidayCard key={h.id} item={h} role={role} />
         ))}
       </div>
+
+      {/* ===== PAGINATION ===== */}
+      <Pagination page={p} count={count} />
     </div>
   );
 }

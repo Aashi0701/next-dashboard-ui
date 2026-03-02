@@ -6,7 +6,6 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 import FormContainer from "@/components/FormContainer";
-
 import AssignmentFilters from "@/components/filters/AssignmentFilters";
 import AssignmentSort from "@/components/filters/AssignmentSort";
 import AssignmentCard from "@/components/mobile/AssignmentCard";
@@ -44,8 +43,16 @@ export default async function AssignmentListPage({
   const columns = [
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
-    { header: "Teacher", accessor: "teacher", className: "hidden md:table-cell" },
-    { header: "Due Date", accessor: "dueDate", className: "hidden md:table-cell" },
+    {
+      header: "Teacher",
+      accessor: "teacher",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: "Due Date",
+      accessor: "dueDate",
+      className: "hidden md:table-cell",
+    },
     ...(role === "admin" || role === "teacher"
       ? [{ header: "Actions", accessor: "action", className: "text-center" }]
       : []),
@@ -68,7 +75,12 @@ export default async function AssignmentListPage({
       {(role === "admin" || role === "teacher") && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="assignment" type="update" data={item} />
+            <FormContainer
+              table="assignment"
+              type="update"
+              data={item}
+              id={item.id}
+            />
             <FormContainer table="assignment" type="delete" id={item.id} />
           </div>
         </td>
@@ -99,9 +111,9 @@ export default async function AssignmentListPage({
         break;
       case "dateTo":
         query.dueDate = {
-          ...(query.dueDate as any)?.gte
+          ...((query.dueDate as any)?.gte
             ? { gte: (query.dueDate as any).gte }
-            : {},
+            : {}),
           lte: new Date(value),
         };
         break;
@@ -170,7 +182,11 @@ export default async function AssignmentListPage({
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
           <TableSearch />
-          <AssignmentFilters subjects={subjects} classes={classes} teachers={teachers} />
+          <AssignmentFilters
+            subjects={subjects}
+            classes={classes}
+            teachers={teachers}
+          />
           <AssignmentSort />
           {(role === "admin" || role === "teacher") && (
             <FormContainer table="assignment" type="create" />
@@ -185,13 +201,20 @@ export default async function AssignmentListPage({
 
       {/* MOBILE CARDS */}
       <div className="md:hidden mt-4 space-y-3">
-        {data.map((item) => (
-          <AssignmentCard
-            key={item.id}
-            item={item}
-            role={role}
-          />
-        ))}
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <AssignmentCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       <Pagination page={p} count={count} />

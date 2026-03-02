@@ -1,48 +1,61 @@
-"use client";
+import FormContainer from "@/components/FormContainer";
+import FeeCardClient from "./FeeCardClient";
 
-import {
-  FeeTypeChip,
-  FeeStatusBadge,
-} from "@/components/ui/FeeBadges";
+type FeeItem = {
+  id: number;
+  title: string;
+  amount: number;
+  className: string;
+  type: string;
+  isActive: boolean;
+};
 
 export default function FeeCard({
   item,
-  actions,
+  role,
+  action,
 }: {
-  item: {
-    title: string;
-    amount: number;
-    className: string;
-    type: string;
-    isActive: boolean;
-  };
-  actions?: React.ReactNode;
+  item: FeeItem;
+  role?: string;
+  action?: "edit" | "delete" | "assign";
 }) {
   return (
-    <div className="bg-white border rounded-lg px-3 py-2 shadow-sm">
-      {/* ROW 1 */}
-      <div className="flex justify-between items-start">
-        <p className="font-medium text-sm truncate">{item.title}</p>
+    <>
+      {/* CLIENT UI */}
+      <FeeCardClient item={item} role={role} />
 
-        <FeeStatusBadge active={item.isActive} />
-      </div>
+      {/* SERVER MODALS */}
+      {action === "edit" && (
+        <FormContainer
+          key={`edit-${item.id}`}
+          table="fee"
+          type="update"
+          data={item}
+          id={item.id}
+          trigger={null}
+        />
+      )}
 
-      {/* ROW 2 */}
-      <div className="text-xs text-gray-500 mt-1">
-        {item.className}
-      </div>
+      {action === "delete" && (
+        <FormContainer
+          key={`delete-${item.id}`}
+          table="fee"
+          type="delete"
+          id={item.id}
+          trigger={null}
+        />
+      )}
 
-      {/* ROW 3 */}
-      <div className="flex justify-between items-center mt-2">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">
-            ₹{item.amount.toLocaleString()}
-          </span>
-          <FeeTypeChip type={item.type} />
-        </div>
-
-        {actions}
-      </div>
-    </div>
+      {action === "assign" && (
+        <FormContainer
+          key={`assign-${item.id}`}
+          table="fee"
+          type="assign"
+          data={item}
+          id={item.id}
+          trigger={null}
+        />
+      )}
+    </>
   );
 }

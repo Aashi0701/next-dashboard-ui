@@ -25,21 +25,25 @@ export default function RadixSelect({
 }: RadixSelectProps) {
   return (
     <Select.Root value={value ?? undefined} onValueChange={onChange} disabled={disabled}>
-      {/* Trigger */}
-      <Select.Trigger
-        type="button"
-        className="
-  w-full h-11 sm:h-12 px-3
-  flex items-center justify-between
-  rounded-xl border bg-white
-  text-sm
-"
-      >
-        <Select.Value
-          placeholder={<span className="text-gray-400">{placeholder}</span>}
-        />
-        <ChevronDown className="w-4 h-4 text-gray-500" />
-      </Select.Trigger>
+  <Select.Trigger
+    type="button"
+    className="
+      w-full
+      px-1.5 sm:px-2.5
+      py-1.5 sm:py-2
+      flex items-center justify-between
+      rounded-lg border bg-white
+      text-xs
+      outline-none transition
+      focus:border-blue-600 focus:ring-2 focus:ring-blue-100
+      disabled:bg-gray-50 disabled:text-gray-500
+    "
+  >
+    <Select.Value
+      placeholder={<span className="text-gray-400">{placeholder}</span>}
+    />
+    <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+  </Select.Trigger>
 
       <Select.Portal>
         <Select.Content

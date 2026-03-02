@@ -6,7 +6,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Exam, Prisma, Subject, Teacher } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
 import ExamFilters from "@/components/filters/ExamFilters";
 import ExamSort from "@/components/filters/ExamSort";
 import ExamCard from "@/components/mobile/ExamCard";
@@ -41,6 +40,7 @@ export default async function ExamListPage({
 
   /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
+    { header: "Title", accessor: "title" },
     { header: "Subject", accessor: "subject" },
     { header: "Class", accessor: "class" },
     {
@@ -63,6 +63,8 @@ export default async function ExamListPage({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
+      {/* TITLE */}
+      <td className="p-4 font-medium truncate">{item.title}</td>
       <td className="p-4 truncate">{item.lesson.subject.name}</td>
       <td className="p-4 truncate">{item.lesson.class.name}</td>
       <td className="p-4 hidden md:table-cell truncate">
@@ -75,7 +77,7 @@ export default async function ExamListPage({
       {(role === "admin" || role === "teacher") && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="exam" type="update" data={item} />
+            <FormContainer table="exam" type="update" data={item} id={item.id}/>
             <FormContainer table="exam" type="delete" id={item.id} />
           </div>
         </td>
@@ -111,9 +113,24 @@ export default async function ExamListPage({
         };
         break;
       case "search":
-        query.lesson!.subject = {
-          name: { contains: value, mode: "insensitive" },
-        };
+        query.OR = [
+          {
+            title: {
+              contains: value,
+              mode: "insensitive",
+            },
+          },
+          {
+            lesson: {
+              subject: {
+                name: {
+                  contains: value,
+                  mode: "insensitive",
+                },
+              },
+            },
+          },
+        ];
         break;
     }
   }
@@ -140,6 +157,9 @@ export default async function ExamListPage({
   let orderBy: Prisma.ExamOrderByWithRelationInput = { startTime: order };
 
   switch (sortBy) {
+    case "title":
+      orderBy = { title: order };
+      break;
     case "subject":
       orderBy = { lesson: { subject: { name: order } } };
       break;
@@ -186,7 +206,11 @@ export default async function ExamListPage({
           <TableSearch />
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <ExamFilters subjects={subjects} classes={classes} teachers={teachers} />
+            <ExamFilters
+              subjects={subjects}
+              classes={classes}
+              teachers={teachers}
+            />
             <ExamSort />
             {(role === "admin" || role === "teacher") && (
               <FormContainer table="exam" type="create" />
@@ -202,9 +226,20 @@ export default async function ExamListPage({
 
       {/* ===== MOBILE CARDS ===== */}
       <div className="md:hidden mt-4 space-y-3">
-        {data.map((item) => (
-          <ExamCard key={item.id} item={item} role={role} />
-        ))}
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <ExamCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       {/* ===== PAGINATION ===== */}

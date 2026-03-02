@@ -1,193 +1,187 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useEffect,
-  startTransition,
-  useActionState,
-} from "react";
+import { useEffect, startTransition, useActionState, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
 import { createClass, updateClass, ActionState } from "@/lib/actions";
-
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-
 import InputField from "../InputField";
 import RadixSelect from "@/components/ui/RadixSelect";
-import FormStepper from "@/components/ui/FormStepper";
+import CollapsibleSection from "../CollapsibleSection";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-import { motion, AnimatePresence } from "framer-motion";
-
-const steps = ["Basic Info", "Assignments"];
+type Section = "basic" | "assignments";
 
 export default function ClassForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: Partial<ClassSchema>;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: {
     teachers: { id: string; name: string; surname: string }[];
   };
 }) {
   const router = useRouter();
-  const { teachers = [] } = relatedData || {};
+  const teachers = relatedData?.teachers ?? [];
 
-  const [step, setStep] = useState(0);
-
-  /* -------------------- FORM SETUP -------------------- */
   const methods = useForm<ClassSchema>({
     resolver: zodResolver(classSchema),
     defaultValues: {
       id: data?.id,
       name: data?.name ?? "",
       capacity: data?.capacity ?? 1,
-
-      // ⚠️ RHF may start undefined, Zod enforces required on submit
       supervisorId: data?.supervisorId,
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
+    handleSubmit,
     watch,
     setValue,
-    trigger,
-    handleSubmit,
-    formState: { isSubmitting },
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
+
+  const [openSection, setOpenSection] = useState<Section>("basic");
+
+  const sectionFields: Record<Section, (keyof ClassSchema)[]> = {
+    basic: ["name", "capacity"],
+    assignments: ["supervisorId"],
+  };
 
   const [state, formAction] = useActionState<ActionState, ClassSchema>(
     type === "create" ? createClass : updateClass,
     { success: false },
   );
 
-  /* -------------------- STEP VALIDATION -------------------- */
-  const nextStep = async () => {
-    const fields = step === 0 ? ["name", "capacity"] : ["supervisorId"];
+  /* Auto-open section with first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstError = Object.keys(errors)[0] as keyof ClassSchema;
 
-    const valid = await trigger(fields as (keyof ClassSchema)[]);
-    if (valid) setStep((s) => s + 1);
-  };
+      const section = (
+        Object.entries(sectionFields) as [Section, (keyof ClassSchema)[]][]
+      ).find(([, fields]) => fields.includes(firstError))?.[0];
 
-  /* -------------------- FINAL SUBMIT -------------------- */
-  const submitWithValidation = async () => {
-    const valid = await trigger(["supervisorId"]);
-    if (!valid) return;
+      if (section) setOpenSection(section);
 
-    handleSubmit((values) => {
-      startTransition(() => {
-        formAction(values);
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[name="${firstError}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
-    })();
-  };
+    }
+  }, [errors, submitCount]);
 
-  /* -------------------- SIDE EFFECTS -------------------- */
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
+  });
+
   useEffect(() => {
     if (state.success) {
       toast.success(
         `Class ${type === "create" ? "created" : "updated"} successfully`,
       );
-      setOpen(false);
+      close();
       router.refresh();
     }
 
-    if (state.error) {
-      toast.error(state.error);
-    }
-  }, [state, router, setOpen, type]);
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   return (
     <FormProvider {...methods}>
-      <form className="flex flex-col gap-4">
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col h-[65dvh]"
+      >
         {/* HEADER */}
-        <div className="relative">
-          <ModalCloseButton onClose={() => setOpen(false)} />
-          <h1 className="text-lg font-semibold">
+        <div className="shrink-0 pb-3 px-4 sm:px-6">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
             {type === "create" ? "Create Class" : "Update Class"}
           </h1>
+          <p className="text-xs text-gray-500">
+            Manage class details and assignments
+          </p>
         </div>
 
-        <FormStepper steps={steps} step={step} />
+        {/* CONTENT (SCROLL ONLY HERE) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-6 space-y-4">
+          {/* BASIC INFO */}
+          <CollapsibleSection
+            title="Basic Information"
+            description="Class name and capacity"
+            icon="🏫"
+            open={openSection === "basic"}
+            onToggle={() => setOpenSection("basic")}
+          >
+            <div className="space-y-3">
+              <InputField label="Class Name" name="name" />
+              <InputField label="Capacity" name="capacity" type="number" />
+            </div>
+          </CollapsibleSection>
 
-        {/* CONTENT */}
-        <div className="min-h-[160px]">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div
-                key="basic"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="space-y-4"
-              >
-                <InputField label="Class Name" name="name" />
-                <InputField label="Capacity" name="capacity" type="number" />
-              </motion.div>
-            )}
+          {/* ASSIGNMENTS */}
+          <CollapsibleSection
+            title="Assignments"
+            description="Class supervisor"
+            icon="👩‍🏫"
+            open={openSection === "assignments"}
+            onToggle={() => setOpenSection("assignments")}
+          >
+            <RadixSelect
+              placeholder="Select Class Supervisor"
+              value={watch("supervisorId")}
+              onChange={(v) => {
+                if (!v) return; // ✅ ignore undefined
+                setValue("supervisorId", v, { shouldValidate: true });
+              }}
+              options={teachers.map((t) => ({
+                value: t.id,
+                label: `${t.name} ${t.surname}`,
+              }))}
+            />
+          </CollapsibleSection>
 
-            {step === 1 && (
-              <motion.div
-                key="assign"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="space-y-4"
-              >
-                <RadixSelect
-                  value={watch("supervisorId")}
-                  onChange={(v) => {
-                    if (!v) return; // ⛔ ignore undefined
-                    setValue("supervisorId", v, { shouldValidate: true });
-                  }}
-                  placeholder="Select Class Supervisor"
-                  options={teachers.map((t) => ({
-                    value: t.id,
-                    label: `${t.name} ${t.surname}`,
-                  }))}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ACTIONS */}
-        <div className="flex justify-between pt-3 border-t">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep((s) => s - 1)}>
-              Back
-            </button>
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
           )}
+        </div>
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
-            </button>
-          ) : (
+        {/* FOOTER (FIXED) */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={submitWithValidation}
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-5 py-2 rounded-md"
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
               {isSubmitting
                 ? type === "create"
-                  ? "Creating…"
-                  : "Updating…"
+                  ? "Creating..."
+                  : "Updating..."
                 : type === "create"
                   ? "Create Class"
                   : "Update Class"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

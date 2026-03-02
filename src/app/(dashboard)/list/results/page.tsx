@@ -8,7 +8,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
 import ResultFilters from "@/components/filters/ResultFilters";
 import ResultSort from "@/components/filters/ResultSort";
 import ResultsCard from "@/components/mobile/ResultsCard";
@@ -31,7 +30,7 @@ type ResultList = {
 
 function mergeSafe<T extends object>(
   base: T | null | undefined,
-  extend: Partial<T>
+  extend: Partial<T>,
 ): T {
   return {
     ...(typeof base === "object" && base !== null ? base : {}),
@@ -76,7 +75,11 @@ export default async function ResultListPage({
     { header: "Title", accessor: "title" },
     { header: "Student", accessor: "student" },
     { header: "Score", accessor: "score", className: "hidden md:table-cell" },
-    { header: "Teacher", accessor: "teacher", className: "hidden md:table-cell" },
+    {
+      header: "Teacher",
+      accessor: "teacher",
+      className: "hidden md:table-cell",
+    },
     { header: "Class", accessor: "class", className: "hidden md:table-cell" },
     { header: "Date", accessor: "date", className: "hidden md:table-cell" },
     ...(role === "admin" || role === "teacher"
@@ -89,23 +92,42 @@ export default async function ResultListPage({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
-      <td className="p-4 truncate">{item.title}</td>
-      <td className="truncate">
+      {/* TITLE */}
+      <td className="p-4 max-w-[220px] truncate">{item.title}</td>
+
+      {/* STUDENT */}
+      <td className="p-4 max-w-[180px] truncate">
         {item.studentName} {item.studentSurname}
       </td>
-      <td className="hidden md:table-cell">{item.score}</td>
-      <td className="hidden md:table-cell truncate">
+
+      {/* SCORE */}
+      <td className="p-4 hidden md:table-cell">{item.score}</td>
+
+      {/* TEACHER */}
+      <td className="p-4 hidden md:table-cell max-w-[180px] truncate">
         {item.teacherName} {item.teacherSurname}
       </td>
-      <td className="hidden md:table-cell truncate">{item.className}</td>
-      <td className="hidden md:table-cell truncate">
+
+      {/* CLASS */}
+      <td className="p-4 hidden md:table-cell max-w-[140px] truncate">
+        {item.className}
+      </td>
+
+      {/* DATE */}
+      <td className="p-4 hidden md:table-cell whitespace-nowrap">
         {new Intl.DateTimeFormat("en-US").format(item.startTime)}
       </td>
 
+      {/* ACTIONS */}
       {(role === "admin" || role === "teacher") && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="result" type="update" data={item} />
+            <FormContainer
+              table="result"
+              type="update"
+              data={item}
+              id={item.id}
+            />
             <FormContainer table="result" type="delete" id={item.id} />
           </div>
         </td>
@@ -279,9 +301,20 @@ export default async function ResultListPage({
 
       {/* MOBILE CARDS */}
       <div className="md:hidden mt-4 space-y-3">
-        {data.map((item) => (
-          <ResultsCard key={item.id} item={item} role={role} />
-        ))}
+        {data.map((item) => {
+          const isTarget = params.action && params.id === String(item.id);
+
+          return (
+            <ResultsCard
+              key={item.id}
+              item={item}
+              role={role}
+              action={
+                isTarget ? (params.action as "edit" | "delete") : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       <Pagination page={p} count={count} />

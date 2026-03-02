@@ -26,12 +26,11 @@ export type FormContainerProps = {
   type: FormType;
   data?: any;
   id?: number | string;
-  relatedData?: any;
-
-  /* Optional custom trigger */
+  relatedData?: {
+    subjects?: { id: number; name: string }[];
+    classes?: { id: number; name: string }[];
+  };
   trigger?: React.ReactNode;
-
-  /* ✅ Optional tooltip (NEW, SAFE) */
   tooltip?: string;
 };
 
@@ -244,27 +243,16 @@ const FormContainer = async ({
     }
   }
 
-  /* ---------------------------------------------------------------
-     OUTPUT (WITH TOOLTIP SUPPORT)
-  ---------------------------------------------------------------- */
-  const content = trigger ? (
-    <FormModal
-      table={table}
-      type={type}
-      data={data}
-      id={id}
-      relatedData={relatedData}
-      trigger={trigger}
-    />
-  ) : (
-    <FormModal
-      table={table}
-      type={type}
-      data={data}
-      id={id}
-      relatedData={relatedData}
-    />
-  );
+  const content = (
+  <FormModal
+    table={table}
+    type={type}
+    data={data}
+    id={id}
+    relatedData={relatedData}
+    trigger={trigger} 
+  />
+);
 
   return tooltip ? (
     <div className="relative inline-block group">

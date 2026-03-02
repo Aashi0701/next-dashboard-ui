@@ -8,10 +8,10 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 import FormContainer from "@/components/FormContainer";
-
 import AttendanceFilters from "@/components/filters/AttendanceFilters";
 import AttendanceSort from "@/components/filters/AttendanceSort";
 import AttendanceCard from "@/components/mobile/AttendanceCard";
+import type { AttendanceItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,8 @@ export default async function AttendanceListPage({ searchParams }: any) {
   const role = (sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
 
-  /* ================= DATA ================= */
+  /* ================= FILTER DATA ================= */
+
   const [students, lessons] = await Promise.all([
     prisma.student.findMany({ orderBy: { name: "asc" } }),
     prisma.lesson.findMany({
@@ -35,95 +36,93 @@ export default async function AttendanceListPage({ searchParams }: any) {
   ]);
 
   /* ================= QUERY ================= */
-  const query: Prisma.AttendanceWhereInput = {
-    lesson: {},
-    date: {},
-  };
+
+  const query: Prisma.AttendanceWhereInput = {};
 
   for (const [key, value] of Object.entries(filters)) {
     if (!value) continue;
-    const v = value as string;
 
     switch (key) {
       case "studentId":
-        query.studentId = v;
+        query.studentId = value;
         break;
+
       case "classId":
-        query.lesson!.classId = Number(v);
+        query.lesson = { classId: Number(value) };
         break;
+
       case "present":
-        query.present = v === "present";
+        query.present = value === "present";
         break;
+
       case "dateFrom":
-        query.date = { ...(query.date as any), gte: new Date(v) };
+        query.date = {
+          ...(query.date as Prisma.DateTimeFilter),
+          gte: new Date(String(value)),
+        };
         break;
+
       case "dateTo":
-        query.date = { ...(query.date as any), lte: new Date(v) };
+        query.date = {
+          ...(query.date as Prisma.DateTimeFilter),
+          lte: new Date(String(value)),
+        };
         break;
     }
   }
 
-  if (role === "teacher") query.lesson!.teacherId = currentUserId!;
+  if (role === "teacher") query.lesson = { teacherId: currentUserId! };
   if (role === "student") query.studentId = currentUserId!;
   if (role === "parent") query.student = { parentId: currentUserId! };
 
   /* ================= SORT ================= */
+
   const order: "asc" | "desc" = sortOrder === "desc" ? "desc" : "asc";
 
-  let orderBy: Prisma.AttendanceOrderByWithRelationInput = {
-    date: "desc", // default sort
-  };
+  let orderBy: Prisma.AttendanceOrderByWithRelationInput = { date: "desc" };
 
   switch (sortBy) {
     case "student":
-      orderBy = {
-        student: { name: order },
-      };
+      orderBy = { student: { name: order } };
       break;
-
     case "class":
-      orderBy = {
-        lesson: { class: { name: order } },
-      };
+      orderBy = { lesson: { class: { name: order } } };
       break;
-
-    case "date":
-      orderBy = {
-        date: order,
-      };
-      break;
-
     case "status":
-      orderBy = {
-        present: order, // ✅ Present / Absent sorting
-      };
+      orderBy = { present: order };
+      break;
+    case "date":
+      orderBy = { date: order };
       break;
   }
 
-  /* ================= FETCH ================= */
+  /* ================= DATA ================= */
+
   const [rows, count] = await prisma.$transaction([
     prisma.attendance.findMany({
       where: query,
-      orderBy,
       include: {
         student: true,
         lesson: { include: { class: true, subject: true } },
       },
+      orderBy,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
     }),
     prisma.attendance.count({ where: query }),
   ]);
 
-  const data = rows.map((item) => ({
+  // 👉 Display-only data
+  const data: AttendanceItem[] = rows.map((item) => ({
     id: item.id,
     student: `${item.student.name} ${item.student.surname}`,
     class: item.lesson.class.name,
     date: new Intl.DateTimeFormat("en-US").format(item.date),
-    status: (item.present ? "Present" : "Absent") as "Present" | "Absent",
+    status: item.present ? "Present" : "Absent",
   }));
 
   /* ================= UI ================= */
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* TOP BAR */}
@@ -132,7 +131,7 @@ export default async function AttendanceListPage({ searchParams }: any) {
           Attendance Records
         </h1>
 
-        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2">
           <TableSearch />
           <AttendanceFilters students={students} lessons={lessons} />
           <AttendanceSort />
@@ -155,67 +154,60 @@ export default async function AttendanceListPage({ searchParams }: any) {
               : []),
           ]}
           data={data}
-          renderRow={(item) => (
-            <tr key={item.id} className="border-b text-sm">
-              <td className="p-4">{item.student}</td>
-              <td className="p-4">{item.class}</td>
-              <td className="p-4">{item.date}</td>
-              <td className="p-4">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    item.status === "Present"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {item.status}
-                </span>
-              </td>
-              {role === "admin" && (
-                <td className="p-4 text-center">
-                  <div className="flex justify-center gap-2">
-                    <FormContainer
-                      table="attendance"
-                      type="update"
-                      data={item}
-                      id={item.id}
-                    />
-                    <FormContainer
-                      table="attendance"
-                      type="delete"
-                      id={item.id}
-                    />
-                  </div>
+          renderRow={(item) => {
+            // 🔑 IMPORTANT: map back to RAW prisma row
+            const row = rows.find((r) => r.id === item.id)!;
+
+            return (
+              <tr key={item.id} className="border-b text-sm">
+                <td className="p-4">{item.student}</td>
+                <td className="p-4">{item.class}</td>
+                <td className="p-4">{item.date}</td>
+                <td className="p-4">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      item.status === "Present"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {item.status}
+                  </span>
                 </td>
-              )}
-            </tr>
-          )}
+
+                {role === "admin" && (
+                  <td className="p-4 text-center">
+                    <div className="flex justify-center gap-2">
+                      <FormContainer
+                        table="attendance"
+                        type="update"
+                        id={row.id}
+                        data={{
+                          id: row.id,
+                          studentId: row.studentId,
+                          lessonId: row.lessonId,
+                          date: row.date,
+                          present: row.present,
+                        }}
+                      />
+                      <FormContainer
+                        table="attendance"
+                        type="delete"
+                        id={row.id}
+                      />
+                    </div>
+                  </td>
+                )}
+              </tr>
+            );
+          }}
         />
       </div>
 
-      {/* MOBILE CARDS */}
-      <div className="md:hidden mt-4 space-y-2">
+      {/* MOBILE */}
+      <div className="md:hidden mt-4 space-y-3">
         {data.map((item) => (
-          <AttendanceCard
-            key={item.id}
-            item={item}
-            actions={
-              role === "admin" && (
-                <div className="flex gap-2">
-                  <FormContainer
-                    table="attendance"
-                    type="update"
-                    id={item.id}
-                  />
-                  <FormContainer
-                    table="attendance"
-                    type="delete"
-                    id={item.id}
-                  />
-                </div>
-              )
-            }
-          />
+          <AttendanceCard key={item.id} item={item} role={role} />
         ))}
       </div>
 

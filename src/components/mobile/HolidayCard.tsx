@@ -1,7 +1,11 @@
-import FormContainer from "@/components/FormContainer";
+"use client";
+
+import ActionMenuClient, { ActionType } from "@/components/ui/ActionMenuClient";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function HolidayCard({
   item,
+  role,
 }: {
   item: {
     id: number;
@@ -9,28 +13,45 @@ export default function HolidayCard({
     date: Date;
     isFullDay: boolean;
   };
+  role?: string;
 }) {
+  const router = useRouter();
+  const params = useSearchParams();
+
+  /* ACTION HANDLER */
+  const onAction = (action: ActionType) => {
+    const q = new URLSearchParams(params.toString());
+    q.set("id", String(item.id));
+
+    if (action === "edit") q.set("action", "edit");
+    if (action === "delete") q.set("action", "delete");
+
+    router.push(`?${q.toString()}`);
+  };
+
+  const actions: ActionType[] = role === "admin" ? ["edit", "delete"] : [];
+
   return (
-    <div className="bg-white rounded-lg border border-gray-100 px-4 py-3 shadow-sm">
+    <div className="bg-white rounded-xl px-4 py-3 border shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        {/* LEFT */}
+        {/* LEFT CONTENT */}
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">
+          {/* TITLE */}
+          <p className="text-xs font-semibold text-gray-900 truncate">
             {item.title}
           </p>
 
-          <p className="mt-0.5 text-[12px] text-gray-500 truncate">
-            {new Date(item.date).toLocaleDateString("en-IN")}
-            {" · "}
+          {/* DATE + TYPE */}
+          <p className="mt-0.5 text-xs text-gray-500 truncate">
+            {new Date(item.date).toLocaleDateString("en-IN")} ·{" "}
             {item.isFullDay ? "Full Day" : "Half Day"}
           </p>
         </div>
 
         {/* ACTIONS */}
-        <div className="flex gap-1 shrink-0">
-          <FormContainer table="holiday" type="update" data={item} />
-          <FormContainer table="holiday" type="delete" id={item.id} />
-        </div>
+        {actions.length > 0 && (
+          <ActionMenuClient onAction={onAction} actions={actions} />
+        )}
       </div>
     </div>
   );

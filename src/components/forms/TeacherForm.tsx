@@ -1,52 +1,41 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useEffect,
-  startTransition,
-  useActionState,
-} from "react";
+import { useEffect, useState, startTransition, useActionState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, X } from "lucide-react";
 import { teacherSchema, TeacherFormValues } from "@/lib/formValidationSchemas";
 import { createTeacher, updateTeacher } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-
+import Image from "next/image";
+import { CldUploadWidget } from "next-cloudinary";
 import InputField from "../InputField";
-import PhoneField from "@/components/ui/PhoneField";
 import RadixSelect from "@/components/ui/RadixSelect";
 import RadixMultiSelect from "@/components/ui/RadixMultiSelect";
 import RadixDOBPicker from "@/components/ui/RadixDOBPicker";
-import { CldUploadWidget } from "next-cloudinary";
-import { motion, AnimatePresence } from "framer-motion";
-import FormStepper from "@/components/ui/FormStepper";
-import { ActionState } from "@/lib/actions";
-import Image from "next/image";
+import CollapsibleSection from "../CollapsibleSection";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
+import { ActionState } from "@/lib/actions";
 
-const steps = ["Authentication", "Personal", "Subjects"];
+type Section = "account" | "personal" | "subjects";
 
 export default function TeacherForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: TeacherFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: { subjects: { id: number; name: string }[] };
+  close: () => void;
+  relatedData?: {
+    subjects: { id: number; name: string }[];
+    classes: { id: number; name: string }[];
+  };
 }) {
   const router = useRouter();
-  const { subjects = [] } = relatedData || {};
-
-  const [step, setStep] = useState(0);
-  const [img, setImg] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
+  const subjects = relatedData?.subjects ?? [];
+  const classes = relatedData?.classes ?? [];
 
   const methods = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherSchema),
@@ -63,258 +52,293 @@ export default function TeacherForm({
       birthday: data?.birthday ? new Date(data.birthday) : undefined,
       sex: data?.sex ?? "MALE",
       subjects: data?.subjects ?? [],
+      supervisedClasses: Array.isArray(data?.supervisedClasses)
+        ? data.supervisedClasses.map((c: any) =>
+            typeof c === "string" ? c : String(c.id),
+          )
+        : [],
       img: data?.img,
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
+    handleSubmit,
     watch,
     setValue,
-    trigger,
-    handleSubmit,
-    formState: { isSubmitting, isValid, errors },
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
+
+  const [img, setImg] = useState<any>(data?.img ?? null);
+  const [openSection, setOpenSection] = useState<Section>("account");
+
+  const sectionFields: Record<Section, readonly (keyof TeacherFormValues)[]> = {
+    account: ["username", "email", "password", "phone"],
+    personal: ["name", "surname", "address", "bloodType", "birthday", "sex"],
+    subjects: ["subjects"],
+  };
 
   const [state, formAction] = useActionState<ActionState, TeacherFormValues>(
     type === "create" ? createTeacher : updateTeacher,
-    { success: false },
+    {
+      success: false,
+    },
   );
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof TeacherFormValues)[][] = [
-      ["username", "email", "password", "phone"],
-      ["name", "surname", "address", "bloodType", "birthday", "sex"],
-    ];
+  /* Auto-open section with first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstError = Object.keys(errors)[0] as keyof TeacherFormValues;
 
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
-  };
+      const section = (
+        Object.entries(sectionFields) as [
+          Section,
+          readonly (keyof TeacherFormValues)[],
+        ][]
+      ).find(([, fields]) => fields.includes(firstError))?.[0];
+
+      if (section) setOpenSection(section);
+
+      requestAnimationFrame(() => {
+        document.querySelector(`[name="${firstError}"]`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    }
+  }, [errors, submitCount]);
 
   const onSubmit = handleSubmit((values) => {
     startTransition(() =>
       formAction({
         ...values,
-        img: img?.secure_url ?? values.img,
+        img:
+          typeof img === "string" ? img.trim() || undefined : img?.secure_url,
       }),
     );
   });
 
   useEffect(() => {
     if (state.success) {
-      toast.success("Teacher saved successfully");
-      setOpen(false);
+      toast.success(
+        `Teacher ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
       router.refresh();
     }
-  }, [state.success, router, setOpen]);
-
-  const errorSteps = [
-    Boolean(errors.username || errors.email || errors.phone),
-    Boolean(errors.name || errors.surname || errors.address),
-  ];
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center">
-      {/* ===== MODAL ===== */}
-      <div className="w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-4 sm:p-8 max-h-[70vh] sm:max-h-screen flex flex-col overflow-hidden">
-        {/* ===== HEADER ===== */}
-        <div className="relative mb-4">
-          {/* Drag handle (mobile) */}
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 sm:hidden w-10 h-1.5 bg-gray-300 rounded-full" />
-
-          {/* Title */}
-          <h1 className="text-base sm:text-xl font-semibold text-center sm:text-left">
+    <FormProvider {...methods}>
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col h-[65dvh]"
+      >
+        {/* HEADER */}
+        <div className="shrink-0 pb-3 px-4 sm:px-6">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
             {type === "create" ? "Create Teacher" : "Update Teacher"}
           </h1>
-
-          {/* Close */}
-          <ModalCloseButton onClose={() => setOpen(false)} />
+          <p className="text-xs text-gray-500">
+            Manage teacher account and profile details
+          </p>
         </div>
 
-        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-6 space-y-4">
+          {/* ACCOUNT */}
+          <CollapsibleSection
+            title="Teacher Account"
+            description="Login and contact details"
+            icon="👤"
+            open={openSection === "account"}
+            onToggle={() => setOpenSection("account")}
+          >
+            <div className="grid sm:grid-cols-2 gap-1.5 sm:gap-4">
+              <InputField
+                label="Username"
+                name="username"
+                readOnly={type === "update"}
+              />
+              <InputField label="Email" name="email" />
+              <InputField label="Phone" name="phone" type="phone" />
 
-        <FormProvider {...methods}>
-          {/* ===== SCROLLABLE CONTENT (KEY FIX) ===== */}
-          <div className="mt-2 pt-2 max-h-[calc(80vh-200px)] sm:max-h-none overflow-y-auto scrollbar-hide">
-            <AnimatePresence mode="wait">
-              {step === 0 && (
-                <motion.div
-                  key="auth"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid sm:grid-cols-2 gap-4"
-                >
-                  <InputField label="Username" name="username" />
-                  <InputField label="Email" name="email" />
-                  <InputField
-                    label="Password"
-                    type="password"
-                    name="password"
-                  />
-                  <PhoneField />
+              {type === "create" && (
+                <InputField label="Password" name="password" type="password" />
+              )}
 
-                  <CldUploadWidget
-                    uploadPreset="school"
-                    onUploadAdded={() => setUploading(true)}
-                    onSuccess={(res, { widget }) => {
-                      setImg(res.info);
-                      setUploading(false);
-                      widget.close();
-                    }}
-                    onError={() => setUploading(false)}
-                  >
-                    {({ open }) => (
-                      <div className="sm:col-span-2">
-                        {img && (
-                          <div className="mb-3 flex items-center gap-4">
-                            <Image
-                              src={img.secure_url}
-                              alt="Avatar"
-                              width={64}
-                              height={64}
-                              className="rounded-full border"
-                            />
-                            <div className="flex flex-col gap-1">
-                              <span className="text-green-600 text-xs font-medium">
-                                Photo uploaded ✓
-                              </span>
-                              <div className="flex gap-3 text-xs">
-                                <button
-                                  onClick={() => open()}
-                                  type="button"
-                                  className="text-blue-600"
-                                >
-                                  Replace
-                                </button>
-                                <button
-                                  onClick={() => setImg(null)}
-                                  type="button"
-                                  className="text-red-500"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+              <CldUploadWidget
+                uploadPreset="school"
+                onSuccess={(res) => setImg(res.info)}
+              >
+                {({ open }) => (
+                  <div className="sm:col-span-2">
+                    {(
+                      typeof img === "string" ? img.trim() : img?.secure_url
+                    ) ? (
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={typeof img === "string" ? img : img.secure_url}
+                          alt="Avatar"
+                          width={56}
+                          height={56}
+                          className="rounded-full border"
+                        />
 
-                        {!img && (
+                        <div className="flex flex-col gap-1">
                           <button
                             type="button"
                             onClick={() => open()}
-                            disabled={uploading}
-                            className="w-full h-11 flex items-center justify-center gap-2 border rounded-xl bg-gray-50"
+                            className="text-xs text-blue-600"
                           >
-                            {uploading ? "Uploading…" : "Upload Photo"}
+                            Replace photo
                           </button>
-                        )}
+
+                          <button
+                            type="button"
+                            onClick={() => setImg(undefined)}
+                            className="text-[11px] text-red-500"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => open()}
+                        className="w-full h-10 border rounded-lg bg-gray-50 text-xs"
+                      >
+                        Upload photo
+                      </button>
                     )}
-                  </CldUploadWidget>
-                </motion.div>
-              )}
-
-              {step === 1 && (
-                <motion.div
-                  key="personal"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <InputField name="name" />
-                    <InputField name="surname" />
-                    <InputField name="address" />
-                    <InputField name="bloodType" />
-
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-gray-500 mb-1 block">
-                        Date of Birth
-                      </label>
-
-                      <RadixDOBPicker
-                        value={watch("birthday")}
-                        onChange={(d) =>
-                          setValue("birthday", d, { shouldValidate: true })
-                        }
-                      />
-                    </div>
-
-                    <div className="transform-none">
-                      <RadixSelect
-                        value={watch("sex")}
-                        onChange={(v) =>
-                          setValue("sex", v as any, { shouldValidate: true })
-                        }
-                        options={[
-                          { value: "MALE", label: "Male" },
-                          { value: "FEMALE", label: "Female" },
-                        ]}
-                      />
-                    </div>
                   </div>
-                </motion.div>
-              )}
+                )}
+              </CldUploadWidget>
+            </div>
+          </CollapsibleSection>
 
-              {step === 2 && (
-                <motion.div
-                  key="subjects"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <RadixMultiSelect
-                    placeholder="Select Subjects"
-                    value={watch("subjects") ?? []}
-                    onChange={(v) =>
-                      setValue("subjects", v, { shouldValidate: true })
-                    }
-                    options={subjects.map((s) => ({
-                      value: String(s.id),
-                      label: s.name,
-                    }))}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* PERSONAL */}
+          <CollapsibleSection
+            title="Personal Information"
+            description="Basic personal and address details"
+            icon="🏠"
+            open={openSection === "personal"}
+            onToggle={() => setOpenSection("personal")}
+          >
+            <div className="grid sm:grid-cols-2 gap-1.5 sm:gap-4">
+              <InputField label="First Name" name="name" />
+              <InputField label="Last Name" name="surname" />
+              <InputField label="Address" name="address" />
+              <InputField label="Blood Type" name="bloodType" />
 
-          {/* ===== ACTIONS (STICKY) ===== */}
-          <div className="flex justify-between pt-4 border-t mt-4">
-            {step > 0 && (
-              <button
-                onClick={() => setStep(step - 1)}
-                type="button"
-                className="bg-gray-600 text-white px-4 py-2 rounded-full"
-              >
-                Back
-              </button>
-            )}
+              <div className="sm:col-span-2">
+                <label className="text-[8px] sm:text-[11px] font-bold text-gray-600">
+                  Date of Birth
+                </label>
+                <RadixDOBPicker
+                  value={watch("birthday")}
+                  onChange={(d) =>
+                    setValue("birthday", d, {
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              </div>
 
-            {step < steps.length - 1 ? (
-              <button
-                onClick={nextStep}
-                type="button"
-                className="bg-blue-600 text-white px-4 py-2 rounded-full"
-              >
-                Next →
-              </button>
-            ) : (
-              <form onSubmit={onSubmit}>
-                <button
-                  disabled={!isValid || isSubmitting}
-                  className="bg-blue-600 text-white px-5 py-2 rounded-md"
-                >
-                  {isSubmitting ? "Saving…" : "Submit"}
-                </button>
-              </form>
-            )}
-          </div>
+              <div className="w-full space-y-1">
+                <label className="text-[8px] sm:text-[11px] font-bold text-gray-600">
+                  Gender
+                </label>
 
-          {state.error && (
-            <p className="text-xs text-red-500 mt-2">{state.error}</p>
+                <RadixSelect
+                  value={watch("sex")}
+                  onChange={(v) =>
+                    setValue("sex", v as "MALE" | "FEMALE", {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={[
+                    { value: "MALE", label: "Male" },
+                    { value: "FEMALE", label: "Female" },
+                  ]}
+                />
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* SUBJECTS */}
+          <CollapsibleSection
+            title="Subjects"
+            description="Subjects assigned to teacher"
+            icon="📚"
+            open={openSection === "subjects"}
+            onToggle={() => setOpenSection("subjects")}
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <RadixMultiSelect
+                placeholder="Select subjects"
+                value={watch("subjects") ?? []}
+                onChange={(v) =>
+                  setValue("subjects", v, {
+                    shouldValidate: true,
+                  })
+                }
+                options={subjects.map((s) => ({
+                  value: String(s.id),
+                  label: s.name,
+                }))}
+              />
+
+              <RadixMultiSelect
+                placeholder="Select supervised classes"
+                value={watch("supervisedClasses") ?? []}
+                onChange={(values) =>
+                  setValue("supervisedClasses", values, {
+                    shouldValidate: true,
+                  })
+                }
+                options={classes.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                }))}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
           )}
-        </FormProvider>
-      </div>
-    </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              type="button"
+              onClick={close}
+              className="px-3 py-2 text-xs text-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Saving..."
+                : type === "create"
+                  ? "Create Teacher"
+                  : "Update Teacher"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </FormProvider>
   );
 }

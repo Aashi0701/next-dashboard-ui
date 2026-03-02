@@ -1,55 +1,39 @@
 "use client";
 
 import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useActionState,
   useEffect,
   useState,
+  startTransition,
+  useActionState,
 } from "react";
-
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { subjectSchema, SubjectSchema } from "@/lib/formValidationSchemas";
-import {
-  createSubject,
-  updateSubject,
-  ActionState,
-} from "@/lib/actions";
-
+import { createSubject, updateSubject, ActionState } from "@/lib/actions";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-import FormStepper from "@/components/ui/FormStepper";
 import InputField from "../InputField";
+import CollapsibleSection from "../CollapsibleSection";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-/* ================= STEPS ================= */
-
-const steps = ["Basic Info", "Assignment"];
-
-/* ================= MAIN FORM ================= */
+type Section = "basic" | "teachers";
 
 export default function SubjectForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: SubjectSchema;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: {
     teachers: { id: string; name: string; surname: string }[];
   };
 }) {
   const router = useRouter();
-  const { teachers = [] } = relatedData || {};
-
-  const [step, setStep] = useState(0);
-
-  /* ================= RHF ================= */
+  const teachers = relatedData?.teachers ?? [];
 
   const methods = useForm<SubjectSchema>({
     resolver: zodResolver(subjectSchema),
@@ -58,79 +42,103 @@ export default function SubjectForm({
       name: data?.name ?? "",
       teachers: data?.teachers ?? [],
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
-    register,
     handleSubmit,
-    trigger,
+    register,
     watch,
-    formState: { isSubmitting, errors },
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
 
-  /* ================= ACTION ================= */
+  const [openSection, setOpenSection] = useState<Section>("basic");
+
+  const sectionFields: Record<Section, readonly (keyof SubjectSchema)[]> = {
+    basic: ["name"],
+    teachers: ["teachers"],
+  };
 
   const [state, formAction] = useActionState<ActionState, SubjectSchema>(
     type === "create" ? createSubject : updateSubject,
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  /* Auto-open section with first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstError = Object.keys(errors)[0] as keyof SubjectSchema;
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof SubjectSchema)[][] = [
-      ["name"],
-      ["teachers"],
-    ];
+      const section = (
+        Object.entries(sectionFields) as [
+          Section,
+          readonly (keyof SubjectSchema)[],
+        ][]
+      ).find(([, fields]) => fields.includes(firstError))?.[0];
 
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
-  };
+      if (section) setOpenSection(section);
 
-  /* ================= SUBMIT ================= */
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[name="${firstError}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [errors, submitCount]);
 
   const onSubmit = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
-
-  /* ================= EFFECT ================= */
 
   useEffect(() => {
     if (state.success) {
       toast.success(
         `Subject ${type === "create" ? "created" : "updated"} successfully`,
       );
-      setOpen(false);
+      close();
       router.refresh();
     }
-  }, [state.success, type, setOpen, router]);
-
-  const errorSteps = [
-    Boolean(errors.name),
-    Boolean(errors.teachers),
-  ];
-
-  /* ================= UI ================= */
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-xl font-semibold">
-          {type === "create" ? "Create Subject" : "Update Subject"}
-        </h1>
+      <form onSubmit={onSubmit} className="flex flex-col h-[55vh] max-h-[65vh]">
+        {/* ===== HEADER (FIXED) ===== */}
+        <div className="shrink-0 px-4 sm:px-6 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Subject" : "Update Subject"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Manage subject details and teacher assignment
+          </p>
+        </div>
 
-        <FormStepper steps={steps} step={step} errorSteps={errorSteps} />
-
-        <div className="min-h-[140px]">
-          {step === 0 && (
+        {/* ===== CONTENT (SCROLL ONLY) ===== */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-2 space-y-4">
+          {/* BASIC INFO */}
+          <CollapsibleSection
+            title="Basic Information"
+            description="Subject name"
+            icon="📘"
+            open={openSection === "basic"}
+            onToggle={() => setOpenSection("basic")}
+          >
             <InputField label="Subject Name" name="name" />
-          )}
+          </CollapsibleSection>
 
-          {step === 1 && (
-            <div className="flex flex-col gap-2">
-              <label className="text-xs text-gray-500">
-                Teachers
+          {/* TEACHERS */}
+          <CollapsibleSection
+            title="Teachers"
+            description="Teachers assigned to this subject"
+            icon="👩‍🏫"
+            open={openSection === "teachers"}
+            onToggle={() => setOpenSection("teachers")}
+          >
+            <div className="space-y-1">
+              <label className="text-[8px] sm:text-[11px] font-bold text-gray-600">
+                Select Teachers
               </label>
 
               <select
@@ -138,9 +146,11 @@ export default function SubjectForm({
                 {...register("teachers")}
                 value={watch("teachers")}
                 className="
-                  rounded-md border border-gray-300
-                  p-2 text-sm
-                  focus:ring-2 focus:ring-blue-500
+                  w-full min-h-[100px]
+                  rounded-lg border border-gray-300
+                  px-2 py-2 text-xs
+                  outline-none transition
+                  focus:border-blue-600 focus:ring-2 focus:ring-blue-100
                 "
               >
                 {teachers.map((t) => (
@@ -149,40 +159,37 @@ export default function SubjectForm({
                   </option>
                 ))}
               </select>
+
+              {errors.teachers && (
+                <p className="text-[11px] text-red-500">
+                  {errors.teachers.message as string}
+                </p>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
             </div>
           )}
         </div>
 
-        {step === steps.length - 1 && state.error && (
-          <span className="text-xs text-red-500">
-            {state.error}
-          </span>
-        )}
-
-        <div className="flex justify-between pt-3 border-t">
-          {step > 0 && (
+        {/* ===== FOOTER (FIXED) ===== */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-2">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="text-sm"
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600"
             >
-              Back
+              Cancel
             </button>
-          )}
 
-          {step < steps.length - 1 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="bg-blue-600 text-white px-4 py-2 rounded-full"
-            >
-              Next →
-            </button>
-          ) : (
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
               {isSubmitting
                 ? "Saving..."
@@ -190,7 +197,7 @@ export default function SubjectForm({
                   ? "Create Subject"
                   : "Update Subject"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

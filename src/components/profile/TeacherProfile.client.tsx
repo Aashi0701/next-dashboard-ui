@@ -1,7 +1,6 @@
-import ProfileLayout from "./ProfileLayout";
-import FormContainer from "@/components/FormContainer";
+"use client";
 
-/* ================= TYPES ================= */
+import ProfileLayout from "./ProfileLayout";
 
 type Teacher = {
   id: string;
@@ -12,15 +11,15 @@ type Teacher = {
   lastActiveAt?: Date | null;
 };
 
-type TeacherProfileProps = {
+export default function TeacherProfileClient({
+  teacher,
+  editSlot,
+}: {
   teacher: Teacher;
-};
-
-/* ================= COMPONENT ================= */
-
-export default function TeacherProfile({ teacher }: TeacherProfileProps) {
+  editSlot: React.ReactNode;
+}) {
   const fullName = `${teacher.name} ${teacher.surname}`;
-  const initials = `${teacher.name[0] ?? ""}${teacher.surname[0] ?? ""}`.toUpperCase();
+  const initials = `${teacher.name[0]}${teacher.surname[0]}`.toUpperCase();
 
   return (
     <ProfileLayout
@@ -31,7 +30,7 @@ export default function TeacherProfile({ teacher }: TeacherProfileProps) {
       roleLabel="Teacher"
       lastActiveAt={teacher.lastActiveAt ?? null}
     >
-      <Section title="Account Information" editable>
+      <Section title="Account Information" editSlot={editSlot}>
         <Info label="Role" value="Teacher" />
         <Info label="Name" value={fullName} />
         <Info label="Phone" value={teacher.phone ?? "-"} />
@@ -43,43 +42,35 @@ export default function TeacherProfile({ teacher }: TeacherProfileProps) {
 
 /* ================= HELPERS ================= */
 
-type SectionProps = {
+function Section({
+  title,
+  editSlot,
+  children,
+}: {
   title: string;
-  editable?: boolean;
+  editSlot?: React.ReactNode;
   children: React.ReactNode;
-};
-
-function Section({ title, editable = false, children }: SectionProps) {
+}) {
   return (
     <div className="bg-white rounded-2xl border p-6 space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">{title}</h2>
-
-        {editable && (
-          <FormContainer
-            table="profile"
-            type="update"
-            trigger={
-              <button className="text-sm text-blue-600 hover:underline">
-                Edit
-              </button>
-            }
-          />
-        )}
+        {editSlot}
       </div>
-
       <div className="grid md:grid-cols-2 gap-4">{children}</div>
     </div>
   );
 }
 
-type InfoProps = {
+function Info({
+  label,
+  value,
+  mono = false,
+}: {
   label: string;
   value: string;
   mono?: boolean;
-};
-
-function Info({ label, value, mono = false }: InfoProps) {
+}) {
   return (
     <div>
       <p className="text-sm text-gray-500">{label}</p>

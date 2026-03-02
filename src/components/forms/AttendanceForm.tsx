@@ -1,49 +1,30 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import {
   attendanceSchema,
-  AttendanceFormInput,   // ✅ FORM INPUT
-  AttendanceFormValues,  // ✅ SERVER OUTPUT
+  AttendanceFormInput,
+  AttendanceFormValues,
 } from "@/lib/formValidationSchemas";
-
-import { createAttendance, updateAttendance, ActionState } from "@/lib/actions";
-
-import { useRouter } from "next/navigation";
+import { createAttendance, updateAttendance } from "@/lib/actions";
 import { toast } from "react-toastify";
-
-import FormStepper from "@/components/ui/FormStepper";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
+import CollapsibleSection from "@/components/CollapsibleSection";
 import RadixSelect from "@/components/ui/RadixSelect";
 import RadixDatePicker from "@/components/ui/RadixDatePicker";
-
-import { motion, AnimatePresence } from "framer-motion";
-
-/* ================= STEPS ================= */
-
-const steps = ["Student", "Lesson", "Status"];
-
-/* ================= FORM ================= */
+import { CalendarDays, UserCheck } from "lucide-react";
 
 export default function AttendanceForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: AttendanceFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData: {
     students: { id: string; name: string; surname: string }[];
     lessons: {
@@ -53,14 +34,17 @@ export default function AttendanceForm({
     }[];
   };
 }) {
-  const router = useRouter();
-  const { students = [], lessons = [] } = relatedData;
-  const [step, setStep] = useState(0);
+  const { students, lessons } = relatedData;
 
-  /* ================= RHF ================= */
+  /* ---------------- ACCORDION ---------------- */
+
+  const [openSection, setOpenSection] = useState<"lesson" | "student">("lesson");
+  const [submitting, setSubmitting] = useState(false);
+
+  /* ---------------- RHF ---------------- */
 
   const methods = useForm<AttendanceFormInput>({
-    resolver: zodResolver(attendanceSchema), // ✅ MATCHES INPUT
+    resolver: zodResolver(attendanceSchema),
     defaultValues: {
       id: data?.id,
       studentId: data?.studentId ?? "",
@@ -68,176 +52,160 @@ export default function AttendanceForm({
       date: data?.date ?? new Date(),
       present: data?.present ?? true,
     },
-    mode: "onChange",
   });
 
-  const {
-    watch,
-    setValue,
-    trigger,
-    handleSubmit,
-    formState: { isSubmitting, errors },
-    control,
-  } = methods;
+  const { watch, setValue, handleSubmit, control } = methods;
 
-  /* ✅ useWatch returns unknown → narrow it */
-  const rawDate = useWatch({
+  const watchedDate = useWatch({
     control,
     name: "date",
-  });
+  }) as Date | undefined;
 
-  const watchedDate: Date | undefined =
-    rawDate instanceof Date ? rawDate : undefined;
-
-  /* ================= ACTION ================= */
-
-  const [state, formAction] = useActionState<ActionState, AttendanceFormInput>(
-    type === "create" ? createAttendance : updateAttendance,
-    { success: false },
-  );
-
-  /* ================= STEP VALIDATION ================= */
-
-  const nextStep = async () => {
-    const fields: (keyof AttendanceFormInput)[][] = [
-      ["studentId"],
-      ["lessonId", "date"],
-      ["present"],
-    ];
-
-    const valid = await trigger(fields[step]);
-    if (valid) setStep((s) => s + 1);
-  };
-
-  /* ================= SUBMIT ================= */
-
-  const submitFinal = handleSubmit((values) => {
-    startTransition(() => formAction(values));
-  });
-
-  /* ================= SUCCESS ================= */
+  /* ---------------- AUTO ADVANCE ---------------- */
 
   useEffect(() => {
-    if (!state.success) return;
+    if (watch("lessonId") && watchedDate) {
+      setOpenSection("student");
+    }
+  }, [watch("lessonId"), watchedDate]);
 
-    toast.success("Attendance saved successfully");
-    setOpen(false);
-    router.refresh();
-  }, [state.success, router, setOpen]);
+  /* ---------------- SUBMIT ---------------- */
 
-  /* ================= UI ================= */
+  const onSubmit = handleSubmit(async (values) => {
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      const result =
+        type === "create"
+          ? await createAttendance({ success: false }, values)
+          : await updateAttendance({ success: false }, values);
+
+      if (result.success) {
+        toast.success(
+          `Attendance ${type === "create" ? "created" : "updated"} successfully`,
+        );
+        close(); // ✅ ALWAYS closes modal
+        return;
+      }
+
+      if (result.error) {
+        toast.error(result.error);
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  });
+
+  /* ---------------- UI ---------------- */
 
   return (
     <FormProvider {...methods}>
-      {/* ⛔ NO form submit */}
-      <form className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Attendance" : "Update Attendance"}
-        </h1>
-
-        <FormStepper
-          steps={steps}
-          step={step}
-          errorSteps={[
-            Boolean(errors.studentId),
-            Boolean(errors.lessonId || errors.date),
-            Boolean(errors.present),
-          ]}
-        />
-
-        <div className="min-h-[160px]">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div key="s1" className="space-y-4">
-                <RadixSelect
-                  placeholder="Select student"
-                  value={watch("studentId")}
-                  onChange={(v) =>
-                    setValue("studentId", v ?? "", { shouldValidate: true })
-                  }
-                  options={students.map((s) => ({
-                    value: s.id,
-                    label: `${s.name} ${s.surname}`,
-                  }))}
-                />
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div key="s2" className="space-y-4">
-                <RadixSelect
-                  placeholder="Select lesson"
-                  value={watch("lessonId") ? String(watch("lessonId")) : ""}
-                  onChange={(v) =>
-                    setValue("lessonId", Number(v), { shouldValidate: true })
-                  }
-                  options={lessons.map((l) => ({
-                    value: String(l.id),
-                    label: `${l.subject?.name ?? "Subject"} / ${
-                      l.class?.name ?? "Class"
-                    }`,
-                  }))}
-                />
-
-                {/* ✅ NO TYPE ERROR */}
-                <RadixDatePicker
-                  value={watchedDate}
-                  onChange={(d) =>
-                    d && setValue("date", d, { shouldValidate: true })
-                  }
-                />
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div key="s3" className="space-y-4">
-                <RadixSelect
-                  placeholder="Attendance status"
-                  value={watch("present") ? "true" : "false"}
-                  onChange={(v) =>
-                    setValue("present", v === "true", {
-                      shouldValidate: true,
-                    })
-                  }
-                  options={[
-                    { value: "true", label: "Present" },
-                    { value: "false", label: "Absent" },
-                  ]}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[60vh]">
+        {/* HEADER */}
+        <div className="shrink-0 px-4 pb-2">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Attendance" : "Update Attendance"}
+          </h1>
         </div>
 
-        {step === steps.length - 1 && state.error && (
-          <p className="text-xs text-red-500">{state.error}</p>
-        )}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {/* LESSON */}
+          <CollapsibleSection
+            title="Lesson & Date"
+            icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
+            open={openSection === "lesson"}
+            onToggle={() => setOpenSection("lesson")}
+          >
+            <div className="space-y-3">
+              <RadixSelect
+                placeholder="Select lesson"
+                value={watch("lessonId") ? String(watch("lessonId")) : ""}
+                onChange={(v) =>
+                  setValue("lessonId", Number(v), { shouldValidate: true })
+                }
+                options={lessons.map((l) => ({
+                  value: String(l.id),
+                  label: `${l.subject?.name ?? "Subject"} / ${
+                    l.class?.name ?? "Class"
+                  }`,
+                }))}
+              />
 
-        <div className="flex justify-between pt-3 border-t">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep((s) => s - 1)}>
-              Back
-            </button>
-          )}
+              <RadixDatePicker
+                value={watchedDate}
+                onChange={(d) =>
+                  d && setValue("date", d, { shouldValidate: true })
+                }
+              />
+            </div>
+          </CollapsibleSection>
 
-          {step < steps.length - 1 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="bg-blue-600 text-white px-4 py-2 rounded-full"
-            >
-              Next →
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={submitFinal}
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
-            >
-              {isSubmitting ? "Saving..." : "Submit"}
-            </button>
-          )}
+          {/* STUDENT */}
+          <CollapsibleSection
+            title="Student Attendance"
+            icon={<UserCheck className="h-4 w-4 text-purple-600" />}
+            open={openSection === "student"}
+            onToggle={() => setOpenSection("student")}
+          >
+            <div className="space-y-3">
+              <RadixSelect
+                placeholder="Select student"
+                value={watch("studentId")}
+                onChange={(v) =>
+                  setValue("studentId", v ?? "", {
+                    shouldValidate: true,
+                  })
+                }
+                options={students.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} ${s.surname}`,
+                }))}
+              />
+
+              <RadixSelect
+                placeholder="Status"
+                value={watch("present") ? "true" : "false"}
+                onChange={(v) =>
+                  setValue("present", v === "true", {
+                    shouldValidate: true,
+                  })
+                }
+                options={[
+                  { value: "true", label: "Present" },
+                  { value: "false", label: "Absent" },
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
+        </div>
+
+        {/* FOOTER */}
+        <div className="shrink-0 border-t px-4 py-3 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={close}
+            className="text-xs text-gray-600"
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs disabled:opacity-60"
+          >
+            {submitting
+              ? "Saving..."
+              : type === "create"
+                ? "Create Attendance"
+                : "Update Attendance"}
+          </button>
         </div>
       </form>
     </FormProvider>

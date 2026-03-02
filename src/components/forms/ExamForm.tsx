@@ -1,220 +1,207 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useEffect,
-  startTransition,
-  useActionState,
-} from "react";
-
+import { useEffect, useState, startTransition, useActionState } from "react";
 import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { examSchema, ExamFormValues } from "@/lib/formValidationSchemas";
-import { createExam, updateExam } from "@/lib/actions";
-
+import { createExam, updateExam, ActionState } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 import InputField from "../InputField";
 import RadixSelect from "@/components/ui/RadixSelect";
 import RadixDateTimePicker from "@/components/ui/RadixDateTimePicker";
-import FormStepper from "@/components/ui/FormStepper";
+import CollapsibleSection from "../CollapsibleSection";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { ActionState } from "@/lib/actions";
-
-/* ===================================================== */
-
-const steps = ["Basic Info", "Schedule"];
-
-/* ===================================================== */
+type Section = "basic" | "schedule";
 
 export default function ExamForm({
   type,
   data,
-  setOpen,
+  close,
   relatedData,
 }: {
   type: "create" | "update";
   data?: ExamFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
   relatedData?: { lessons: { id: number; name: string }[] };
 }) {
   const router = useRouter();
-  const { lessons = [] } = relatedData || {};
-
-  const [step, setStep] = useState(0);
-
-  /* ================= RHF ================= */
+  const lessons = relatedData?.lessons ?? [];
 
   const methods = useForm<ExamFormValues>({
     resolver: zodResolver(examSchema) as any,
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
+      lessonId: data?.lessonId ?? undefined,
       startTime: data?.startTime ? new Date(data.startTime) : undefined,
       endTime: data?.endTime ? new Date(data.endTime) : undefined,
-      lessonId: data?.lessonId,
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
+    handleSubmit,
     watch,
     setValue,
-    handleSubmit,
-    trigger,
+    formState: { errors, submitCount, isSubmitting },
     control,
-    formState: { isSubmitting },
   } = methods;
 
-  /* ================= ACTION ================= */
+  const [openSection, setOpenSection] = useState<Section>("basic");
+
+  const sectionFields: Record<Section, readonly (keyof ExamFormValues)[]> = {
+    basic: ["title", "lessonId"],
+    schedule: ["startTime", "endTime"],
+  };
 
   const [state, formAction] = useActionState<ActionState, ExamFormValues>(
     type === "create" ? createExam : updateExam,
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  /* Auto-open section with first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstError = Object.keys(errors)[0] as keyof ExamFormValues;
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof ExamFormValues)[][] = [
-      ["title", "lessonId"],
-      ["startTime", "endTime"],
-    ];
+      const section = (
+        Object.entries(sectionFields) as [
+          Section,
+          readonly (keyof ExamFormValues)[],
+        ][]
+      ).find(([, fields]) => fields.includes(firstError))?.[0];
 
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
-  };
+      if (section) setOpenSection(section);
 
-  /* ================= SUBMIT ================= */
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[name="${firstError}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [errors, submitCount]);
 
   const onSubmit = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
 
-  /* ================= SUCCESS ================= */
-
   useEffect(() => {
-    if (!state.success) return;
-
-    toast.success(
-      `Exam ${type === "create" ? "created" : "updated"} successfully`,
-    );
-    setOpen(false);
-    router.refresh();
-  }, [state.success, type, router, setOpen]);
-
-  /* ================= UI ================= */
+    if (state.success) {
+      toast.success(
+        `Exam ${type === "create" ? "created" : "updated"} successfully`,
+      );
+      close();
+      router.refresh();
+    }
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Student" : "Update Student"}
-        </h1>
-
-        <FormStepper steps={steps} step={step} />
-
-        {/* SCROLL AREA */}
-        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
-          <AnimatePresence mode="wait">
-            {/* STEP 1 – BASIC INFO */}
-            {step === 0 && (
-              <motion.div
-                key="basic"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="space-y-4"
-              >
-                <InputField label="Exam Title" name="title" />
-
-                <RadixSelect
-                  value={watch("lessonId") ? String(watch("lessonId")) : ""}
-                  onChange={(v) =>
-                    setValue("lessonId", Number(v), {
-                      shouldValidate: true,
-                    })
-                  }
-                  placeholder="Select Lesson"
-                  options={lessons.map((l) => ({
-                    value: String(l.id),
-                    label: l.name,
-                  }))}
-                />
-              </motion.div>
-            )}
-
-            {/* STEP 2 – SCHEDULE */}
-            {step === 1 && (
-              <motion.div
-                key="schedule"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="space-y-4"
-              >
-                <Controller
-                  name="startTime"
-                  control={control}
-                  render={({ field }) => (
-                    <RadixDateTimePicker
-                      value={field.value}
-                      onChange={(v) =>
-                        setValue("startTime", v, {
-                          shouldValidate: true,
-                        })
-                      }
-                      placeholder="Start date & time"
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="endTime"
-                  control={control}
-                  render={({ field }) => (
-                    <RadixDateTimePicker
-                      value={field.value}
-                      onChange={(v) =>
-                        setValue("endTime", v, {
-                          shouldValidate: true,
-                        })
-                      }
-                      placeholder="End date & time"
-                    />
-                  )}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form onSubmit={onSubmit} className="flex flex-col h-[70vh] max-h-[75vh]">
+        {/* ===== HEADER (FIXED) ===== */}
+        <div className="shrink-0 px-4 sm:px-6 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Exam" : "Update Exam"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Manage exam details and schedule
+          </p>
         </div>
 
-        {/* ACTIONS */}
-        <div className="px-5 py-4 border-t bg-white flex justify-between">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
-          )}
+        {/* ===== CONTENT (SCROLL ONLY) ===== */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-24 space-y-4">
+          {/* BASIC INFO */}
+          <CollapsibleSection
+            title="Exam Information"
+            description="Title and lesson mapping"
+            icon="📝"
+            open={openSection === "basic"}
+            onToggle={() => setOpenSection("basic")}
+          >
+            <div className="space-y-4">
+              <InputField label="Exam Title" name="title" />
 
-          {step < steps.length - 1 ? (
+              <RadixSelect
+                value={watch("lessonId") ? String(watch("lessonId")) : ""}
+                onChange={(v) =>
+                  setValue("lessonId", Number(v), {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Select Lesson"
+                options={lessons.map((l) => ({
+                  value: String(l.id),
+                  label: l.name,
+                }))}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {/* SCHEDULE */}
+          <CollapsibleSection
+            title="Schedule"
+            description="Exam date and time"
+            icon="⏰"
+            open={openSection === "schedule"}
+            onToggle={() => setOpenSection("schedule")}
+          >
+            <div className="space-y-4">
+              <Controller
+                name="startTime"
+                control={control}
+                render={({ field }) => (
+                  <RadixDateTimePicker
+                    value={field.value}
+                    onChange={(v) =>
+                      setValue("startTime", v, { shouldValidate: true })
+                    }
+                    placeholder="Start date & time"
+                  />
+                )}
+              />
+
+              <Controller
+                name="endTime"
+                control={control}
+                render={({ field }) => (
+                  <RadixDateTimePicker
+                    value={field.value}
+                    onChange={(v) =>
+                      setValue("endTime", v, { shouldValidate: true })
+                    }
+                    placeholder="End date & time"
+                  />
+                )}
+              />
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
+          )}
+        </div>
+
+        {/* ===== FOOTER (FIXED) ===== */}
+        <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={nextStep}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600"
             >
-              Next →
+              Cancel
             </button>
-          ) : (
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-5 py-2 rounded-lg disabled:opacity-50"
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
               {isSubmitting
                 ? "Saving..."
@@ -222,7 +209,7 @@ export default function ExamForm({
                   ? "Create Exam"
                   : "Update Exam"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

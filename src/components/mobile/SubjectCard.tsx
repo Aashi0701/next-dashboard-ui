@@ -1,43 +1,44 @@
-import FormContainer from "@/components/FormContainer";
 import { Subject, Teacher } from "@prisma/client";
+import SubjectCardClient from "./SubjectCardClient";
+import FormContainer from "@/components/FormContainer";
 
 type SubjectList = Subject & { teachers: Teacher[] };
 
 export default function SubjectCard({
   item,
   role,
+  action,
 }: {
   item: SubjectList;
   role?: string;
+  action?: "edit" | "delete";
 }) {
   return (
-    <div className="rounded-xl border bg-white px-4 py-3 shadow-sm">
-      {/* ROW 1: SUBJECT + ACTIONS */}
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-gray-900 truncate">
-          {item.name}
-        </p>
+    <>
+      {/* CLIENT UI */}
+      <SubjectCardClient item={item} role={role} />
 
-        {role === "admin" && (
-          <div className="flex gap-1 shrink-0">
-            <FormContainer table="subject" type="update" data={item} />
-            <FormContainer table="subject" type="delete" id={item.id} />
-          </div>
-        )}
-      </div>
-
-      {/* ROW 2: TEACHERS */}
-      {item.teachers.length > 0 ? (
-        <p className="mt-1 text-xs text-gray-600 truncate">
-          <span className="font-medium text-gray-900">
-            {item.teachers.map((t) => t.name).join(", ")}
-          </span>
-        </p>
-      ) : (
-        <p className="mt-1 text-xs italic text-gray-400">
-          No teacher assigned
-        </p>
+      {/* SERVER-SIDE MODALS */}
+      {action === "edit" && (
+        <FormContainer
+          key={`edit-${item.id}`}
+          table="subject"
+          type="update"
+          id={item.id}
+          data={item}
+          trigger={null}
+        />
       )}
-    </div>
+
+      {action === "delete" && (
+        <FormContainer
+          key={`delete-${item.id}`}
+          table="subject"
+          type="delete"
+          id={item.id}
+          trigger={null}
+        />
+      )}
+    </>
   );
 }

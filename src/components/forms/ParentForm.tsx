@@ -1,238 +1,225 @@
 "use client";
 
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useEffect,
-  startTransition,
-  useActionState,
-} from "react";
-
+import { useEffect, startTransition, useActionState, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { parentSchema, ParentFormValues } from "@/lib/formValidationSchemas";
-
 import { createParent, updateParent } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 import InputField from "../InputField";
-import { AnimatePresence, motion } from "framer-motion";
+import CollapsibleSection from "../CollapsibleSection";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 import { ActionState } from "@/lib/actions";
 
-/* ===================================================== */
-
-const steps = ["Authentication", "Personal"];
-
-function Stepper({ steps, step }: { steps: string[]; step: number }) {
-  const CIRCLE = 36; // w-8 h-8
-
-  return (
-    <div className="relative mb-6">
-      {/* CONNECTOR LINE */}
-      <div
-        className="absolute top-1/2 left-4 right-4 h-[2px] bg-gray-200 -translate-y-1/2"
-        style={{
-          top: CIRCLE / 2,
-          left: CIRCLE / 1,
-          right: CIRCLE / 2,
-        }}
-      >
-        <motion.div
-          className="h-full bg-blue-600"
-          initial={{ width: 0 }}
-          animate={{
-            width: `${(step / (steps.length - 1)) * 100}%`,
-          }}
-          transition={{ duration: 0.35, ease: "easeInOut" }}
-        />
-      </div>
-
-      {/* STEPS */}
-      <div className="relative flex justify-between">
-        {steps.map((label, i) => {
-          const active = i === step;
-          const completed = i < step;
-
-          return (
-            <div key={label} className="flex flex-col items-center gap-2">
-              <motion.div
-                animate={{ scale: active ? 1.15 : 1 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 420,
-                  damping: 24,
-                }}
-                className={`
-                  w-8 h-8 rounded-full flex items-center justify-center z-10
-                  transition-colors
-                  ${
-                    completed
-                      ? "bg-green-600 text-white"
-                      : active
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-500"
-                  }
-                `}
-              >
-                {completed ? "✓" : i + 1}
-              </motion.div>
-
-              <span
-                className={`text-xs font-medium ${
-                  active ? "text-blue-600" : "text-gray-500"
-                }`}
-              >
-                {label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+/* ===== Password strength ===== */
+function passwordStrength(pw: string) {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
 }
+
+type Section = "account" | "personal";
 
 export default function ParentForm({
   type,
   data,
-  setOpen,
+  close,
 }: {
   type: "create" | "update";
   data?: ParentFormValues;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  close: () => void;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-
-  /* ================= RHF ================= */
 
   const methods = useForm<ParentFormValues>({
     resolver: zodResolver(parentSchema),
     defaultValues: {
       id: data?.id,
       username: data?.username ?? "",
+      password: "",
       email: data?.email ?? "",
       phone: data?.phone ?? "",
       name: data?.name ?? "",
       surname: data?.surname ?? "",
       address: data?.address ?? "",
     },
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const {
     handleSubmit,
-    trigger,
-    formState: { isSubmitting },
+    watch,
+    formState: { errors, submitCount, isSubmitting },
   } = methods;
-
-  /* ================= ACTION ================= */
 
   const [state, formAction] = useActionState<ActionState, ParentFormValues>(
     type === "create" ? createParent : updateParent,
     { success: false },
   );
 
-  /* ================= STEP VALIDATION ================= */
+  const [openSection, setOpenSection] = useState<Section>("account");
 
-  const nextStep = async () => {
-    const fieldsByStep: (keyof ParentFormValues)[][] = [
-      ["username", "email", "phone"],
-      ["name", "surname", "address"],
-    ];
-
-    const valid = await trigger(fieldsByStep[step]);
-    if (valid) setStep((s) => s + 1);
+  const sectionFields: Record<Section, readonly (keyof ParentFormValues)[]> = {
+    account: ["username", "email", "phone", "password"],
+    personal: ["name", "surname", "address"],
   };
 
-  /* ================= SUBMIT ================= */
+  /* Auto-expand section + scroll to first error */
+  useEffect(() => {
+    if (submitCount > 0 && Object.keys(errors).length > 0) {
+      const firstErrorField = Object.keys(errors)[0] as keyof ParentFormValues;
 
-  const onSubmit = handleSubmit((values) => {
-    startTransition(() => formAction(values));
-  });
+      const section = (
+        Object.entries(sectionFields) as [
+          Section,
+          readonly (keyof ParentFormValues)[],
+        ][]
+      ).find(([, fields]) => fields.includes(firstErrorField))?.[0];
 
-  /* ================= SUCCESS ================= */
+      if (section) setOpenSection(section);
 
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[name="${firstErrorField}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [errors, submitCount]);
+
+  /* Success / Error */
   useEffect(() => {
     if (state.success) {
       toast.success(
         `Parent ${type === "create" ? "created" : "updated"} successfully`,
       );
-      setOpen(false);
+      close();
       router.refresh();
     }
-  }, [state.success, router, setOpen, type]);
+    if (state.error) toast.error(state.error);
+  }, [state, router, close, type]);
 
-  /* ================= UI ================= */
+  const onSubmit = handleSubmit((values) => {
+    startTransition(() => formAction(values));
+  });
+
+  const password = watch("password") ?? "";
+  const strength = passwordStrength(password);
+  const strengthLabel = ["Weak", "Weak", "Okay", "Good", "Strong"][strength];
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <h1 className="text-base sm:text-lg font-semibold">
-          {type === "create" ? "Create Student" : "Update Student"}
-        </h1>
-
-        <Stepper steps={steps} step={step} />
-
-        {/* SCROLL AREA */}
-        <div className="transition-[min-height] duration-300 ease-in-out min-h-[140px] sm:min-h-[150px] md:min-h-[160px] lg:min-h-[170px]">
-          <AnimatePresence mode="wait">
-            {/* STEP 1 */}
-            {step === 0 && (
-              <motion.div
-                key="auth"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="grid sm:grid-cols-2 gap-4"
-              >
-                <InputField label="Username" name="username" />
-                <InputField label="Email" name="email" />
-                <InputField label="Phone" name="phone" />
-              </motion.div>
-            )}
-
-            {/* STEP 2 */}
-            {step === 1 && (
-              <motion.div
-                key="personal"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                className="grid sm:grid-cols-2 gap-4"
-              >
-                <InputField label="First Name" name="name" />
-                <InputField label="Last Name" name="surname" />
-                <InputField label="Address" name="address" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <form className="flex flex-col h-[65vh]" onSubmit={onSubmit}>
+        {/* HEADER */}
+        <div className="shrink-0 pb-3">
+          <ModalCloseButton onClose={close} />
+          <h1 className="text-base font-semibold">
+            {type === "create" ? "Create Parent" : "Update Parent"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            Manage parent account and personal details
+          </p>
         </div>
 
-        {state.error && (
-          <p className="text-xs text-red-500 mt-2">{state.error}</p>
-        )}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto space-y-4 px-1">
+          <CollapsibleSection
+            title="Parent Account"
+            description="Login credentials and contact details"
+            icon="👤"
+            open={openSection === "account"}
+            onToggle={() => setOpenSection("account")}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+              <InputField
+                label="Username"
+                name="username"
+                readOnly={type === "update"}
+              />
+              <InputField
+                label="Email"
+                name="email"
+                type="email"
+                readOnly={type === "update"}
+              />
+              <InputField label="Phone" name="phone" />
 
-        {/* ACTIONS */}
-        <div className="flex justify-between pt-4">
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
+              {type === "create" && (
+                <div className="space-y-1.5">
+                  <InputField
+                    label="Password"
+                    name="password"
+                    type="password"
+                  />
+                  {password && (
+                    <>
+                      <div className="h-1 rounded bg-gray-200">
+                        <div
+                          className={`h-1 rounded transition-all ${
+                            strength <= 1
+                              ? "bg-red-500 w-1/4"
+                              : strength === 2
+                                ? "bg-yellow-500 w-2/4"
+                                : strength === 3
+                                  ? "bg-blue-500 w-3/4"
+                                  : "bg-green-600 w-full"
+                          }`}
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Password strength: <b>{strengthLabel}</b>
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Personal Information"
+            description="Basic personal and address details"
+            icon="🏠"
+            open={openSection === "personal"}
+            onToggle={() => setOpenSection("personal")}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-4 gap-1">
+              <InputField label="First Name" name="name" />
+              <InputField label="Last Name" name="surname" />
+              <InputField
+                label="Address"
+                name="address"
+                type="textarea"
+                className="sm:col-span-2"
+              />
+            </div>
+          </CollapsibleSection>
+
+          {submitCount > 0 && Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              Please fix the highlighted fields before saving.
+            </div>
           )}
+        </div>
 
-          {step < steps.length - 1 ? (
-            <button type="button" onClick={nextStep}>
-              Next →
+        {/* FOOTER */}
+        <div className="shrink-0 border-t bg-white pt-3 sticky bottom-0">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={close}
+              className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800"
+            >
+              Cancel
             </button>
-          ) : (
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-xs disabled:opacity-50"
             >
               {isSubmitting
                 ? "Saving..."
@@ -240,7 +227,7 @@ export default function ParentForm({
                   ? "Create Parent"
                   : "Update Parent"}
             </button>
-          )}
+          </div>
         </div>
       </form>
     </FormProvider>

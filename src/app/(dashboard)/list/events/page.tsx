@@ -6,7 +6,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
 import EventFilters from "@/components/filters/EventFilters";
 import EventSort from "@/components/filters/EventSort";
 import EventCard from "@/components/mobile/EventCard";
@@ -58,7 +57,7 @@ export default async function EventListPage({
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="event" type="update" data={item} />
+            <FormContainer table="event" type="update" data={item} id={item.id}/>
             <FormContainer table="event" type="delete" id={item.id} />
           </div>
         </td>

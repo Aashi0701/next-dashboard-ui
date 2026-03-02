@@ -4,10 +4,8 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { Prisma } from "@prisma/client";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
-
 import PaymentsClient, { FullStudentFee } from "@/components/PaymentsClient";
 import PaymentsFilters from "@/components/filters/PaymentFilters";
 import PaymentsSort from "@/components/filters/PaymentSort";
