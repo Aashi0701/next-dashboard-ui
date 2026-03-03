@@ -1,5 +1,4 @@
 import Announcements from "@/components/Announcements";
-import BigCalendarContainer from "@/components/BigCalendarContainer";
 import FormContainer from "@/components/FormContainer";
 import Performance from "@/components/Performance";
 import prisma from "@/lib/prisma";
@@ -11,7 +10,9 @@ import StudentFeeForm from "./StudentFeeForm";
 import PaymentForm from "./PaymentForm";
 import RemoveFeeButton from "./RemoveFeeButton";
 import StudentAttendanceCalendar from "@/components/StudentAttendanceCalendar";
-import { Attendance, Holiday, StudentEvent } from "@/lib/types";
+import { Attendance } from "@/lib/types";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 /* =====================================================
    PAGE
@@ -140,6 +141,16 @@ const SingleStudentPage = async ({
     <div className="flex-1 p-0 sm:p-4 flex flex-col gap-2 xl:flex-row">
       {/* ================= LEFT ================= */}
       <div className="w-full xl:w-2/3 flex flex-col gap-3">
+        {/* ===== HEADER BAR ===== */}
+        <div className="flex items-center gap-2 px-1 sm:px-0">
+          <Link
+            href="/list/students"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Students
+          </Link>
+        </div>
         {/* ================= PROFILE (POLISHED MOBILE) ================= */}
         <div className="bg-lamaSky/90 rounded-xl p-1 sm:p-3 shadow-sm">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -199,7 +210,7 @@ const SingleStudentPage = async ({
       </div>
 
       {/* ================= RIGHT ================= */}
-      <div className="w-full xl:w-1/3 flex flex-col gap-3">
+      <div className="w-full xl:w-1/3 flex flex-col gap-3 xl:mt-[36px]">
         {/* ===== FEES (ADMIN) ===== */}
         {role === "admin" && (
           <div className="bg-white p-4 rounded-xl border space-y-4">

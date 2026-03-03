@@ -18,9 +18,6 @@ export default function DashboardShell({
   role: Role;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
-  const showBack = pathname?.startsWith("/list/teachers/");
 
   return (
     /* ⭐ CRITICAL FIX: h-screen + overflow-hidden */
@@ -68,7 +65,6 @@ export default function DashboardShell({
         <NavbarClient onMenuClick={() => setMobileMenuOpen(true)} />
 
         <main className="flex-1 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-2 sm:p-3">
-          {showBack && <BackButton label="Back to Teachers" />}
           {children}
         </main>
       </section>

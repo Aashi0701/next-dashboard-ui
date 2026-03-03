@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Class, Student } from "@prisma/client";
 import ActionMenuClient, { ActionType } from "@/components/ui/ActionMenuClient";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -28,6 +27,11 @@ export default function StudentCardClient({
   const params = useSearchParams();
 
   const onAction = (action: ActionType) => {
+    if (action === "view") {
+      router.push(`/list/students/${item.id}`);
+      return;
+    }
+
     const q = new URLSearchParams(params.toString());
     q.set("action", action);
     q.set("id", String(item.id));
@@ -42,16 +46,10 @@ export default function StudentCardClient({
       {/* ===== RIGHT ACTIONS (FIXED) ===== */}
       {role === "admin" && (
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          <Link href={`/list/students/${item.id}`}>
-            <button
-              type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
-            >
-              <Image src="/eye.png" alt="View" width={14} height={14} />
-            </button>
-          </Link>
-
-          <ActionMenuClient onAction={onAction} />
+          <ActionMenuClient
+            onAction={onAction}
+            actions={["view", "edit", "delete"]}
+          />
         </div>
       )}
 
@@ -68,9 +66,7 @@ export default function StudentCardClient({
 
         {/* Name + Class */}
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold truncate">
-            {item.name}
-          </h3>
+          <h3 className="text-sm font-semibold truncate">{item.name}</h3>
           <p className="text-[11px] text-gray-500 truncate">
             {item.class.name}
           </p>

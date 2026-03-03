@@ -42,7 +42,7 @@ export default function ParentCardClient({
       {/* ACTION MENU */}
       {role === "admin" && (
         <div className="absolute top-2 right-2">
-          <ActionMenuClient onAction={onAction} />
+          <ActionMenuClient onAction={onAction} actions={["edit", "delete"]} />
         </div>
       )}
 

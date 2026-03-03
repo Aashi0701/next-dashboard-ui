@@ -35,7 +35,7 @@ const StudentListPage = async ({
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) => {
   const params = await searchParams;
-  const { page, sort, ...queryParams } = params;
+  const { page, sort, action, id, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
 
   const { sessionClaims, userId } = await auth();

@@ -8,16 +8,18 @@ export type ActionType =
   | "assign"
   | "delete"
   | "whatsapp"
+  | "view"
   | "email";
 
 export default function ActionMenuClient({
   onAction,
-  actions = ["edit", "delete"],
+  actions = ["view", "edit", "delete"],
 }: {
   onAction: (action: ActionType) => void;
   actions?: ActionType[];
 }) {
   const labelMap: Record<ActionType, string> = {
+    view: "View",
     edit: "Edit",
     assign: "Assign",
     delete: "Delete",

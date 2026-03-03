@@ -3,7 +3,7 @@ import FormModal from "./FormModal";
 import { auth } from "@clerk/nextjs/server";
 import React from "react";
 
-type FormType = "create" | "update" | "delete" | "assign";
+type FormType = "create" | "update" | "delete" | "assign" | "view";
 
 export type FormContainerProps = {
   table:

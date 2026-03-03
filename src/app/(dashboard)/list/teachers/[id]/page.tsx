@@ -1,6 +1,5 @@
 import Announcements from "@/components/Announcements";
 import FormContainer from "@/components/FormContainer";
-import Performance from "@/components/Performance";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import Image from "next/image";
@@ -9,7 +8,7 @@ import { notFound } from "next/navigation";
 import TeacherSchedule from "@/components/TeacherSchedule";
 import { CalendarEvent } from "@/lib/types";
 import { adjustScheduleToCurrentWeek } from "@/lib/utils";
-import BackButton from "@/components/BackButton";
+import { ArrowLeft } from "lucide-react";
 
 /* ================= PAGE ================= */
 
@@ -118,7 +117,17 @@ const SingleTeacherPage = async ({
   return (
     <div className="flex-1 px-1 py-2 p-2 md:p-6 flex flex-col gap-6 xl:flex-row">
       {/* ================= LEFT ================= */}
-      <div className="w-full xl:w-2/3 flex flex-col gap-6">
+      <div className="w-full xl:w-2/3 flex flex-col gap-3">
+        {/* ===== HEADER BAR ===== */}
+        <div className="flex items-center gap-2 px-1 sm:px-0">
+          <Link
+            href="/list/students"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Teachers
+          </Link>
+        </div>
         {/* PROFILE */}
         <div className="bg-lamaSky rounded-2xl px-4 py-4 sm:p-6 lg:px-8 lg:py-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
           {/* AVATAR */}
@@ -182,11 +191,7 @@ const SingleTeacherPage = async ({
             value={teacher._count.lessons}
             label="Lessons"
           />
-          <Stat
-            icon="/singleClass.png"
-            value={classCount}
-            label="Classes"
-          />
+          <Stat icon="/singleClass.png" value={classCount} label="Classes" />
         </div>
 
         {/* SCHEDULE */}
@@ -198,7 +203,7 @@ const SingleTeacherPage = async ({
       </div>
 
       {/* ================= RIGHT ================= */}
-      <div className="w-full xl:w-1/3 flex flex-col gap-6">
+      <div className="w-full xl:w-1/3 flex flex-col gap-3 xl:mt-[36px]">
         <div className="bg-white rounded-xl p-4 md:p-6">
           <h2 className="text-base sm:text-lg font-semibold mb-4">
             Quick Actions

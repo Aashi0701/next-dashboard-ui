@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Teacher } from "@prisma/client";
 import ActionMenuClient, { ActionType } from "@/components/ui/ActionMenuClient";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,6 +16,11 @@ export default function TeacherCardClient({
   const params = useSearchParams();
 
   const onAction = (action: ActionType) => {
+    if (action === "view") {
+      router.push(`/list/teachers/${item.id}`);
+      return;
+    }
+
     const q = new URLSearchParams(params.toString());
     q.set("action", action);
     q.set("id", String(item.id));
@@ -24,52 +28,34 @@ export default function TeacherCardClient({
   };
 
   return (
-    <div className="bg-white border rounded-xl px-3 py-3 shadow-sm w-full">
-      <div className="flex items-center gap-2 min-w-0">
-        {/* Avatar */}
-        <div className="shrink-0">
-          <Image
-            src={item.img || "/noAvatar.png"}
-            alt={item.name}
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-full object-cover"
+    <div className="relative bg-white border rounded-xl p-3 shadow-sm">
+      {/* ===== RIGHT ACTIONS ===== */}
+      {role === "admin" && (
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <ActionMenuClient
+            onAction={onAction}
+            actions={["view", "edit", "delete"]}
           />
         </div>
+      )}
 
-        {/* Name & Email */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {item.name}
-          </p>
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="flex items-center gap-3 pr-16">
+        {/* Avatar */}
+        <Image
+          src={item.img || "/noAvatar.png"}
+          alt={item.name}
+          width={44}
+          height={44}
+          className="w-11 h-11 rounded-full object-cover shrink-0"
+        />
+
+        {/* Name + Email */}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold truncate">{item.name}</h3>
           <p className="text-[11px] text-gray-500 truncate">
             {item.email}
           </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* View */}
-          <Link href={`/list/teachers/${item.id}`}>
-            <button
-              type="button"
-              aria-label="View teacher"
-              className="
-                h-7 w-7
-                flex items-center justify-center
-                rounded-full
-                bg-lamaSky
-                hover:opacity-90
-              "
-            >
-              <Image src="/eye.png" alt="" width={14} height={14} />
-            </button>
-          </Link>
-
-          {/* Menu */}
-          {role === "admin" && (
-            <ActionMenuClient onAction={onAction} />
-          )}
         </div>
       </div>
     </div>
