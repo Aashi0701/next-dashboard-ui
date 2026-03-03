@@ -541,10 +541,6 @@ export const updateStudent = async (
   }
 
   try {
-    await clerkAdmin.users.updateUser(data.id, {
-      firstName: data.name,
-      lastName: data.surname,
-    });
 
     const studentData: Prisma.StudentUpdateInput = {
       name: data.name,

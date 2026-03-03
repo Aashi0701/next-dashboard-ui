@@ -338,7 +338,8 @@ export default function HomePage() {
                 width={96}
                 height={96}
                 priority
-                className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] object-contain"/>
+                className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] object-contain"
+              />
             </div>
           </div>
 
@@ -416,14 +417,21 @@ export default function HomePage() {
           {/* ================= RIGHT — IMAGE + MESSAGE ================= */}
           <div className="flex-1 animate-fade-in-delayed flex flex-col items-center text-center">
             {/* Image with responsive size */}
-            <div className="p-1 rounded-full glowing-ring mb-4 sm:mb-6">
-              <Image
-                src="/alekhya_toon.jpg"
-                alt="Chairman"
-                width={180}
-                height={180}
-                className="rounded-full shadow-md border-4 border-amber-200 object-cover w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] lg:w-[260px] lg:h-[260px]"
-              />
+            <div className="relative mb-4 sm:mb-6">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-300 via-pink-300 to-purple-300 blur-xl opacity-40"></div>
+
+              <div className="relative p-1 rounded-full">
+                <Image
+                  src="/alekhya_toon.jpg"
+                  alt="Chairman"
+                  width={260}
+                  height={260}
+                  className="rounded-full border-4 border-amber-200 object-cover
+                 w-[180px] h-[180px]
+                 sm:w-[220px] sm:h-[220px]
+                 lg:w-[260px] lg:h-[260px]"
+                />
+              </div>
             </div>
 
             {/* Chairman Message */}
@@ -527,14 +535,15 @@ export default function HomePage() {
       {/* TESTIMONIALS */}
       <section
         id="testimonials"
-        className="relative py-14 sm:py-16 px-4 sm:px-10 bg-gradient-to-b from-indigo-200 to-purple-200">
+        className="relative py-14 sm:py-16 px-4 sm:px-10 bg-gradient-to-b from-indigo-200 to-purple-200"
+      >
         <div className="max-w-4xl mx-auto text-center">
           {/* Heading */}
           <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
             What Parents Say
           </h3>
 
-          <div className="mx-auto w-20 h-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 mb-12"/>
+          <div className="mx-auto w-20 h-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 mb-12" />
 
           {/* Swiper Wrapper */}
           <div className="relative max-w-5xl mx-auto">
@@ -587,7 +596,7 @@ export default function HomePage() {
         </h3>
 
         {/* Decorative Divider */}
-        <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10"/>
+        <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10" />
 
         <div className="max-w-7xl mx-auto">
           <Swiper
@@ -720,7 +729,8 @@ export default function HomePage() {
       {/* Contact Us Section*/}
       <section
         id="contact"
-        className="relative bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF] py-12 sm:py-18 px-4 sm:px-10 overflow-hidden">
+        className="relative bg-gradient-to-br from-[#EDE9FF] via-[#EEF2FF] to-[#F5E9FF] py-12 sm:py-18 px-4 sm:px-10 overflow-hidden"
+      >
         {/* Soft background glow */}
         <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-200/40 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-72 h-72 bg-pink-200/30 rounded-full blur-3xl" />
@@ -942,9 +952,26 @@ export default function HomePage() {
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="pointer-events-auto fixed bottom-18 right-4 sm:bottom-24 sm:right-6 bg-gray-600 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-all duration-300 animate-fade-in-up"
+            className="
+      pointer-events-auto
+      fixed
+      bottom-20
+      right-4
+      sm:bottom-24
+      sm:right-6
+      bg-gray-600
+      text-white
+      w-8 h-8
+      rounded-full
+      flex items-center justify-center
+      shadow-xl
+      hover:scale-110
+      active:scale-95
+      transition-transform
+      duration-200
+    "
           >
-            <span className="text-xl sm:text-2xl font-bold">↑</span>
+            <span className="text-lg font-bold">↑</span>
           </button>
         )}
       </div>
