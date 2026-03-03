@@ -14,6 +14,11 @@ import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 type Section = "basic" | "assignments";
 
+const SECTION_FIELDS: Record<Section, (keyof ClassSchema)[]> = {
+  basic: ["name", "capacity"],
+  assignments: ["supervisorId"],
+};
+
 export default function ClassForm({
   type,
   data,
@@ -50,11 +55,6 @@ export default function ClassForm({
 
   const [openSection, setOpenSection] = useState<Section>("basic");
 
-  const sectionFields: Record<Section, (keyof ClassSchema)[]> = {
-    basic: ["name", "capacity"],
-    assignments: ["supervisorId"],
-  };
-
   const [state, formAction] = useActionState<ActionState, ClassSchema>(
     type === "create" ? createClass : updateClass,
     { success: false },
@@ -66,7 +66,7 @@ export default function ClassForm({
       const firstError = Object.keys(errors)[0] as keyof ClassSchema;
 
       const section = (
-        Object.entries(sectionFields) as [Section, (keyof ClassSchema)[]][]
+        Object.entries(SECTION_FIELDS) as [Section, (keyof ClassSchema)[]][]
       ).find(([, fields]) => fields.includes(firstError))?.[0];
 
       if (section) setOpenSection(section);
@@ -97,10 +97,7 @@ export default function ClassForm({
 
   return (
     <FormProvider {...methods}>
-      <form
-        onSubmit={onSubmit}
-        className="flex flex-col h-[65dvh]"
-      >
+      <form onSubmit={onSubmit} className="flex flex-col h-[65dvh]">
         {/* HEADER */}
         <div className="shrink-0 pb-3 px-4 sm:px-6">
           <ModalCloseButton onClose={close} />

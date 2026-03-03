@@ -16,6 +16,11 @@ import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 type Section = "basic" | "schedule";
 
+const sectionFields: Record<Section, readonly (keyof ExamFormValues)[]> = {
+  basic: ["title", "lessonId"],
+  schedule: ["startTime", "endTime"],
+};
+
 export default function ExamForm({
   type,
   data,
@@ -51,11 +56,6 @@ export default function ExamForm({
   } = methods;
 
   const [openSection, setOpenSection] = useState<Section>("basic");
-
-  const sectionFields: Record<Section, readonly (keyof ExamFormValues)[]> = {
-    basic: ["title", "lessonId"],
-    schedule: ["startTime", "endTime"],
-  };
 
   const [state, formAction] = useActionState<ActionState, ExamFormValues>(
     type === "create" ? createExam : updateExam,

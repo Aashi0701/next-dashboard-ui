@@ -30,8 +30,16 @@ export default async function EventListPage({
     { header: "Title", accessor: "title" },
     { header: "Class", accessor: "class" },
     { header: "Date", accessor: "date", className: "hidden md:table-cell" },
-    { header: "Start Time", accessor: "startTime", className: "hidden md:table-cell" },
-    { header: "End Time", accessor: "endTime", className: "hidden md:table-cell" },
+    {
+      header: "Start Time",
+      accessor: "startTime",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: "End Time",
+      accessor: "endTime",
+      className: "hidden md:table-cell",
+    },
     ...(role === "admin"
       ? [{ header: "Actions", accessor: "action", className: "text-center" }]
       : []),
@@ -48,16 +56,29 @@ export default async function EventListPage({
         {new Intl.DateTimeFormat("en-US").format(item.startTime)}
       </td>
       <td className="p-4 hidden md:table-cell">
-        {item.startTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+        {item.startTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })}
       </td>
       <td className="p-4 hidden md:table-cell">
-        {item.endTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+        {item.endTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })}
       </td>
 
       {role === "admin" && (
         <td className="p-4 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="event" type="update" data={item} id={item.id}/>
+            <FormContainer
+              table="event"
+              type="update"
+              data={item}
+              id={item.id}
+            />
             <FormContainer table="event" type="delete" id={item.id} />
           </div>
         </td>
@@ -114,15 +135,23 @@ export default async function EventListPage({
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h1 className="text-base md:text-lg font-semibold">Events</h1>
+      <div className="flex items-center justify-between gap-3 w-full">
+        {/* ===== TITLE ===== */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          Events
+        </h1>
 
-        <div className="flex flex-wrap items-center gap-3 sm:gap-2 w-full md:w-auto">
-          <TableSearch />
+        <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
+          {/* Search */}
+          <div className="flex-1 min-w-0 max-w-[160px] sm:max-w-[200px] md:max-w-none">
+            <TableSearch />
+          </div>
 
-          <EventFilters classes={classes} />
-          <EventSort />
-          {role === "admin" && <FormContainer table="event" type="create" />}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <EventFilters classes={classes} />
+            <EventSort />
+            {role === "admin" && <FormContainer table="event" type="create" />}
+          </div>
         </div>
       </div>
 

@@ -151,16 +151,24 @@ export default async function AnnouncementListPage({
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h1 className="text-base md:text-lg font-semibold">Announcements</h1>
+      <div className="flex items-center justify-between gap-3 w-full">
+        {/* ===== TITLE ===== */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          Announcements
+        </h1>
 
-        <div className="flex items-center gap-2">
-          <TableSearch />
-          <AnnouncementFilters classes={classes} />
-          <AnnouncementSort />
-          {role === "admin" && (
-            <FormContainer table="announcement" type="create" />
-          )}
+        <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
+          {/* Search */}
+          <div className="flex-1 min-w-0 max-w-[160px] sm:max-w-[200px] md:max-w-none">
+            <TableSearch />
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <AnnouncementFilters classes={classes} />
+            <AnnouncementSort />
+            {role === "admin" && (
+              <FormContainer table="announcement" type="create" />
+            )}
+          </div>
         </div>
       </div>
 

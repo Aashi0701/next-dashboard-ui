@@ -14,28 +14,13 @@ const AdminPage = async ({
   const date = params?.date ?? undefined;
 
   return (
-    <div className="p-1 md:p-4 w-full">
+    <div className="p-2 md:p-4 w-full">
       {/* ✅ SINGLE BACKGROUND WRAPPER (IMPORTANT FIX) */}
-      <div
-        className="
-          w-full max-w-full
-          bg-none
-          rounded-xl
-          overflow-hidden
-          flex flex-col lg:flex-row
-          gap-4
-        "
-      >
+      <div className="w-full max-w-full bg-none rounded-xl overflow-hidden flex flex-col lg:flex-row gap-4">
         {/* ================= LEFT COLUMN ================= */}
         <div className="w-full lg:w-2/3 flex flex-col gap-4 md:gap-8">
           {/* USER CARDS */}
-          <div
-            className="
-              grid grid-cols-2 gap-3
-              sm:grid-cols-2
-              md:flex md:flex-wrap md:gap-4 md:justify-between
-            "
-          >
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-2 md:flex md:flex-wrap md:gap-4 md:justify-between">
             <UserCard type="admin" />
             <UserCard type="teacher" />
             <UserCard type="student" />

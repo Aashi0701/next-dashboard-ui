@@ -19,6 +19,20 @@ import { Camera } from "lucide-react";
 
 type Section = "personal" | "academic";
 
+const sectionFields: Record<Section, readonly (keyof StudentFormValues)[]> = {
+    personal: [
+      "name",
+      "surname",
+      "email",
+      "phone",
+      "address",
+      "bloodType",
+      "birthday",
+      "sex",
+    ],
+    academic: ["parentId", "classId"],
+  };
+
 export default function StudentForm({
   type,
   data,
@@ -56,20 +70,6 @@ export default function StudentForm({
 
   const [img, setImg] = useState<any>(data?.img ?? null);
   const [openSection, setOpenSection] = useState<Section>("personal");
-
-  const sectionFields: Record<Section, readonly (keyof StudentFormValues)[]> = {
-    personal: [
-      "name",
-      "surname",
-      "email",
-      "phone",
-      "address",
-      "bloodType",
-      "birthday",
-      "sex",
-    ],
-    academic: ["parentId", "classId"],
-  };
 
   const [state, formAction] = useActionState<ActionState, StudentFormValues>(
     type === "create" ? createStudent : updateStudent,

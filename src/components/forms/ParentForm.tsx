@@ -25,6 +25,11 @@ function passwordStrength(pw: string) {
 
 type Section = "account" | "personal";
 
+const sectionFields: Record<Section, readonly (keyof ParentFormValues)[]> = {
+  account: ["username", "email", "phone", "password"],
+  personal: ["name", "surname", "address"],
+};
+
 export default function ParentForm({
   type,
   data,
@@ -63,11 +68,6 @@ export default function ParentForm({
   );
 
   const [openSection, setOpenSection] = useState<Section>("account");
-
-  const sectionFields: Record<Section, readonly (keyof ParentFormValues)[]> = {
-    account: ["username", "email", "phone", "password"],
-    personal: ["name", "surname", "address"],
-  };
 
   /* Auto-expand section + scroll to first error */
   useEffect(() => {

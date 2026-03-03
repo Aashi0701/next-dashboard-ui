@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-  startTransition,
-  useActionState,
-} from "react";
+import { useEffect, useState, startTransition, useActionState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { subjectSchema, SubjectSchema } from "@/lib/formValidationSchemas";
@@ -18,6 +13,11 @@ import CollapsibleSection from "../CollapsibleSection";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 type Section = "basic" | "teachers";
+
+const sectionFields: Record<Section, readonly (keyof SubjectSchema)[]> = {
+  basic: ["name"],
+  teachers: ["teachers"],
+};
 
 export default function SubjectForm({
   type,
@@ -53,11 +53,6 @@ export default function SubjectForm({
   } = methods;
 
   const [openSection, setOpenSection] = useState<Section>("basic");
-
-  const sectionFields: Record<Section, readonly (keyof SubjectSchema)[]> = {
-    basic: ["name"],
-    teachers: ["teachers"],
-  };
 
   const [state, formAction] = useActionState<ActionState, SubjectSchema>(
     type === "create" ? createSubject : updateSubject,

@@ -21,6 +21,12 @@ import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 type Section = "basic" | "schedule" | "assignment";
 
+const sectionFields: Record<Section, readonly (keyof LessonFormValues)[]> = {
+    basic: ["name", "day"],
+    schedule: ["startTime", "endTime"],
+    assignment: ["subjectId", "classId", "teacherId"],
+  };
+
 export default function LessonForm({
   type,
   data,
@@ -63,12 +69,6 @@ export default function LessonForm({
   } = methods;
 
   const [openSection, setOpenSection] = useState<Section>("basic");
-
-  const sectionFields: Record<Section, readonly (keyof LessonFormValues)[]> = {
-    basic: ["name", "day"],
-    schedule: ["startTime", "endTime"],
-    assignment: ["subjectId", "classId", "teacherId"],
-  };
 
   const [state, formAction] = useActionState<ActionState, LessonFormValues>(
     type === "create" ? createLesson : updateLesson,

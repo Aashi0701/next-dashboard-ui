@@ -19,6 +19,12 @@ import { ActionState } from "@/lib/actions";
 
 type Section = "account" | "personal" | "subjects";
 
+const sectionFields: Record<Section, readonly (keyof TeacherFormValues)[]> = {
+  account: ["username", "email", "password", "phone"],
+  personal: ["name", "surname", "address", "bloodType", "birthday", "sex"],
+  subjects: ["subjects"],
+};
+
 export default function TeacherForm({
   type,
   data,
@@ -71,12 +77,6 @@ export default function TeacherForm({
 
   const [img, setImg] = useState<any>(data?.img ?? null);
   const [openSection, setOpenSection] = useState<Section>("account");
-
-  const sectionFields: Record<Section, readonly (keyof TeacherFormValues)[]> = {
-    account: ["username", "email", "password", "phone"],
-    personal: ["name", "surname", "address", "bloodType", "birthday", "sex"],
-    subjects: ["subjects"],
-  };
 
   const [state, formAction] = useActionState<ActionState, TeacherFormValues>(
     type === "create" ? createTeacher : updateTeacher,
@@ -131,10 +131,7 @@ export default function TeacherForm({
 
   return (
     <FormProvider {...methods}>
-      <form
-        onSubmit={onSubmit}
-        className="flex flex-col h-[65dvh]"
-      >
+      <form onSubmit={onSubmit} className="flex flex-col h-[65dvh]">
         {/* HEADER */}
         <div className="shrink-0 pb-3 px-4 sm:px-6">
           <ModalCloseButton onClose={close} />

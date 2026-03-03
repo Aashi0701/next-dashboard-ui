@@ -38,7 +38,9 @@ export default function AttendanceForm({
 
   /* ---------------- ACCORDION ---------------- */
 
-  const [openSection, setOpenSection] = useState<"lesson" | "student">("lesson");
+  const [openSection, setOpenSection] = useState<"lesson" | "student">(
+    "lesson",
+  );
   const [submitting, setSubmitting] = useState(false);
 
   /* ---------------- RHF ---------------- */
@@ -61,13 +63,18 @@ export default function AttendanceForm({
     name: "date",
   }) as Date | undefined;
 
+  const watchedLessonId = useWatch({
+    control,
+    name: "lessonId",
+  });
+
   /* ---------------- AUTO ADVANCE ---------------- */
 
   useEffect(() => {
-    if (watch("lessonId") && watchedDate) {
+    if (watchedLessonId && watchedDate) {
       setOpenSection("student");
     }
-  }, [watch("lessonId"), watchedDate]);
+  }, [watchedLessonId, watchedDate]);
 
   /* ---------------- SUBMIT ---------------- */
 
