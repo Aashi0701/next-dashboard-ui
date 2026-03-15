@@ -22,9 +22,9 @@ export default function AdminProfileClient({
   const { signOut } = useClerk();
 
   return (
-    <div className="w-full px-3 sm:px-6 lg:px-10">
+    <div className="w-full px-3 py-3 sm:px-4 lg:px-6">
       <div className="mx-auto max-w-7xl">
-        <h1 className="text-xl sm:text-2xl font-semibold mb-6">
+        <h1 className="text-xl sm:text-xl font-semibold mb-6">
           My Profile
         </h1>
 

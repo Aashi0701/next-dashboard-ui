@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import type { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
+import { Megaphone } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import AnnouncementFilters from "@/components/filters/AnnouncementFilters";
@@ -11,16 +11,6 @@ import FormContainer from "@/components/FormContainer";
 import AnnouncementTableClient from "./AnnouncementTableClient";
 
 /* ---------------- TYPES ---------------- */
-
-type AnnouncementList = Prisma.AnnouncementGetPayload<{
-  include: {
-    class: true;
-    reads: {
-      select: { id: true };
-    };
-  };
-}>;
-
 export default async function AnnouncementListPage({
   searchParams,
 }: {
@@ -153,7 +143,10 @@ export default async function AnnouncementListPage({
       {/* HEADER */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <Megaphone size={14} />
+          </span>
           Announcements
         </h1>
 

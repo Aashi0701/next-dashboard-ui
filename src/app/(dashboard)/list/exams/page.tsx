@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server";
 import ExamFilters from "@/components/filters/ExamFilters";
 import ExamSort from "@/components/filters/ExamSort";
 import ExamCard from "@/components/mobile/ExamCard";
+import { ClipboardCheck } from "lucide-react";
 
 type ExamList = Exam & {
   lesson: {
@@ -61,23 +62,34 @@ export default async function ExamListPage({
   const renderRow = (item: ExamList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       {/* TITLE */}
-      <td className="p-4 font-medium truncate">{item.title}</td>
-      <td className="p-4 truncate">{item.lesson.subject.name}</td>
-      <td className="p-4 truncate">{item.lesson.class.name}</td>
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 font-medium truncate">
+        {item.title}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">
+        {item.lesson.subject.name}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">
+        {item.lesson.class.name}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {item.lesson.teacher.name} {item.lesson.teacher.surname}
       </td>
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {new Intl.DateTimeFormat("en-US").format(item.startTime)}
       </td>
 
       {(role === "admin" || role === "teacher") && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="exam" type="update" data={item} id={item.id}/>
+            <FormContainer
+              table="exam"
+              type="update"
+              data={item}
+              id={item.id}
+            />
             <FormContainer table="exam" type="delete" id={item.id} />
           </div>
         </td>
@@ -198,7 +210,10 @@ export default async function ExamListPage({
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <ClipboardCheck size={14} />
+          </span>
           Exams
         </h1>
 

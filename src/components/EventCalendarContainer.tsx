@@ -49,7 +49,7 @@ export default async function EventCalendarContainer({ date }: Props) {
   }
 
   return (
-    <div className="bg-white p-4 rounded-md shadow-sm">
+    <div className="bg-white p-4 rounded-xl shadow-sm">
       <EventCalendar selectedDate={selectedDate} holidays={holidayMap} />
 
       <div className="flex items-center justify-between mt-4 mb-2">

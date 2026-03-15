@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server";
 import LessonFilters from "@/components/filters/LessonFilters";
 import LessonSort from "@/components/filters/LessonSort";
 import LessonCard from "@/components/mobile/LessonCard";
+import { BookOpen } from "lucide-react";
 
 type LessonList = Lesson & {
   subject: Subject;
@@ -55,11 +56,11 @@ const LessonListPage = async ({
   const renderRow = (item: LessonList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
-      <td className="p-4 font-medium truncate">{item.name}</td>
-      <td className="p-4 truncate">{item.subject.name}</td>
-      <td className="p-4 truncate">{item.class.name}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">{item.name}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2">{item.subject.name}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2">{item.class.name}</td>
       <td className="p-4 truncate hidden md:table-cell">
         {item.teacher.name} {item.teacher.surname}
       </td>
@@ -149,7 +150,10 @@ const LessonListPage = async ({
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <BookOpen size={14} />
+          </span>
           Lessons
         </h1>
 

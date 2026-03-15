@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server";
 import EventFilters from "@/components/filters/EventFilters";
 import EventSort from "@/components/filters/EventSort";
 import EventCard from "@/components/mobile/EventCard";
+import { CalendarDays } from "lucide-react";
 
 export default async function EventListPage({
   searchParams,
@@ -48,21 +49,25 @@ export default async function EventListPage({
   const renderRow = (item: any) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
-      <td className="p-4 font-medium truncate">{item.title}</td>
-      <td className="p-4 truncate">{item.class?.name ?? "-"}</td>
-      <td className="p-4 hidden md:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 font-medium truncate">
+        {item.title}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">
+        {item.class?.name ?? "-"}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell">
         {new Intl.DateTimeFormat("en-US").format(item.startTime)}
       </td>
-      <td className="p-4 hidden md:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell">
         {item.startTime.toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: false,
         })}
       </td>
-      <td className="p-4 hidden md:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell">
         {item.endTime.toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
@@ -71,7 +76,7 @@ export default async function EventListPage({
       </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <FormContainer
               table="event"
@@ -137,7 +142,10 @@ export default async function EventListPage({
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <CalendarDays size={14} />
+          </span>
           Events
         </h1>
 

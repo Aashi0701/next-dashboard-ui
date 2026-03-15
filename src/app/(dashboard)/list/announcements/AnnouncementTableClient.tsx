@@ -84,9 +84,9 @@ export default function AnnouncementTableClient({
     const isSent = item.whatsappSent;
 
     return (
-      <tr key={item.id} className="border-b hover:bg-gray-50">
+      <tr key={item.id} className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50">
         {/* TITLE */}
-        <td className="p-4 align-middle">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 align-middle">
           <div className="flex items-center gap-2">
             {isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
             {isLatest && (
@@ -104,19 +104,19 @@ export default function AnnouncementTableClient({
         </td>
 
         {/* CLASS */}
-        <td className="p-4 align-middle">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 align-middle">
           {item.class?.name || "All Classes"}
         </td>
 
         {/* DATE */}
-        <td className="p-4 align-middle hidden md:table-cell text-gray-500">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 align-middle hidden md:table-cell text-gray-500">
           {new Date(item.date).toLocaleDateString("en-IN")}
         </td>
 
         {/* ACTIONS */}
         {/* LAST SENT */}
         {role === "admin" && (
-          <td className="p-4 align-middle text-center">
+          <td className="px-2 py-1.5 md:px-3 md:py-2 align-middle text-center">
             {item.whatsappSent ? (
               <div className="text-[11px] text-gray-600">
                 {new Date(item.whatsappSentAt).toLocaleString("en-IN", {
@@ -135,12 +135,12 @@ export default function AnnouncementTableClient({
 
         {/* ACTIONS */}
         {role === "admin" && (
-          <td className="p-4 align-middle text-center">
+          <td className="px-2 py-1.5 md:px-3 md:py-2 align-middle text-center">
             <div className="flex items-center justify-center gap-3">
               {!item.whatsappSent && (
                 <button
                   onClick={() => setConfirmItem(item)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full
+                  className="w-7 h-7 flex items-center justify-center rounded-full
           bg-green-50 border border-green-200 hover:bg-green-100"
                 >
                   <FiSend className="w-4 h-4 text-green-600" />

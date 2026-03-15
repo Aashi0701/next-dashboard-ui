@@ -173,53 +173,54 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 text-gray-800 font-sans">
       {/* Responsive Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-white/20 backdrop-blur-xl border-b border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src="/my_logo.png"
+              src="/school_logo_short.png"
               alt="TrueSunshine Logo"
-              width={42}
-              height={42}
-              className="rounded-full p-1"
+              width={34}
+              height={34}
+              className="object-contain"
             />
-            <span
-              className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-500
-                 bg-clip-text text-transparent"
-            >
+
+            <span className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-rose-500 bg-clip-text text-transparent">
               TrueSunshine
             </span>
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-black">
+          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-800">
             <Link
               href="#about"
-              className="font-bold hover:text-rose-500 transition"
+              className="hover:text-rose-500 transition-colors"
             >
               About
             </Link>
+
             <Link
               href="#mission"
-              className="font-bold hover:text-rose-500 transition"
+              className="hover:text-rose-500 transition-colors"
             >
               Mission & Vision
             </Link>
+
             <Link
               href="#gallery"
-              className="font-bold hover:text-rose-500 transition"
+              className="hover:text-rose-500 transition-colors"
             >
               Gallery
             </Link>
+
             <Link
               href="#contact"
-              className="font-bold hover:text-rose-500 transition"
+              className="hover:text-rose-500 transition-colors"
             >
               Contact
             </Link>
 
-            {/* Login CTA */}
+            {/* Login Button */}
             <Link
               href="/sign-in"
               className="ml-2 px-5 py-2 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.03] transition-all"
@@ -230,7 +231,7 @@ export default function HomePage() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-white"
+            className="md:hidden text-gray-800"
             onClick={() => setMenuOpen(!menuOpen)}
           >
             <svg
@@ -260,7 +261,7 @@ export default function HomePage() {
 
         {/* Mobile Dropdown */}
         {menuOpen && (
-          <div className="md:hidden bg-white/95 backdrop-blur-xl shadow-xl rounded-b-2xl px-6 py-5 space-y-4 text-sm ">
+          <div className="md:hidden bg-white/95 backdrop-blur-xl shadow-xl rounded-b-2xl px-6 py-5 space-y-4 text-sm">
             {["about", "mission", "gallery", "contact"].map((item) => (
               <Link
                 key={item}
@@ -328,23 +329,22 @@ export default function HomePage() {
 
         {/* ================= CONTENT ================= */}
         <div className="relative z-40 w-full max-w-3xl px-4 sm:px-6 text-center text-white">
-          {/* Logo */}
           {/* ================= HERO LOGO ================= */}
-          <div className="relative z-40 flex justify-center mb-6 sm:mb-10 mt-6 sm:mt-10">
-            <div className="bg-white/30 backdrop-blur-md p-3 sm:p-4 rounded-full shadow-2xl animate-float-soft pongal-glow">
+          <div className="relative z-40 flex justify-center mb-6 sm:mb-8 mt-6 sm:mt-14">
+            <div className="bg-white/30 backdrop-blur-md p-2 sm:p-3 rounded-full shadow-2xl animate-float-soft pongal-glow">
               <Image
-                src="/my_logo.png"
+                src="/school_logo.png"
                 alt="TrueSunshine Logo"
-                width={96}
-                height={96}
+                width={240}
+                height={240}
                 priority
-                className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] object-contain"
+                className="w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] object-contain"
               />
             </div>
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] pb-2.5 mb-3 sm:mb-6 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-700 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.15] pb-2.5 mb-3 sm:mb-6 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-700 bg-clip-text text-transparent">
             {taglines[index]}
           </h1>
 
@@ -952,24 +952,9 @@ export default function HomePage() {
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="
-      pointer-events-auto
-      fixed
-      bottom-20
-      right-4
-      sm:bottom-24
-      sm:right-6
-      bg-gray-600
-      text-white
-      w-8 h-8
-      rounded-full
-      flex items-center justify-center
-      shadow-xl
-      hover:scale-110
-      active:scale-95
-      transition-transform
-      duration-200
-    "
+            className="pointer-events-auto fixed bottom-20 right-4 sm:bottom-24 sm:right-7 bg-gradient-to-r from-rose-400 to-indigo-500 text-white sm:w-10 sm:h-10 w-8 h-8 
+      rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform duration-200
+          "
           >
             <span className="text-lg font-bold">↑</span>
           </button>

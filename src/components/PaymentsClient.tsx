@@ -2,10 +2,6 @@
 
 import { StudentFee } from "@prisma/client";
 import Table from "@/components/Table";
-import Pagination from "@/components/Pagination";
-import TableSearch from "@/components/TableSearch";
-import PaymentFilters from "@/components/filters/PaymentFilters";
-import PaymentSort from "@/components/filters/PaymentSort";
 import { PaymentStatusBadge } from "@/components/ui/FeeBadges";
 import { FiEye, FiSend } from "react-icons/fi";
 import PaymentCard from "@/components/mobile/PaymentCard";
@@ -34,41 +30,55 @@ interface PaymentsClientProps {
 }
 
 /* ============================================================
-   MAIN COMPONENT  (NO BULK REMINDERS)
+   MAIN COMPONENT
 ============================================================ */
 
 export default function PaymentsClient({
   data,
-  count,
-  page,
   role,
-  classes,
 }: PaymentsClientProps) {
-  /* -----------------------------------------
+
+  /* ============================================================
      TABLE COLUMNS
-  ------------------------------------------ */
+  ============================================================ */
+
   const columns = [
     { header: "Student", accessor: "student" },
-    { header: "Class", accessor: "class", className: "text-center" },
+    { header: "Class", accessor: "class" },
     { header: "Fee", accessor: "fee" },
-    { header: "Total", accessor: "total", className: "text-right" },
-    { header: "Paid", accessor: "paid", className: "text-right" },
-    { header: "Due", accessor: "due", className: "text-right" },
-    { header: "Status", accessor: "status", className: "text-center" },
+
+    {
+      header: "Total",
+      accessor: "total",
+      className: "tabular-nums w-[120px]",
+    },
+    {
+      header: "Paid",
+      accessor: "paid",
+      className: "tabular-nums w-[120px]",
+    },
+    {
+      header: "Due",
+      accessor: "due",
+      className: "tabular-nums w-[120px]",
+    },
+
+    { header: "Status", accessor: "status", },
+
     ...(role === "admin"
       ? [
           {
             header: "Actions",
             accessor: "action",
-            className: "text-center w-[150px]",
+            className: "w-[150px]",
           },
         ]
       : []),
   ];
 
-  /* -----------------------------------------
-     RENDER ROW
-  ------------------------------------------ */
+  /* ============================================================
+     ROW RENDER
+  ============================================================ */
 
   const renderRow = (item: FullStudentFee, index: number) => {
     const total = item.feeStructure.amount;
@@ -89,6 +99,7 @@ export default function PaymentsClient({
 
     const sendEmail = async () => {
       if (!email) return;
+
       await fetch("/api/email/reminder", {
         method: "POST",
         body: JSON.stringify({
@@ -97,42 +108,56 @@ export default function PaymentsClient({
           dueAmount: dueStr,
         }),
       });
+
       alert("Email reminder sent!");
     };
 
-    const status = paid === 0 ? "PENDING" : paid < total ? "PARTIAL" : "PAID";
+    const status =
+      paid === 0 ? "PENDING" : paid < total ? "PARTIAL" : "PAID";
 
     return (
       <tr
         key={item.id}
-        className={`text-sm border-b ${
+        className={`text-xs border-b border-gray-100 ${
           index % 2 === 0 ? "bg-slate-50" : "bg-white"
-        } hover:bg-lamaPurpleLight`}
+        } hover:bg-purple-50`}
       >
-        <td className="p-4 font-medium">{studentName}</td>
+        {/* Student */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2 font-medium">{studentName}</td>
 
-        <td className="p-4 text-center">{item.student.class?.name ?? "-"}</td>
+        {/* Class */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2">
+          {item.student.class?.name ?? "-"}
+        </td>
 
-        <td className="p-4">{item.feeStructure.title}</td>
+        {/* Fee Title */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2">{item.feeStructure.title}</td>
 
-        <td className="p-4 text-right font-semibold">
+        {/* Total */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2 tabular-nums font-semibold">
           ₹{total.toLocaleString("en-IN")}
         </td>
 
-        <td className="p-4 text-right text-green-700 font-medium">
+        {/* Paid */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2 tabular-nums text-green-700 font-medium">
           ₹{paid.toLocaleString("en-IN")}
         </td>
 
-        <td className="p-4 text-right text-red-600 font-semibold">₹{dueStr}</td>
+        {/* Due */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2 tabular-nums text-red-600 font-semibold">
+          ₹{dueStr}
+        </td>
 
-        <td className="p-4 text-center">
+        {/* Status */}
+        <td className="px-2 py-1.5 md:px-3 md:py-2">
           <PaymentStatusBadge status={status} />
         </td>
 
-        {/* ---------------- Actions per Row ---------------- */}
         {role === "admin" && (
-          <td className="p-4">
-            <div className="flex justify-center gap-3">
+          <td className="px-2 py-1.5 md:px-3 md:py-2">
+            <div className="flex gap-3">
+
+              {/* VIEW RECEIPT */}
               {due === 0 && (
                 <div className="relative group">
                   <a
@@ -143,21 +168,13 @@ export default function PaymentsClient({
                     <FiEye className="text-blue-600 w-4 h-4" />
                   </a>
 
-                  {/* Tooltip */}
-                  <span
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2
-              whitespace-nowrap px-2 py-1 text-xs rounded-md
-              bg-blue-400 text-white opacity-0 group-hover:opacity-100
-              transition pointer-events-none shadow-lg"
-                  >
+                  <span className="absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-xs rounded-md bg-blue-400 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none shadow-lg">
                     View Receipt
                   </span>
                 </div>
               )}
 
-              {/* ===========================  
-          WHATSAPP (ONLY IF DUE > 0)
-      ============================== */}
+              {/* WHATSAPP REMINDER */}
               {phone && due > 0 && (
                 <div className="relative group">
                   <a
@@ -168,21 +185,13 @@ export default function PaymentsClient({
                     <FiSend className="text-green-700 w-4 h-4" />
                   </a>
 
-                  {/* Tooltip */}
-                  <span
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2
-              whitespace-nowrap px-2 py-1 text-xs rounded-md
-              bg-green-400 text-white opacity-0 group-hover:opacity-100
-              transition pointer-events-none shadow-lg"
-                  >
+                  <span className="absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-xs rounded-md bg-green-400 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none shadow-lg">
                     WhatsApp
                   </span>
                 </div>
               )}
 
-              {/* ===========================  
-          EMAIL (ONLY IF DUE > 0)
-      ============================== */}
+              {/* EMAIL REMINDER */}
               {email && due > 0 && (
                 <div className="relative group">
                   <button
@@ -205,13 +214,7 @@ export default function PaymentsClient({
                     </svg>
                   </button>
 
-                  {/* Tooltip */}
-                  <span
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2
-              whitespace-nowrap px-2 py-1 text-xs rounded-md
-              bg-yellow-400 text-white opacity-0 group-hover:opacity-100
-              transition pointer-events-none shadow-lg"
-                  >
+                  <span className="absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-xs rounded-md bg-yellow-400 text-white opacity-0 group-hover:opacity-100 transition pointer-events-none shadow-lg">
                     Email
                   </span>
                 </div>
@@ -223,9 +226,9 @@ export default function PaymentsClient({
     );
   };
 
-  /* -----------------------------------------
+  /* ============================================================
      RENDER
-  ------------------------------------------ */
+  ============================================================ */
 
   return (
     <>
@@ -234,7 +237,7 @@ export default function PaymentsClient({
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 
-      {/* MOBILE CARDS */}
+      {/* MOBILE VIEW */}
       <div className="md:hidden mt-4 space-y-2">
         {data.map((item) => (
           <PaymentCard key={item.id} item={item} />

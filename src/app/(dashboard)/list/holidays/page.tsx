@@ -6,6 +6,7 @@ import HolidayCard from "@/components/mobile/HolidayCard";
 import { auth } from "@clerk/nextjs/server";
 import TableSearch from "@/components/TableSearch";
 import { ITEM_PER_PAGE } from "@/lib/settings";
+import { CalendarOff } from "lucide-react";
 
 export default async function HolidayListPage({
   searchParams,
@@ -43,17 +44,21 @@ export default async function HolidayListPage({
   const renderRow = (h: any) => (
     <tr
       key={h.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
-      <td className="p-4 font-medium truncate">{h.title}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 font-medium truncate">
+        {h.title}
+      </td>
 
-      <td className="p-4">
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
         {new Date(h.date).toLocaleDateString("en-IN")}
       </td>
 
-      <td className="p-4">{h.isFullDay ? "Full Day" : "Half Day"}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
+        {h.isFullDay ? "Full Day" : "Half Day"}
+      </td>
 
-      <td className="p-4 text-center">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
         <div className="flex justify-center gap-2">
           <FormContainer table="holiday" type="update" data={h} id={h.id} />
           <FormContainer table="holiday" type="delete" id={h.id} />
@@ -67,7 +72,10 @@ export default async function HolidayListPage({
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <CalendarOff size={14} />
+          </span>
           School Holidays
         </h1>
 

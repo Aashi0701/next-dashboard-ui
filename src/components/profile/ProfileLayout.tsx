@@ -25,7 +25,7 @@ export default function ProfileLayout({
       {/* Track real-time activity */}
       <ProfileActivityTracker userId={userId} />
 
-      <h1 className="text-2xl font-semibold text-gray-900">My Profile</h1>
+      <h1 className="text-xl font-semibold text-gray-900">My Profile</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ================= LEFT PROFILE CARD ================= */}

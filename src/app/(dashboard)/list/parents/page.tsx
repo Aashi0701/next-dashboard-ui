@@ -10,6 +10,7 @@ import ParentFilters from "@/components/filters/ParentFilters";
 import ParentSort from "@/components/filters/ParentSort";
 import ParentCard from "@/components/mobile/ParentCard";
 import Tooltip from "@/components/ui/Tooltip";
+import { UsersRound } from "lucide-react";
 
 type ParentList = Parent & {
   students: Student[];
@@ -59,10 +60,10 @@ const ParentListPage = async ({
   const renderRow = (item: ParentList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       {/* Parent Info */}
-      <td className="p-4">
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
         <div className="flex flex-col max-w-[220px]">
           <span className="font-semibold truncate">
             {item.name} {item.surname}
@@ -77,17 +78,19 @@ const ParentListPage = async ({
       </td>
 
       {/* Students */}
-      <td className="p-4 hidden md:table-cell truncate max-w-[200px]">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate max-w-[200px]">
         {item.students.length > 0
           ? item.students.map((s) => s.name).join(", ")
           : "—"}
       </td>
 
       {/* Phone */}
-      <td className="p-4 hidden md:table-cell truncate">{item.phone}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
+        {item.phone}
+      </td>
 
       {/* Address */}
-      <td className="p-4 hidden lg:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell">
         <div className="max-w-[200px] truncate">
           <Tooltip content={item.address}>
             <span
@@ -101,13 +104,13 @@ const ParentListPage = async ({
       </td>
 
       {/* Created At */}
-      <td className="p-4 hidden lg:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell">
         {new Date(item.createdAt).toLocaleDateString()}
       </td>
 
       {/* Actions */}
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <Tooltip content="Edit Parent">
               <span className="inline-flex">
@@ -188,7 +191,10 @@ const ParentListPage = async ({
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <UsersRound size={14} />
+          </span>
           Parents
         </h1>
 

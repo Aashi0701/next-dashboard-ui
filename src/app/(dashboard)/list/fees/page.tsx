@@ -2,11 +2,10 @@ import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-
 import FeeFilters from "@/components/filters/FeeFilters";
 import FeeSort from "@/components/filters/FeeSort";
 import FeeCard from "@/components/mobile/FeeCard";
-
+import { Wallet } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
@@ -102,23 +101,28 @@ const FeesPage = async ({
   ];
 
   const renderRow = (item: FeeRow) => (
-    <tr key={item.id} className="border-b text-sm">
-      <td className="p-4 font-medium">{item.title}</td>
+    <tr
+      key={item.id}
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
+    >
+      <td className="px-2 py-1.5 md:px-3 md:py-2 font-medium">{item.title}</td>
 
-      <td className="p-4 font-semibold">₹{item.amount.toLocaleString()}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 font-semibold">
+        ₹{item.amount.toLocaleString()}
+      </td>
 
-      <td className="p-4">{item.className}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2">{item.className}</td>
 
-      <td className="p-4">
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
         <FeeTypeChip type={item.type} />
       </td>
 
-      <td className="p-4">
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
         <FeeStatusBadge active={item.isActive} />
       </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <FormContainer table="fee" type="update" data={item} id={item.id} />
             <FormContainer table="fee" type="delete" id={item.id} />
@@ -135,7 +139,10 @@ const FeesPage = async ({
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <Wallet size={14} />
+          </span>
           Fee Structures
         </h1>
 

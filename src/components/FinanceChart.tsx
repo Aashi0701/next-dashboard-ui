@@ -8,14 +8,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
 export type FinanceChartData = {
-  name: string;
-  income: number;
-  expense: number;
+  month: string;
+  fees: number;
 };
 
 type FinanceChartProps = {
@@ -23,18 +21,18 @@ type FinanceChartProps = {
 };
 
 const fallbackData: FinanceChartData[] = [
-  { name: "Jan", income: 4000, expense: 2400 },
-  { name: "Feb", income: 3000, expense: 1398 },
-  { name: "Mar", income: 2000, expense: 9800 },
-  { name: "Apr", income: 2780, expense: 3908 },
-  { name: "May", income: 1890, expense: 4800 },
-  { name: "Jun", income: 2390, expense: 3800 },
-  { name: "Jul", income: 3490, expense: 4300 },
-  { name: "Aug", income: 3490, expense: 4300 },
-  { name: "Sep", income: 3490, expense: 4300 },
-  { name: "Oct", income: 3490, expense: 4300 },
-  { name: "Nov", income: 3490, expense: 4300 },
-  { name: "Dec", income: 3490, expense: 4300 },
+  { month: "Jan", fees: 12000 },
+  { month: "Feb", fees: 18000 },
+  { month: "Mar", fees: 9000 },
+  { month: "Apr", fees: 15000 },
+  { month: "May", fees: 13000 },
+  { month: "Jun", fees: 20000 },
+  { month: "Jul", fees: 17000 },
+  { month: "Aug", fees: 16000 },
+  { month: "Sep", fees: 14000 },
+  { month: "Oct", fees: 21000 },
+  { month: "Nov", fees: 19000 },
+  { month: "Dec", fees: 23000 },
 ];
 
 export default function FinanceChart({ data }: FinanceChartProps) {
@@ -52,13 +50,14 @@ export default function FinanceChart({ data }: FinanceChartProps) {
       {/* HEADER */}
       <div className="flex justify-between items-center mb-3">
         <h1 className="text-sm font-semibold text-gray-800 tracking-wide">
-          Finance
+          Fee Collection
         </h1>
+
         <Image src="/moreDark.png" alt="" width={18} height={18} />
       </div>
 
-      {/* CHART WRAPPER (KEY FIX) */}
-      <div className="w-full h-[280px] sm:h-[360px] lg:h-[420px]">
+      {/* CHART */}
+      <div className="w-full h-[220px] sm:h-[240px] lg:h-[270px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -66,16 +65,13 @@ export default function FinanceChart({ data }: FinanceChartProps) {
               top: 10,
               right: 30,
               left: 0,
-              bottom: 30, // ✅ critical fix
+              bottom: 30,
             }}
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#E5E7EB"
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
 
             <XAxis
-              dataKey="name"
+              dataKey="month"
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#9CA3AF", fontSize: 12 }}
@@ -86,10 +82,11 @@ export default function FinanceChart({ data }: FinanceChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#9CA3AF", fontSize: 12 }}
-              tickMargin={10}
+              tickFormatter={(v) => `₹${Number(v)/1000}k`}
             />
 
             <Tooltip
+              formatter={(value) => `₹ ${Number(value).toLocaleString()}`}
               contentStyle={{
                 borderRadius: 12,
                 border: "1px solid #E5E7EB",
@@ -97,26 +94,12 @@ export default function FinanceChart({ data }: FinanceChartProps) {
               }}
             />
 
-            <Legend
-              verticalAlign="top"
-              height={36} // ✅ reserves space explicitly
-              iconType="circle"
-            />
-
             <Line
               type="monotone"
-              dataKey="income"
-              stroke="#7DD3FC" // sky-300
+              dataKey="fees"
+              stroke="#10B981"
               strokeWidth={3}
-              dot={false}
-            />
-
-            <Line
-              type="monotone"
-              dataKey="expense"
-              stroke="#FDA4AF" // purple-300
-              strokeWidth={3}
-              dot={false}
+              dot={{ r: 4 }}
             />
           </LineChart>
         </ResponsiveContainer>

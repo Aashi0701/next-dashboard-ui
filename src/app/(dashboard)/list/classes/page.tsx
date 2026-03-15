@@ -10,6 +10,7 @@ import Tooltip from "@/components/ui/Tooltip";
 import ClassFilters from "@/components/filters/ClassFilters";
 import ClassSort from "@/components/filters/ClassSort";
 import ClassCard from "@/components/mobile/ClassCard";
+import { School } from "lucide-react";
 
 type ClassList = Class & { supervisor: Teacher | null };
 
@@ -37,17 +38,25 @@ const ClassListPage = async ({
     { header: "Capacity", accessor: "capacity" },
     { header: "Supervisor", accessor: "supervisor" },
     ...(role === "admin"
-      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
+      ? [
+          {
+            header: "Actions",
+            accessor: "action",
+            className: "text-center w-[120px]",
+          },
+        ]
       : []),
   ];
 
   const renderRow = (item: ClassList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       <td className="p-4 truncate">{item.name}</td>
+
       <td className="p-4">{item.capacity}</td>
+
       <td className="p-4 truncate">
         {item.supervisor
           ? `${item.supervisor.name} ${item.supervisor.surname}`
@@ -55,8 +64,8 @@ const ClassListPage = async ({
       </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
-          <div className="flex justify-center gap-2">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center w-[110px]">
+          <div className="flex items-center justify-center gap-2">
             <Tooltip content="Edit Class">
               <span className="inline-flex">
                 <FormContainer
@@ -64,13 +73,19 @@ const ClassListPage = async ({
                   type="update"
                   data={item}
                   id={item.id}
+                  key={`edit-${item.id}`}
                 />
               </span>
             </Tooltip>
 
             <Tooltip content="Delete Class">
               <span className="inline-flex">
-                <FormContainer table="class" type="delete" id={item.id} />
+                <FormContainer
+                  table="class"
+                  type="delete"
+                  id={item.id}
+                  key={`delete-${item.id}`}
+                />
               </span>
             </Tooltip>
           </div>
@@ -131,16 +146,19 @@ const ClassListPage = async ({
   });
 
   return (
-    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-2 lg:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* Title */}
-        <h1 className="text-base md:text-lg font-semibold whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base lg:text-lg font-semibold whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <School size={14} />
+          </span>
           Classes
         </h1>
 
         {/* Controls */}
-        <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
+        <div className="flex items-center gap-2 flex-nowrap mb-4 mt-2">
           <div className="flex-1 min-w-0 max-w-[160px] sm:max-w-[200px] md:max-w-none">
             <TableSearch />
           </div>

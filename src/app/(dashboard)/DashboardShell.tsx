@@ -5,8 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Menu from "@/components/Menu";
 import NavbarClient from "@/components/NavbarClient";
-import { useRouter, usePathname } from "next/navigation";
-import BackButton from "@/components/BackButton";
 
 type Role = "admin" | "teacher" | "student" | "parent";
 

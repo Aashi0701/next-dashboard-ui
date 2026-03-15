@@ -9,6 +9,7 @@ import FormContainer from "@/components/FormContainer";
 import AssignmentFilters from "@/components/filters/AssignmentFilters";
 import AssignmentSort from "@/components/filters/AssignmentSort";
 import AssignmentCard from "@/components/mobile/AssignmentCard";
+import { ClipboardList } from "lucide-react";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -61,19 +62,23 @@ export default async function AssignmentListPage({
   const renderRow = (item: AssignmentList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
-      <td className="p-4 truncate">{item.lesson.subject.name}</td>
-      <td className="p-4 truncate">{item.lesson.class.name}</td>
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">
+        {item.lesson.subject.name}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">
+        {item.lesson.class.name}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {item.lesson.teacher.name} {item.lesson.teacher.surname}
       </td>
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {new Intl.DateTimeFormat("en-US").format(item.dueDate)}
       </td>
 
       {(role === "admin" || role === "teacher") && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <FormContainer
               table="assignment"
@@ -179,7 +184,10 @@ export default async function AssignmentListPage({
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <ClipboardList size={14} />
+          </span>
           Assignments
         </h1>
 

@@ -9,6 +9,7 @@ import TableSearch from "@/components/TableSearch";
 import PaymentsClient, { FullStudentFee } from "@/components/PaymentsClient";
 import PaymentsFilters from "@/components/filters/PaymentFilters";
 import PaymentsSort from "@/components/filters/PaymentSort";
+import { CreditCard } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,6 @@ interface SearchParams {
   sortOrder?: string;
 }
 
-/* ============================================================
-   PAGE
-============================================================ */
 export default async function PaymentsPage({
   searchParams,
 }: {
@@ -141,7 +139,10 @@ export default async function PaymentsPage({
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <CreditCard size={14} />
+          </span>
           Payments
         </h1>
 

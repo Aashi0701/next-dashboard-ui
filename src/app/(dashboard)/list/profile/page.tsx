@@ -1,8 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { ensureAdminExists } from "@/lib/ensureAdmin";
-
-/* ✅ SERVER WRAPPERS ONLY */
 import AdminProfileServer from "@/components/profile/AdminProfile.server";
 import TeacherProfileServer from "@/components/profile/TeacherProfile.server";
 import ParentProfileServer from "@/components/profile/ParentProfile.server";

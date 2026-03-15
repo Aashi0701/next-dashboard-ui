@@ -1189,3 +1189,49 @@
 .float-slow {
   animation: floatSlow 6s ease-in-out infinite;
 }
+
+/* Hide Clerk password toggle button completely */
+.cl-passwordInput__visibilityToggle,
+.cl-formFieldInputShowPasswordButton,
+.cl-inputPasswordToggle,
+.cl-internal-b3fm6y {
+  display: none !important;
+}
+
+/* Hide browser password toggle (Edge / Chrome) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Hide Chromium password toggle */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-password-toggle-button {
+  display: none !important;
+}
+
+.ticker-track {
+  animation: tickerScroll 28s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

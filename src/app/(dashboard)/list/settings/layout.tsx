@@ -18,20 +18,13 @@ export default function SettingsLayout({
   const router = useRouter();
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50 px-3 sm:px-6 lg:px-10 py-4">
+    <div className="min-h-[calc(100vh-64px)] bg-gray-50 px-3 sm:px-4 lg:px-6 py-3">
       <div className="mx-auto max-w-6xl">
-        <h1 className="text-lg sm:text-2xl font-semibold mb-4">Settings</h1>
+        <h1 className="text-lg sm:text-xl font-semibold mb-4">Settings</h1>
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Tabs */}
-          <div
-            className="
-    flex gap-2 overflow-x-auto
-    lg:flex-col
-    -mx-3 px-3
-    pb-2
-  "
-          >
+          <div className="flex gap-2 overflow-x-auto lg:flex-col -mx-3 px-3 pb-2">
             {tabs.map((tab) => {
               const active = pathname.startsWith(tab.href);
 

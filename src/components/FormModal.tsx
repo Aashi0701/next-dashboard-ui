@@ -16,18 +16,10 @@ import {
   deleteFee,
   deleteHoliday,
 } from "@/lib/actions";
-
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  Dispatch,
-  SetStateAction,
-  useActionState,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import { useActionState, useEffect, ReactNode, } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
 import AssignFeeForm from "./forms/AssignFeeForm";
@@ -35,14 +27,7 @@ import ModalPortal from "./ModalPortal";
 import { useSearchParams } from "next/navigation";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
-/* ------------------------------------------------------------------ */
-/* TYPES */
-/* ------------------------------------------------------------------ */
-
 type TableKey = FormContainerProps["table"];
-
-/** Modal intent */
-type FormType = "create" | "update" | "delete" | "assign";
 
 /** Only valid mutations for forms */
 type MutationType = "create" | "update";

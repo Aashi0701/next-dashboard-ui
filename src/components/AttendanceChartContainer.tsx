@@ -59,10 +59,10 @@ const AttendanceChartContainer = async () => {
   }));
 
   return (
-    <div className="bg-white rounded-lg p-4 w-full flex flex-col h-[260px] sm:h-[320px] lg:h-[450px]">
+    <div className="bg-white rounded-lg p-4 w-full flex flex-col h-[360px]">
       <div className="flex justify-between items-center mb-2">
         <h1 className="text-sm font-semibold text-gray-800 tracking-wide">Attendance</h1>
-        <Image src="/moreDark.png" alt="" width={18} height={18} />
+        <Image src="/moreDark.png" alt="" width={14} height={14} />
       </div>
 
       {/* chart must stretch */}

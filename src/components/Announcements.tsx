@@ -22,12 +22,11 @@ const Announcements = async () => {
       orderBy: { date: "desc" },
       take: 5,
     });
-  }
+  } else if (role === "teacher" && userId) {
 
   /* -------------------------
      TEACHER → GLOBAL + SUPERVISED CLASSES
   -------------------------- */
-  else if (role === "teacher" && userId) {
     const teacherClasses = await prisma.class.findMany({
       where: { supervisorId: userId },
       select: { id: true },
@@ -38,20 +37,19 @@ const Announcements = async () => {
     announcements = await prisma.announcement.findMany({
       where: {
         OR: [
-          { classId: null },              // global
-          { classId: { in: classIds } },  // supervised classes
+          { classId: null }, // global
+          { classId: { in: classIds } }, // supervised classes
         ],
       },
       include: { class: true },
       orderBy: { date: "desc" },
       take: 5,
     });
-  }
+  } else if (role === "student" && userId) {
 
   /* -------------------------
      STUDENT → GLOBAL + OWN CLASS
   -------------------------- */
-  else if (role === "student" && userId) {
     const student = await prisma.student.findUnique({
       where: { id: userId },
       select: { classId: true },
@@ -65,12 +63,11 @@ const Announcements = async () => {
       orderBy: { date: "desc" },
       take: 5,
     });
-  }
+  } else if (role === "parent" && userId) {
 
   /* -------------------------
      PARENT → GLOBAL + CHILD CLASSES
   -------------------------- */
-  else if (role === "parent" && userId) {
     const parent = await prisma.parent.findUnique({
       where: { id: userId },
       select: {
@@ -107,8 +104,10 @@ const Announcements = async () => {
      UI
   -------------------------- */
   return (
-    <div className="bg-white p-4 rounded-md shadow-sm flex flex-col gap-3">
-      <h2 className="text-sm sm:text-lg font-semibold">Announcements</h2>
+    <div className="bg-white p-2 rounded-md shadow-sm flex flex-col gap-3">
+      <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+        📢 Announcements
+      </h3>
 
       {announcements.map((a) => (
         <div

@@ -11,6 +11,7 @@ import { auth } from "@clerk/nextjs/server";
 import TeacherFilters from "@/components/filters/TeacherFilters";
 import TeacherSort from "@/components/filters/TeacherSort";
 import TeacherCard from "@/components/mobile/TeacherCard";
+import { Users } from "lucide-react";
 
 type TeacherList = Teacher & {
   lessons: {
@@ -70,7 +71,7 @@ const TeacherListPage = async ({
   const renderRow = (item: TeacherList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       {/* Info */}
       <td className="p-4">
@@ -199,7 +200,10 @@ const TeacherListPage = async ({
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <Users size={14} />
+          </span>
           Teachers
         </h1>
 

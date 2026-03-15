@@ -2,7 +2,7 @@ import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-
+import { Users } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Prisma, Student } from "@prisma/client";
@@ -104,11 +104,11 @@ const StudentListPage = async ({
     return (
       <tr
         key={item.id}
-        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+        className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
       >
         {/* INFO */}
-        <td className="p-4">
-          <div className="flex items-center gap-4">
+        <td className="px-2 py-1.5 md:px-3 md:py-2">
+          <div className="flex items-center gap-3">
             <Image
               src={item.img || "/noAvatar.png"}
               alt=""
@@ -126,11 +126,13 @@ const StudentListPage = async ({
         </td>
 
         {/* CLASS */}
-        <td className="p-4 hidden md:table-cell">{item.class.name}</td>
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-left hidden md:table-cell">
+          {item.class.name}
+        </td>
 
         {/* FEE STATUS */}
         {role === "admin" && (
-          <td className="p-4 hidden md:table-cell">
+          <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell">
             {feeStatus === "NOT_ASSIGNED" && (
               <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-500 text-xs">
                 Not Assigned
@@ -153,14 +155,18 @@ const StudentListPage = async ({
         )}
 
         {/* PHONE */}
-        <td className="p-4 hidden lg:table-cell truncate">{item.phone}</td>
+        <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell truncate">
+          {item.phone}
+        </td>
 
         {/* ADDRESS */}
-        <td className="p-4 hidden lg:table-cell truncate">{item.address}</td>
+        <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell truncate">
+          {item.address}
+        </td>
 
         {/* ACTIONS */}
         {role === "admin" && (
-          <td className="p-4 text-center">
+          <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
             <div className="flex justify-center gap-2">
               {/* VIEW */}
               <Link href={`/list/students/${item.id}`}>
@@ -290,7 +296,10 @@ const StudentListPage = async ({
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       <div className="flex items-center justify-between gap-3 w-full">
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <Users size={14} />
+          </span>
           Students
         </h1>
 

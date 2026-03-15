@@ -11,6 +11,7 @@ import { auth } from "@clerk/nextjs/server";
 import ResultFilters from "@/components/filters/ResultFilters";
 import ResultSort from "@/components/filters/ResultSort";
 import ResultsCard from "@/components/mobile/ResultsCard";
+import { BarChart3 } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -90,37 +91,41 @@ export default async function ResultListPage({
   const renderRow = (item: ResultList) => (
     <tr
       key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       {/* TITLE */}
-      <td className="p-4 max-w-[220px] truncate">{item.title}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 max-w-[220px] truncate">
+        {item.title}
+      </td>
 
       {/* STUDENT */}
-      <td className="p-4 max-w-[180px] truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 max-w-[180px] truncate">
         {item.studentName} {item.studentSurname}
       </td>
 
       {/* SCORE */}
-      <td className="p-4 hidden md:table-cell">{item.score}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell">
+        {item.score}
+      </td>
 
       {/* TEACHER */}
-      <td className="p-4 hidden md:table-cell max-w-[180px] truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell max-w-[180px] truncate">
         {item.teacherName} {item.teacherSurname}
       </td>
 
       {/* CLASS */}
-      <td className="p-4 hidden md:table-cell max-w-[140px] truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell max-w-[140px] truncate">
         {item.className}
       </td>
 
       {/* DATE */}
-      <td className="p-4 hidden md:table-cell whitespace-nowrap">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell whitespace-nowrap">
         {new Intl.DateTimeFormat("en-US").format(item.startTime)}
       </td>
 
       {/* ACTIONS */}
       {(role === "admin" || role === "teacher") && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <FormContainer
               table="result"
@@ -273,7 +278,10 @@ export default async function ResultListPage({
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <BarChart3 size={14} />
+          </span>
           Results
         </h1>
 

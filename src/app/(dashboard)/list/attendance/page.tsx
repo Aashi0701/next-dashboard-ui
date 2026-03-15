@@ -12,6 +12,7 @@ import AttendanceFilters from "@/components/filters/AttendanceFilters";
 import AttendanceSort from "@/components/filters/AttendanceSort";
 import AttendanceCard from "@/components/mobile/AttendanceCard";
 import type { AttendanceItem } from "@/lib/types";
+import { CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +129,10 @@ export default async function AttendanceListPage({ searchParams }: any) {
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+            <CalendarCheck size={14} />
+          </span>
           Attendance
         </h1>
 
@@ -157,7 +161,13 @@ export default async function AttendanceListPage({ searchParams }: any) {
             { header: "Date", accessor: "date" },
             { header: "Status", accessor: "status" },
             ...(role === "admin"
-              ? [{ header: "Actions", accessor: "action" }]
+              ? [
+                  {
+                    header: "Actions",
+                    accessor: "action",
+                    className: "text-center",
+                  },
+                ]
               : []),
           ]}
           data={data}
@@ -166,11 +176,14 @@ export default async function AttendanceListPage({ searchParams }: any) {
             const row = rows.find((r) => r.id === item.id)!;
 
             return (
-              <tr key={item.id} className="border-b text-sm">
-                <td className="p-4">{item.student}</td>
-                <td className="p-4">{item.class}</td>
-                <td className="p-4">{item.date}</td>
-                <td className="p-4">
+              <tr
+                key={item.id}
+                className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
+              >
+                <td className="px-2 py-1.5 md:px-3 md:py-2">{item.student}</td>
+                <td className="px-2 py-1.5 md:px-3 md:py-2">{item.class}</td>
+                <td className="px-2 py-1.5 md:px-3 md:py-2">{item.date}</td>
+                <td className="px-2 py-1.5 md:px-3 md:py-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
                       item.status === "Present"
@@ -183,7 +196,7 @@ export default async function AttendanceListPage({ searchParams }: any) {
                 </td>
 
                 {role === "admin" && (
-                  <td className="p-4 text-center">
+                  <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
                     <div className="flex justify-center gap-2">
                       <FormContainer
                         table="attendance"

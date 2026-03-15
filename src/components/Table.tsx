@@ -8,7 +8,7 @@ type Column = {
 
 const widthMap: Record<string, string> = {
   info: "w-[26%]",
-  action: "w-[10%]",
+  action: "w-[120px]",
   phone: "w-[14%]",
   address: "w-[16%]",
 
@@ -31,7 +31,7 @@ const widthMap: Record<string, string> = {
   startTime: "w-[14%]",
   endTime: "w-[14%]",
 
-  student: "w-[20%]",
+  student: "w-[18%]",
   lesson: "w-[18%]",
   status: "w-[14%]",
 };
@@ -44,7 +44,7 @@ interface TableProps {
 
 const Table = ({ columns, renderRow, data }: TableProps) => {
   return (
-    <table className="w-full mt-4 border-collapse table-fixed">
+    <table className="w-full mt-2 md:mt-4 border-collapse table-fixed">
       {/* Column widths */}
       <colgroup>
         {columns.map((col) => (
@@ -56,12 +56,13 @@ const Table = ({ columns, renderRow, data }: TableProps) => {
       </colgroup>
 
       <thead>
-        <tr className="text-left text-gray-500 text-sm border-b">
+        <tr className="text-left border-b text-sm text-black/80 font-bold">
           {columns.map((col) => (
             <th
               key={col.accessor}
-              className={`p-4 font-medium text-left text-gray-500 text-sm
-              whitespace-nowrap truncate overflow-hidden
+              className={`px-2 py-2 md:px-3 md:py-3
+                font-medium
+                whitespace-nowrap truncate overflow-hidden
               ${col.className || ""}`}
             >
               {col.header}
@@ -70,12 +71,12 @@ const Table = ({ columns, renderRow, data }: TableProps) => {
         </tr>
       </thead>
 
-      <tbody className="text-sm">
+      <tbody className="text-sm text-gray-700">
         {data.length === 0 ? (
           <tr>
             <td
               colSpan={columns.length}
-              className="p-4 text-center text-gray-500"
+              className="py-8 text-center text-gray-500"
             >
               No records found
             </td>

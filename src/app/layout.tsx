@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ToastContainer } from "react-toastify";
 import "react-datepicker/dist/react-datepicker.css";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,6 +27,13 @@ export default function RootLayout({
           className={`${inter.className} min-h-screen w-full overflow-x-hidden bg-gray-50`}
         >
           {children}
+
+          {/* Razorpay Checkout Script */}
+          <Script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="lazyOnload"
+          />
+
           <ToastContainer
             position="bottom-right"
             theme="dark"

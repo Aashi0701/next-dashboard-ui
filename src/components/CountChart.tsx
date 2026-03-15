@@ -17,9 +17,9 @@ const CountChart = ({ boys, girls }: { boys: number; girls: number }) => {
 
   return (
     /* HARD CLAMP */
-    <div className="relative w-full max-w-full overflow-hidden">
+    <div className="relative w-full max-w-full overflow-hidden mb-0">
       {/* SAFETY WRAPPER */}
-      <div className="mx-auto max-w-[280px] h-[220px] sm:h-[240px]">
+      <div className="mx-auto max-w-[350px] h-[220px] sm:h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             cx="50%"
@@ -39,8 +39,8 @@ const CountChart = ({ boys, girls }: { boys: number; girls: number }) => {
 
         {/* CENTER CONTENT */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <Image src="/pictogram.png" alt="gender" width={30} height={30} />
-          <p className="text-[11px] text-gray-500 mt-1">Total</p>
+          <Image src="/pictogram.png" alt="gender" width={35} height={35} />
+          <p className="text-[16px] text-gray-500 mt-1 font-bold">Total</p>
           <p className="text-xl font-semibold text-gray-900">{total}</p>
         </div>
       </div>
