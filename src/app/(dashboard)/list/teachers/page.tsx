@@ -12,6 +12,7 @@ import TeacherFilters from "@/components/filters/TeacherFilters";
 import TeacherSort from "@/components/filters/TeacherSort";
 import TeacherCard from "@/components/mobile/TeacherCard";
 import { Users } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 type TeacherList = Teacher & {
   lessons: {
@@ -74,7 +75,7 @@ const TeacherListPage = async ({
       className="border-b border-gray-100 even:bg-slate-50 text-xs hover:bg-purple-50"
     >
       {/* Info */}
-      <td className="p-4">
+      <td className="px-2 py-1.5 md:px-3 md:py-2">
         <div className="flex items-center gap-4">
           <Image
             src={item.img || "/noAvatar.png"}
@@ -90,44 +91,62 @@ const TeacherListPage = async ({
         </div>
       </td>
 
-      <td className="p-4 hidden md:table-cell truncate">{item.username}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
+        {item.username}
+      </td>
 
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {[...new Set(item.lessons.map((l) => l.subject.name))].join(", ")}
       </td>
 
-      <td className="p-4 hidden md:table-cell truncate">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {item.supervisedClasses.map((c) => c.name).join(", ")}
       </td>
 
-      <td className="p-4 hidden lg:table-cell truncate">{item.phone}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell truncate">
+        {item.phone}
+      </td>
 
-      <td className="p-4 hidden lg:table-cell truncate">{item.address}</td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden lg:table-cell truncate">
+        {item.address}
+      </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             {/* VIEW */}
-            <Link href={`/list/teachers/${item.id}`}>
-              <button
-                type="button"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
-              >
-                <Image src="/eye.png" alt="View" width={16} height={16} />
-              </button>
-            </Link>
+            <Tooltip content="View Teacher">
+              <span className="inline-flex">
+                <Link href={`/list/teachers/${item.id}`}>
+                  <button
+                    type="button"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
+                  >
+                    <Image src="/eye.png" alt="View" width={16} height={16} />
+                  </button>
+                </Link>
+              </span>
+            </Tooltip>
 
             {/* EDIT */}
-            <FormContainer
-              table="teacher"
-              type="update"
-              id={item.id}
-              data={item}
-              relatedData={{ subjects, classes }}
-            />
+            <Tooltip content="Edit Teacher">
+              <span className="inline-flex">
+                <FormContainer
+                  table="teacher"
+                  type="update"
+                  id={item.id}
+                  data={item}
+                  relatedData={{ subjects, classes }}
+                />
+              </span>
+            </Tooltip>
 
             {/* DELETE */}
-            <FormContainer table="teacher" type="delete" id={item.id} />
+            <Tooltip content="Delete Teacher">
+              <span className="inline-flex">
+                <FormContainer table="teacher" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}
@@ -196,7 +215,7 @@ const TeacherListPage = async ({
   ]);
 
   return (
-    <div className="bg-white rounded-md flex-1 w-full my-0 px-3 py-3 md:m-4 md:p-6">
+    <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}

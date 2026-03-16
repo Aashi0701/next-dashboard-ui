@@ -25,7 +25,7 @@ export default function DashboardShell({
       <aside className="hidden lg:flex flex-col h-screen w-[16%] xl:w-[14%] bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 border-r p-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 mb-6 px-2">
           <Image src="/my_logo.png" alt="logo" width={32} height={32} />
-          <span className="font-bold sm:text-xs">TrueSunshine</span>
+          <span className="font-bold sm:text-xs lg:text-base">TrueSunshine</span>
         </Link>
 
         {/* menu only scrolls internally if needed */}

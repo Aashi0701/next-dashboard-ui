@@ -12,6 +12,7 @@ import ResultFilters from "@/components/filters/ResultFilters";
 import ResultSort from "@/components/filters/ResultSort";
 import ResultsCard from "@/components/mobile/ResultsCard";
 import { BarChart3 } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 /* ================= TYPES ================= */
 
@@ -127,13 +128,22 @@ export default async function ResultListPage({
       {(role === "admin" || role === "teacher") && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer
-              table="result"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormContainer table="result" type="delete" id={item.id} />
+            <Tooltip content="Edit Result">
+              <span className="inline-flex">
+                <FormContainer
+                  table="result"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
+
+            <Tooltip content="Delete Result">
+              <span className="inline-flex">
+                <FormContainer table="result" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}

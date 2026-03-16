@@ -8,7 +8,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Prisma, Student } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
-
+import Tooltip from "@/components/ui/Tooltip";
 import { auth } from "@clerk/nextjs/server";
 import StudentFilters from "@/components/filters/StudentFilters";
 import StudentSort from "@/components/filters/StudentSort";
@@ -169,22 +169,34 @@ const StudentListPage = async ({
           <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
             <div className="flex justify-center gap-2">
               {/* VIEW */}
-              <Link href={`/list/students/${item.id}`}>
-                <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-                  <Image src="/eye.png" alt="View" width={16} height={16} />
-                </button>
-              </Link>
+              <Tooltip content="View Student">
+                <span className="inline-flex">
+                  <Link href={`/list/students/${item.id}`}>
+                    <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
+                      <Image src="/eye.png" alt="View" width={16} height={16} />
+                    </button>
+                  </Link>
+                </span>
+              </Tooltip>
 
               {/* EDIT */}
-              <FormContainer
-                table="student"
-                type="update"
-                data={item}
-                id={item.id}
-              />
+              <Tooltip content="Edit Student">
+                <span className="inline-flex">
+                  <FormContainer
+                    table="student"
+                    type="update"
+                    data={item}
+                    id={item.id}
+                  />
+                </span>
+              </Tooltip>
 
               {/* DELETE */}
-              <FormContainer table="student" type="delete" id={item.id} />
+              <Tooltip content="Delete Student">
+                <span className="inline-flex">
+                  <FormContainer table="student" type="delete" id={item.id} />
+                </span>
+              </Tooltip>
             </div>
           </td>
         )}

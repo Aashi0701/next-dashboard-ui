@@ -13,6 +13,7 @@ import AttendanceSort from "@/components/filters/AttendanceSort";
 import AttendanceCard from "@/components/mobile/AttendanceCard";
 import type { AttendanceItem } from "@/lib/types";
 import { CalendarCheck } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -198,23 +199,31 @@ export default async function AttendanceListPage({ searchParams }: any) {
                 {role === "admin" && (
                   <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
                     <div className="flex justify-center gap-2">
-                      <FormContainer
-                        table="attendance"
-                        type="update"
-                        id={row.id}
-                        data={{
-                          id: row.id,
-                          studentId: row.studentId,
-                          lessonId: row.lessonId,
-                          date: row.date,
-                          present: row.present,
-                        }}
-                      />
-                      <FormContainer
-                        table="attendance"
-                        type="delete"
-                        id={row.id}
-                      />
+                      <Tooltip content="Edit Attendance">
+                        <span className="inline-flex">
+                          <FormContainer
+                            table="attendance"
+                            type="update"
+                            id={row.id}
+                            data={{
+                              id: row.id,
+                              studentId: row.studentId,
+                              lessonId: row.lessonId,
+                              date: row.date,
+                              present: row.present,
+                            }}
+                          />
+                        </span>
+                      </Tooltip>
+                      <Tooltip content="Delete Attendance">
+                        <span className="inline-flex">
+                          <FormContainer
+                            table="attendance"
+                            type="delete"
+                            id={row.id}
+                          />
+                        </span>
+                      </Tooltip>
                     </div>
                   </td>
                 )}

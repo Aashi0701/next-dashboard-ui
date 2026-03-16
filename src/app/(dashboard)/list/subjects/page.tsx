@@ -10,6 +10,7 @@ import { Library } from "lucide-react";
 import SubjectFilters from "@/components/filters/SubjectFilters";
 import SubjectSort from "@/components/filters/SubjectSort";
 import SubjectCard from "@/components/mobile/SubjectCard";
+import Tooltip from "@/components/ui/Tooltip";
 
 type SubjectList = Subject & { teachers: Teacher[] };
 
@@ -71,20 +72,29 @@ const SubjectListPage = async ({
     >
       <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">{item.name}</td>
 
-      <td className="p-4 truncate hidden md:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate hidden md:table-cell">
         {item.teachers.map((t) => t.name).join(", ")}
       </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer
-              table="subject"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormContainer table="subject" type="delete" id={item.id} />
+            <Tooltip content="Edit Subject">
+              <span className="inline-flex">
+                <FormContainer
+                  table="subject"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
+
+            <Tooltip content="Delete Subject">
+              <span className="inline-flex">
+                <FormContainer table="subject" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}

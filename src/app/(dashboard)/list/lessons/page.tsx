@@ -10,6 +10,7 @@ import LessonFilters from "@/components/filters/LessonFilters";
 import LessonSort from "@/components/filters/LessonSort";
 import LessonCard from "@/components/mobile/LessonCard";
 import { BookOpen } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 type LessonList = Lesson & {
   subject: Subject;
@@ -61,21 +62,30 @@ const LessonListPage = async ({
       <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">{item.name}</td>
       <td className="px-2 py-1.5 md:px-3 md:py-2">{item.subject.name}</td>
       <td className="px-2 py-1.5 md:px-3 md:py-2">{item.class.name}</td>
-      <td className="p-4 truncate hidden md:table-cell">
+      <td className="px-2 py-1.5 md:px-3 md:py-2 truncate hidden md:table-cell">
         {item.teacher.name} {item.teacher.surname}
       </td>
 
       {role === "admin" && (
-        <td className="p-4 text-center">
+        <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer
-              table="lesson"
-              type="update"
-              id={item.id} // ✅ REQUIRED
-              data={item}
-              relatedData={relatedData}
-            />
-            <FormContainer table="lesson" type="delete" id={item.id} />
+            <Tooltip content="Edit lesson">
+              <span className="inline-flex">
+                <FormContainer
+                  table="lesson"
+                  type="update"
+                  id={item.id} // ✅ REQUIRED
+                  data={item}
+                  relatedData={relatedData}
+                />
+              </span>
+            </Tooltip>
+
+            <Tooltip content="Delete lesson">
+              <span className="inline-flex">
+                <FormContainer table="lesson" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}

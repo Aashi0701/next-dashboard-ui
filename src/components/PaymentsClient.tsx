@@ -45,7 +45,7 @@ export default function PaymentsClient({
   const columns = [
     { header: "Student", accessor: "student" },
     { header: "Class", accessor: "class" },
-    { header: "Fee", accessor: "fee" },
+    { header: "Fee", accessor: "fee", className: "tabular-nums w-[120px]", },
 
     {
       header: "Total",
@@ -70,7 +70,7 @@ export default function PaymentsClient({
           {
             header: "Actions",
             accessor: "action",
-            className: "w-[150px]",
+            className: "w-[120px]",
           },
         ]
       : []),
@@ -131,7 +131,7 @@ export default function PaymentsClient({
         </td>
 
         {/* Fee Title */}
-        <td className="px-2 py-1.5 md:px-3 md:py-2">{item.feeStructure.title}</td>
+        <td className="px-2 py-1.5 md:px-3 md:py-2 truncate">{item.feeStructure.title}</td>
 
         {/* Total */}
         <td className="px-2 py-1.5 md:px-3 md:py-2 tabular-nums font-semibold">
@@ -154,7 +154,7 @@ export default function PaymentsClient({
         </td>
 
         {role === "admin" && (
-          <td className="px-2 py-1.5 md:px-3 md:py-2">
+          <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
             <div className="flex gap-3">
 
               {/* VIEW RECEIPT */}
@@ -225,10 +225,6 @@ export default function PaymentsClient({
       </tr>
     );
   };
-
-  /* ============================================================
-     RENDER
-  ============================================================ */
 
   return (
     <>

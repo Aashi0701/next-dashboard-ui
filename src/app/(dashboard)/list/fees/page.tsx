@@ -10,7 +10,7 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-
+import Tooltip from "@/components/ui/Tooltip";
 import { FeeTypeChip, FeeStatusBadge } from "@/components/ui/FeeBadges";
 
 /* ================= TYPES ================= */
@@ -124,9 +124,31 @@ const FeesPage = async ({
       {role === "admin" && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer table="fee" type="update" data={item} id={item.id} />
-            <FormContainer table="fee" type="delete" id={item.id} />
-            <FormContainer table="fee" type="assign" data={item} id={item.id} />
+            <Tooltip content="Edit Fee">
+              <span className="inline-flex">
+                <FormContainer
+                  table="fee"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
+            <Tooltip content="Delete Fee">
+              <span className="inline-flex">
+                <FormContainer table="fee" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
+            <Tooltip content="Assign Fee">
+              <span className="inline-flex">
+                <FormContainer
+                  table="fee"
+                  type="assign"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}

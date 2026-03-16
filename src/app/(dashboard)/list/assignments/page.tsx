@@ -10,6 +10,7 @@ import AssignmentFilters from "@/components/filters/AssignmentFilters";
 import AssignmentSort from "@/components/filters/AssignmentSort";
 import AssignmentCard from "@/components/mobile/AssignmentCard";
 import { ClipboardList } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -50,6 +51,11 @@ export default async function AssignmentListPage({
       className: "hidden md:table-cell",
     },
     {
+      header: "Start Date",
+      accessor: "startDate",
+      className: "hidden md:table-cell",
+    },
+    {
       header: "Due Date",
       accessor: "dueDate",
       className: "hidden md:table-cell",
@@ -74,19 +80,31 @@ export default async function AssignmentListPage({
         {item.lesson.teacher.name} {item.lesson.teacher.surname}
       </td>
       <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
+        {new Intl.DateTimeFormat("en-US").format(item.startDate)}
+      </td>
+      <td className="px-2 py-1.5 md:px-3 md:py-2 hidden md:table-cell truncate">
         {new Intl.DateTimeFormat("en-US").format(item.dueDate)}
       </td>
 
       {(role === "admin" || role === "teacher") && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer
-              table="assignment"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormContainer table="assignment" type="delete" id={item.id} />
+            <Tooltip content="Edit Assignment">
+              <span className="inline-flex">
+                <FormContainer
+                  table="assignment"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
+
+            <Tooltip content="Delete Assignment">
+              <span className="inline-flex">
+                <FormContainer table="assignment" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}

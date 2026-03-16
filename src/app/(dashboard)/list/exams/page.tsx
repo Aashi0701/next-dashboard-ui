@@ -10,6 +10,7 @@ import ExamFilters from "@/components/filters/ExamFilters";
 import ExamSort from "@/components/filters/ExamSort";
 import ExamCard from "@/components/mobile/ExamCard";
 import { ClipboardCheck } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
 
 type ExamList = Exam & {
   lesson: {
@@ -84,13 +85,21 @@ export default async function ExamListPage({
       {(role === "admin" || role === "teacher") && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
-            <FormContainer
-              table="exam"
-              type="update"
-              data={item}
-              id={item.id}
-            />
-            <FormContainer table="exam" type="delete" id={item.id} />
+            <Tooltip content="Edit Exam">
+              <span className="inline-flex">
+                <FormContainer
+                  table="exam"
+                  type="update"
+                  data={item}
+                  id={item.id}
+                />
+              </span>
+            </Tooltip>
+            <Tooltip content="Delete Exam">
+              <span className="inline-flex">
+                <FormContainer table="exam" type="delete" id={item.id} />
+              </span>
+            </Tooltip>
           </div>
         </td>
       )}
