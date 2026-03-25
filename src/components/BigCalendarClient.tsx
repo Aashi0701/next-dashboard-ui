@@ -176,7 +176,7 @@ export default function BigCalendarClient({
               className={`border-r border-b min-h-[42px] sm:min-h-[69px] p-0.5 sm:p-1 text-[10px] sm:text-[11px] relative
                 ${isSunday ? "bg-gray-50" : ""}
                 ${getHeatmapBg(dayEvents)}`}
-              >
+            >
               {/* date */}
               <span
                 className={`absolute top-1 left-1 font-medium ${
@@ -188,9 +188,9 @@ export default function BigCalendarClient({
 
               {/* events */}
               <div className="mt-4 space-y-0.5">
-                {dayEvents.slice(0, 2).map((e) => (
+                {dayEvents.slice(0, 2).map((e, index) => (
                   <div
-                    key={e.id}
+                    key={`${e.id}-${index}-${e.start}`}
                     onMouseEnter={() => setHoverEvent(e)}
                     onMouseLeave={() => setHoverEvent(null)}
                     className={`px-1 py-[1px] rounded text-white truncate text-[9px] sm:text-[10px] cursor-pointer ${colors[e.type]}`}

@@ -12,7 +12,8 @@ import RadixSelect from "@/components/ui/RadixSelect";
 type Props = {
   subjects: { id: number; name: string }[];
   classes: { id: number; name: string }[];
-  teachers: { id: string; name: string; surname: string }[];
+  teachers?: { id: string; name: string; surname: string }[];
+  role?: string;
 };
 
 /* ================= COMPONENT ================= */
@@ -21,38 +22,29 @@ export default function LessonFilters({
   subjects,
   classes,
   teachers,
+  role,
 }: Props) {
   const router = useRouter();
   const params = useSearchParams();
 
   const [open, setOpen] = useState(false);
 
-  const [subjectId, setSubjectId] = useState(
-    params.get("subjectId") || ""
-  );
-  const [classId, setClassId] = useState(
-    params.get("classId") || ""
-  );
-  const [teacherId, setTeacherId] = useState(
-    params.get("teacherId") || ""
-  );
+  const [subjectId, setSubjectId] = useState(params.get("subjectId") || "");
+  const [classId, setClassId] = useState(params.get("classId") || "");
+  const [teacherId, setTeacherId] = useState(params.get("teacherId") || "");
 
   /* ================= ACTIONS ================= */
 
   const applyFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    subjectId
-      ? query.set("subjectId", subjectId)
-      : query.delete("subjectId");
+    subjectId ? query.set("subjectId", subjectId) : query.delete("subjectId");
 
-    classId
-      ? query.set("classId", classId)
-      : query.delete("classId");
+    classId ? query.set("classId", classId) : query.delete("classId");
 
-    teacherId
-      ? query.set("teacherId", teacherId)
-      : query.delete("teacherId");
+    if (role === "admin") {
+      teacherId ? query.set("teacherId", teacherId) : query.delete("teacherId");
+    }
 
     router.push("?" + query.toString());
     setOpen(false);
@@ -61,9 +53,11 @@ export default function LessonFilters({
   const resetFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    ["subjectId", "classId", "teacherId"].forEach((k) =>
-      query.delete(k)
-    );
+    ["subjectId", "classId"].forEach((k) => query.delete(k));
+
+    if (role === "admin") {
+      query.delete("teacherId");
+    }
 
     router.push("?" + query.toString());
 
@@ -144,18 +138,21 @@ export default function LessonFilters({
         </div>
 
         {/* TEACHER */}
-        <div>
-          <label className="font-medium text-gray-700">Teacher</label>
-          <RadixSelect
-            value={teacherId}
-            onChange={(v) => setTeacherId(v ?? "")}
-            placeholder="All Teachers"
-            options={teachers.map((t) => ({
-              value: t.id,
-              label: `${t.name} ${t.surname}`,
-            }))}
-          />
-        </div>
+        {/* TEACHER (ADMIN ONLY) */}
+        {role === "admin" && teachers && (
+          <div>
+            <label className="font-medium text-gray-700">Teacher</label>
+            <RadixSelect
+              value={teacherId}
+              onChange={(v) => setTeacherId(v ?? "")}
+              placeholder="All Teachers"
+              options={teachers.map((t) => ({
+                value: t.id,
+                label: `${t.name} ${t.surname}`,
+              }))}
+            />
+          </div>
+        )}
       </FilterDrawer>
     </>
   );

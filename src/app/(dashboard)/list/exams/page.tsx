@@ -11,6 +11,7 @@ import ExamSort from "@/components/filters/ExamSort";
 import ExamCard from "@/components/mobile/ExamCard";
 import { ClipboardCheck } from "lucide-react";
 import Tooltip from "@/components/ui/Tooltip";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 type ExamList = Exam & {
   lesson: {
@@ -28,6 +29,7 @@ export default async function ExamListPage({
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
+  const queryString = new URLSearchParams(params as any).toString();
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
@@ -39,6 +41,57 @@ export default async function ExamListPage({
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.teacher.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  /* ================= FILTER CONFIG ================= */
+  const examFilterConfig = {
+    subjectId: {
+      label: "Subject",
+      icon: "📘",
+      options: subjects.map((s) => ({
+        label: s.name,
+        value: String(s.id),
+      })),
+    },
+
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    teacherId: {
+      label: "Teacher",
+      icon: "👨‍🏫",
+      options: teachers.map((t) => ({
+        label: `${t.name} ${t.surname}`,
+        value: t.id,
+      })),
+    },
+
+    sortBy: {
+      label: "Sort By",
+      icon: "↕️",
+      options: [
+        { label: "Title", value: "title" },
+        { label: "Subject", value: "subject" },
+        { label: "Class", value: "class" },
+        { label: "Teacher", value: "teacher" },
+        { label: "Date", value: "date" },
+      ],
+    },
+
+    sortOrder: {
+      label: "Order",
+      icon: "🔽",
+      options: [
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ],
+    },
+  };
 
   /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
@@ -92,12 +145,18 @@ export default async function ExamListPage({
                   type="update"
                   data={item}
                   id={item.id}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
             <Tooltip content="Delete Exam">
               <span className="inline-flex">
-                <FormContainer table="exam" type="delete" id={item.id} />
+                <FormContainer
+                  table="exam"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
           </div>
@@ -107,70 +166,111 @@ export default async function ExamListPage({
   );
 
   /* ================= QUERY ================= */
-  const query: Prisma.ExamWhereInput = {
-    lesson: {},
-  };
+  let lessonWhere: Prisma.LessonWhereInput = {};
+
+  /* ================= ROLE-BASED FILTER ================= */
+
+  let teacherRecord: Teacher | null = null;
+
+  if (role === "teacher") {
+    teacherRecord = await prisma.teacher.findUnique({
+      where: { userId: currentUserId! },
+    });
+
+    if (!teacherRecord) {
+      return (
+        <div className="p-6 text-sm text-red-500">
+          Teacher not mapped to system.
+        </div>
+      );
+    }
+
+    lessonWhere.teacherId = teacherRecord.id; // ✅ FIX
+  }
+
+  if (role === "student") {
+    lessonWhere.class = {
+      students: { some: { id: currentUserId! } },
+    };
+  }
+
+  if (role === "parent") {
+    lessonWhere.class = {
+      students: { some: { parentId: currentUserId! } },
+    };
+  }
+
+  /* ================= FILTER PARAMS ================= */
 
   for (const [key, value] of Object.entries(queryParams)) {
     if (!value) continue;
 
     switch (key) {
       case "subjectId":
-        query.lesson!.subjectId = Number(value);
+        lessonWhere.subjectId = Number(value);
         break;
+
       case "classId":
-        query.lesson!.classId = Number(value);
+        lessonWhere.classId = Number(value);
         break;
+
       case "teacherId":
-        query.lesson!.teacherId = value;
+        if (role !== "teacher") {
+          lessonWhere.teacherId = value;
+        }
         break;
-      case "dateFrom":
-        query.startTime = { gte: new Date(value) };
-        break;
-      case "dateTo":
-        query.startTime = {
-          ...(query.startTime as any),
-          lte: new Date(value),
-        };
-        break;
+
       case "search":
-        query.OR = [
-          {
-            title: {
-              contains: value,
-              mode: "insensitive",
-            },
-          },
-          {
-            lesson: {
-              subject: {
-                name: {
-                  contains: value,
-                  mode: "insensitive",
-                },
-              },
-            },
-          },
-        ];
+        lessonWhere.subject = {
+          name: { contains: value, mode: "insensitive" },
+        };
         break;
     }
   }
 
-  /* ================= ROLE CONDITIONS ================= */
-  if (role === "teacher") {
-    query.lesson!.teacherId = currentUserId!;
-  }
+  /* ================= FINAL QUERY ================= */
+  const query: Prisma.ExamWhereInput = {
+    lesson: lessonWhere,
+  };
 
-  if (role === "student") {
-    query.lesson!.class = {
-      students: { some: { id: currentUserId! } },
-    };
-  }
+  /* ================= DATE FILTER ================= */
 
-  if (role === "parent") {
-    query.lesson!.class = {
-      students: { some: { parentId: currentUserId! } },
-    };
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (!value) continue;
+
+    if (key === "dateFrom") {
+      query.startTime = { gte: new Date(value) };
+    }
+
+    if (key === "dateTo") {
+      query.startTime = {
+        ...((query.startTime as any)?.gte
+          ? { gte: (query.startTime as any).gte }
+          : {}),
+        lte: new Date(value),
+      };
+    }
+
+    if (key === "search") {
+      query.OR = [
+        {
+          title: {
+            contains: value,
+            mode: "insensitive",
+          },
+        },
+        {
+          lesson: {
+            subject: {
+              name: {
+                contains: value,
+                mode: "insensitive",
+              },
+            },
+          },
+        },
+      ];
+    }
   }
 
   /* ================= SORT ================= */
@@ -215,16 +315,35 @@ export default async function ExamListPage({
     prisma.exam.count({ where: query }),
   ])) as [ExamList[], number];
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <ClipboardCheck size={14} />
-          </span>
-          Exams
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <ClipboardCheck size={14} />
+            </span>
+            Exams
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span> exams
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -248,6 +367,7 @@ export default async function ExamListPage({
 
       {/* ===== DESKTOP TABLE ===== */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={examFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

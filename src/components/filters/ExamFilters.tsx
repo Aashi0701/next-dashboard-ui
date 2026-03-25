@@ -7,7 +7,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-
+import CompactDatePicker from "@/components/ui/CompactDatePicker";
 import Image from "next/image";
 import RadixSelect from "@/components/ui/RadixSelect";
 import FilterDrawer from "@/components/filters/FilterDrawer";
@@ -22,11 +22,7 @@ type Props = {
 
 /* ================= COMPONENT ================= */
 
-export default function ExamFilters({
-  subjects,
-  classes,
-  teachers,
-}: Props) {
+export default function ExamFilters({ subjects, classes, teachers }: Props) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -37,10 +33,10 @@ export default function ExamFilters({
   const [teacherId, setTeacherId] = useState(params.get("teacherId") || "");
 
   const [dateFrom, setDateFrom] = useState<Dayjs | null>(
-    params.get("dateFrom") ? dayjs(params.get("dateFrom")) : null
+    params.get("dateFrom") ? dayjs(params.get("dateFrom")) : null,
   );
   const [dateTo, setDateTo] = useState<Dayjs | null>(
-    params.get("dateTo") ? dayjs(params.get("dateTo")) : null
+    params.get("dateTo") ? dayjs(params.get("dateTo")) : null,
   );
 
   /* ================= ACTIONS ================= */
@@ -68,7 +64,7 @@ export default function ExamFilters({
     const query = new URLSearchParams(params.toString());
 
     ["subjectId", "classId", "teacherId", "dateFrom", "dateTo"].forEach((k) =>
-      query.delete(k)
+      query.delete(k),
     );
 
     router.push("?" + query.toString());
@@ -171,25 +167,17 @@ export default function ExamFilters({
           <div className="space-y-3">
             <p className="font-medium text-gray-700">Date range</p>
 
-            <DatePicker
-              label="From"
+            <CompactDatePicker
               value={dateFrom}
               onChange={setDateFrom}
-              slotProps={{
-                textField: { fullWidth: true, size: "small" },
-                popper: { sx: { zIndex: 999999 } },
-              }}
+              placeholder="From"
             />
 
-            <DatePicker
-              label="To"
+            <CompactDatePicker
               value={dateTo}
               onChange={setDateTo}
               minDate={dateFrom ?? undefined}
-              slotProps={{
-                textField: { fullWidth: true, size: "small" },
-                popper: { sx: { zIndex: 999999 } },
-              }}
+              placeholder="To"
             />
           </div>
         </FilterDrawer>

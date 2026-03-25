@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import FormModal from "./FormModal";
 import { auth } from "@clerk/nextjs/server";
 import React from "react";
@@ -29,14 +30,18 @@ export type FormContainerProps = {
   relatedData?: {
     subjects?: { id: number; name: string }[];
     classes?: { id: number; name: string }[];
+    lessons?: {
+      id: number;
+      name: string;
+      classId: number;
+      className: string;
+    }[];
   };
   trigger?: React.ReactNode;
   tooltip?: string;
+  query?: string;
 };
 
-/* ---------------------------------------------------------------
-   MAIN COMPONENT
----------------------------------------------------------------- */
 const FormContainer = async ({
   table,
   type,
@@ -44,6 +49,7 @@ const FormContainer = async ({
   id,
   trigger,
   tooltip,
+  query,
 }: FormContainerProps) => {
   let relatedData: any = {};
 
@@ -51,9 +57,7 @@ const FormContainer = async ({
   const role = (sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
 
-  /* ---------------------------------------------------------------
-     BUILD RELATED DATA BASED ON TABLE
-  ---------------------------------------------------------------- */
+  /* ================= BUILD RELATED DATA ================= */
   if (type !== "delete") {
     switch (table) {
       case "subject":
@@ -97,14 +101,35 @@ const FormContainer = async ({
         };
         break;
 
-      case "exam":
+      case "exam": {
+        const lessonFilter: Prisma.LessonWhereInput = {};
+
+        if (role === "teacher") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: currentUserId! },
+          });
+
+          if (teacher) {
+            lessonFilter.teacherId = teacher.id;
+          }
+        }
+
+        const lessons = await prisma.lesson.findMany({
+          where: lessonFilter,
+          include: { class: true },
+          orderBy: { name: "asc" },
+        });
+
         relatedData = {
-          lessons: await prisma.lesson.findMany({
-            where: role === "teacher" ? { teacherId: currentUserId! } : {},
-            select: { id: true, name: true },
-          }),
+          lessons: lessons.map((l) => ({
+            id: l.id,
+            name: l.name,
+            classId: l.classId,
+            className: l.class.name,
+          })),
         };
         break;
+      }
 
       case "lesson":
         relatedData = {
@@ -120,28 +145,101 @@ const FormContainer = async ({
         };
         break;
 
-      case "assignment":
-        relatedData = {
-          lessons: await prisma.lesson.findMany({
-            where: role === "teacher" ? { teacherId: currentUserId! } : {},
-            select: { id: true, name: true },
-          }),
-        };
-        break;
+      case "assignment": {
+        const lessonFilter: Prisma.LessonWhereInput = {};
 
-      case "result":
+        if (role === "teacher") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: currentUserId! },
+          });
+
+          if (teacher) {
+            lessonFilter.teacherId = teacher.id;
+          }
+        }
+
+        const lessons = await prisma.lesson.findMany({
+          where: lessonFilter,
+          include: { class: true },
+          orderBy: { name: "asc" },
+        });
+
         relatedData = {
-          students: await prisma.student.findMany({
-            select: { id: true, name: true, surname: true },
-          }),
-          exams: await prisma.exam.findMany({
-            select: { id: true, title: true },
-          }),
-          assignments: await prisma.assignment.findMany({
-            select: { id: true, title: true },
-          }),
+          lessons: lessons.map((l) => ({
+            id: l.id,
+            name: l.name,
+            classId: l.classId,
+            className: l.class.name,
+          })),
         };
         break;
+      }
+
+      case "result": {
+        let teacherFilter: Prisma.LessonWhereInput = {};
+
+        if (role === "teacher") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: currentUserId! },
+          });
+
+          if (teacher) {
+            teacherFilter.teacherId = teacher.id;
+          }
+        }
+
+        const lessons = await prisma.lesson.findMany({
+          where: teacherFilter,
+          include: { class: true },
+        });
+
+        const classIds = [...new Set(lessons.map((l) => l.classId))];
+
+        const students = await prisma.student.findMany({
+          where: {
+            ...(role === "teacher" ? { classId: { in: classIds } } : {}),
+          },
+          include: { class: true },
+        });
+
+        const exams = await prisma.exam.findMany({
+          where: {
+            lesson: teacherFilter,
+          },
+          include: { lesson: { include: { class: true } } },
+        });
+
+        const assignments = await prisma.assignment.findMany({
+          where: {
+            lesson: teacherFilter,
+          },
+          include: { lesson: { include: { class: true } } },
+        });
+
+        relatedData = {
+          students: students.map((s) => ({
+            id: s.id,
+            name: s.name,
+            surname: s.surname,
+            classId: s.classId,
+            className: s.class.name,
+          })),
+
+          exams: exams.map((e) => ({
+            id: e.id,
+            title: e.title,
+            classId: e.lesson.classId,
+          })),
+
+          assignments: assignments.map((a) => ({
+            id: a.id,
+            title: a.title,
+            classId: a.lesson.classId,
+          })),
+        };
+
+        break;
+      }
 
       case "event":
       case "announcement":
@@ -156,27 +254,61 @@ const FormContainer = async ({
         relatedData = {};
         break;
 
-      case "attendance":
+      case "attendance": {
+        let lessonFilter: Prisma.LessonWhereInput = {};
+
+        if (role === "teacher") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: currentUserId! },
+          });
+
+          if (teacher) {
+            lessonFilter.teacherId = teacher.id;
+          }
+        }
+
+        const lessons = await prisma.lesson.findMany({
+          where: lessonFilter,
+          include: {
+            subject: true,
+            class: true,
+          },
+          orderBy: { id: "asc" },
+        });
+
+        const classIds = [...new Set(lessons.map((l) => l.classId))];
+
+        const students = await prisma.student.findMany({
+          where: {
+            ...(role === "teacher" ? { classId: { in: classIds } } : {}),
+          },
+          include: { class: true },
+        });
+
         relatedData = {
-          students: await prisma.student.findMany({
-            select: { id: true, name: true, surname: true },
-          }),
-          lessons: await prisma.lesson.findMany({
-            select: {
-              id: true,
-              subject: { select: { name: true } },
-              class: { select: { name: true } },
-            },
-            orderBy: { id: "asc" },
-          }),
+          lessons: lessons.map((l) => ({
+            id: l.id,
+            subjectName: l.subject.name,
+            classId: l.classId,
+            className: l.class.name,
+          })),
+
+          students: students.map((s) => ({
+            id: s.id,
+            name: s.name,
+            surname: s.surname,
+            classId: s.classId,
+            className: s.class.name,
+          })),
         };
+
         break;
+      }
 
       case "fee":
         relatedData = {
           classes: await prisma.class.findMany({
             select: { id: true, name: true },
-            orderBy: { name: "asc" },
           }),
           students: await prisma.student.findMany({
             select: { id: true, name: true },
@@ -219,9 +351,7 @@ const FormContainer = async ({
           relatedData = {
             profile: await prisma.student.findUnique({
               where: { id: currentUserId },
-              include: {
-                class: { select: { name: true } },
-              },
+              include: { class: { select: { name: true } } },
             }),
           };
         }
@@ -237,30 +367,26 @@ const FormContainer = async ({
           };
         }
         break;
-
-      default:
-        break;
     }
   }
 
   const content = (
-  <FormModal
-    table={table}
-    type={type}
-    data={data}
-    id={id}
-    relatedData={relatedData}
-    trigger={trigger} 
-  />
-);
+    <FormModal
+      table={table}
+      type={type}
+      data={data}
+      id={id}
+      relatedData={relatedData}
+      trigger={trigger}
+      query={query}
+    />
+  );
 
   return tooltip ? (
     <div className="relative inline-block group">
-      {/* Tooltip bubble (desktop hover only) */}
       <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 hidden whitespace-nowrap rounded-md bg-black px-2 py-1 text-[10px] text-white group-hover:block">
         {tooltip}
       </span>
-
       {content}
     </div>
   ) : (

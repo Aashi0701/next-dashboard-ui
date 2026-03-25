@@ -16,16 +16,28 @@ import {
   deleteFee,
   deleteHoliday,
 } from "@/lib/actions";
+
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, ReactNode, } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useActionState,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
 import AssignFeeForm from "./forms/AssignFeeForm";
 import ModalPortal from "./ModalPortal";
 import { useSearchParams } from "next/navigation";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
+
+/* ------------------------------------------------------------------ */
+/* TYPES */
+/* ------------------------------------------------------------------ */
 
 type TableKey = FormContainerProps["table"];
 
@@ -143,11 +155,13 @@ const FormModal = ({
   const router = useRouter();
   const params = useSearchParams();
   const action = params.get("action");
+  const currentId = params.get("id");
+
   const isOpen =
     (type === "create" && action === "create") ||
-    (type === "update" && action === "edit") ||
-    (type === "delete" && action === "delete") ||
-    (type === "assign" && action === "assign");
+    (type === "update" && action === "edit" && String(id) === currentId) ||
+    (type === "delete" && action === "delete" && String(id) === currentId) ||
+    (type === "assign" && action === "assign" && String(id) === currentId);
 
   const closeModal = () => {
     const params = new URLSearchParams(window.location.search);
@@ -220,17 +234,17 @@ const FormModal = ({
   };
 
   const openFromTrigger = () => {
-    const params = new URLSearchParams();
+    const currentParams = new URLSearchParams(params.toString());
 
     if (type === "create") {
-      params.set("action", "create");
+      currentParams.set("action", "create");
     } else {
       if (!id) return;
-      params.set("action", type === "update" ? "edit" : type);
-      params.set("id", String(id));
+      currentParams.set("action", type === "update" ? "edit" : type);
+      currentParams.set("id", String(id));
     }
 
-    router.push(`?${params.toString()}`);
+    router.push(`?${currentParams.toString()}`);
   };
 
   return (

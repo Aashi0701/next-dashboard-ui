@@ -30,17 +30,29 @@ export default function ExamForm({
   type: "create" | "update";
   data?: ExamFormValues;
   close: () => void;
-  relatedData?: { lessons: { id: number; name: string }[] };
+  relatedData?: {
+    lessons: {
+      id: number;
+      name: string;
+      classId: number;
+      className: string;
+    }[];
+  };
 }) {
   const router = useRouter();
   const lessons = relatedData?.lessons ?? [];
+
+  const [openSection, setOpenSection] = useState<Section>("basic");
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+
+  /* ================= FORM ================= */
 
   const methods = useForm<ExamFormValues>({
     resolver: zodResolver(examSchema) as any,
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
-      lessonId: data?.lessonId ?? undefined,
+      lessonId: data?.lessonId ?? 0, // ✅ avoid undefined
       startTime: data?.startTime ? new Date(data.startTime) : undefined,
       endTime: data?.endTime ? new Date(data.endTime) : undefined,
     },
@@ -55,14 +67,41 @@ export default function ExamForm({
     control,
   } = methods;
 
-  const [openSection, setOpenSection] = useState<Section>("basic");
+  /* ================= DERIVED DATA ================= */
+
+  const classOptions = Array.from(
+    new Map(
+      lessons.map((l) => [l.classId, l.className])
+    ).entries()
+  ).map(([id, name]) => ({
+    value: String(id),
+    label: name,
+  }));
+
+  const filteredLessons = selectedClassId
+    ? lessons.filter((l) => l.classId === selectedClassId)
+    : [];
+
+  /* ================= ACTION ================= */
 
   const [state, formAction] = useActionState<ActionState, ExamFormValues>(
     type === "create" ? createExam : updateExam,
-    { success: false },
+    { success: false }
   );
 
-  /* Auto-open section with first error */
+  /* ================= AUTO SET CLASS (EDIT MODE) ================= */
+
+  useEffect(() => {
+    if (data?.lessonId && lessons.length) {
+      const lesson = lessons.find((l) => l.id === data.lessonId);
+      if (lesson) {
+        setSelectedClassId(lesson.classId);
+      }
+    }
+  }, [data, lessons]);
+
+  /* ================= AUTO ERROR SECTION ================= */
+
   useEffect(() => {
     if (submitCount > 0 && Object.keys(errors).length > 0) {
       const firstError = Object.keys(errors)[0] as keyof ExamFormValues;
@@ -70,7 +109,7 @@ export default function ExamForm({
       const section = (
         Object.entries(sectionFields) as [
           Section,
-          readonly (keyof ExamFormValues)[],
+          readonly (keyof ExamFormValues)[]
         ][]
       ).find(([, fields]) => fields.includes(firstError))?.[0];
 
@@ -84,14 +123,18 @@ export default function ExamForm({
     }
   }, [errors, submitCount]);
 
+  /* ================= SUBMIT ================= */
+
   const onSubmit = handleSubmit((values) => {
     startTransition(() => formAction(values));
   });
 
+  /* ================= EFFECT ================= */
+
   useEffect(() => {
     if (state.success) {
       toast.success(
-        `Exam ${type === "create" ? "created" : "updated"} successfully`,
+        `Exam ${type === "create" ? "created" : "updated"} successfully`
       );
       close();
       router.refresh();
@@ -99,10 +142,12 @@ export default function ExamForm({
     if (state.error) toast.error(state.error);
   }, [state, router, close, type]);
 
+  /* ================= UI ================= */
+
   return (
     <FormProvider {...methods}>
       <form onSubmit={onSubmit} className="flex flex-col h-[70vh] max-h-[75vh]">
-        {/* ===== HEADER (FIXED) ===== */}
+        {/* HEADER */}
         <div className="shrink-0 px-4 sm:px-6 pb-3">
           <ModalCloseButton onClose={close} />
           <h1 className="text-base font-semibold">
@@ -113,12 +158,12 @@ export default function ExamForm({
           </p>
         </div>
 
-        {/* ===== CONTENT (SCROLL ONLY) ===== */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 pb-24 space-y-4">
-          {/* BASIC INFO */}
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          {/* BASIC */}
           <CollapsibleSection
             title="Exam Information"
-            description="Title and lesson mapping"
+            description="Title, class and lesson mapping"
             icon="📝"
             open={openSection === "basic"}
             onToggle={() => setOpenSection("basic")}
@@ -126,6 +171,21 @@ export default function ExamForm({
             <div className="space-y-4">
               <InputField label="Exam Title" name="title" />
 
+              {/* CLASS DROPDOWN */}
+              <RadixSelect
+                value={selectedClassId ? String(selectedClassId) : ""}
+                onChange={(v) => {
+                  const classId = Number(v);
+                  setSelectedClassId(classId);
+
+                  // reset lesson safely
+                  setValue("lessonId", 0, { shouldValidate: true });
+                }}
+                placeholder="Select Class"
+                options={classOptions}
+              />
+
+              {/* LESSON DROPDOWN */}
               <RadixSelect
                 value={watch("lessonId") ? String(watch("lessonId")) : ""}
                 onChange={(v) =>
@@ -133,11 +193,16 @@ export default function ExamForm({
                     shouldValidate: true,
                   })
                 }
-                placeholder="Select Lesson"
-                options={lessons.map((l) => ({
+                placeholder={
+                  selectedClassId
+                    ? "Select Lesson"
+                    : "Select class first"
+                }
+                options={filteredLessons.map((l) => ({
                   value: String(l.id),
                   label: l.name,
                 }))}
+                disabled={!selectedClassId}
               />
             </div>
           </CollapsibleSection>
@@ -188,7 +253,7 @@ export default function ExamForm({
           )}
         </div>
 
-        {/* ===== FOOTER (FIXED) ===== */}
+        {/* FOOTER */}
         <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
           <div className="flex justify-end gap-2">
             <button
@@ -206,8 +271,8 @@ export default function ExamForm({
               {isSubmitting
                 ? "Saving..."
                 : type === "create"
-                  ? "Create Exam"
-                  : "Update Exam"}
+                ? "Create Exam"
+                : "Update Exam"}
             </button>
           </div>
         </div>

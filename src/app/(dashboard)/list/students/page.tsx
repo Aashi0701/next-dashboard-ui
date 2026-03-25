@@ -5,7 +5,7 @@ import TableSearch from "@/components/TableSearch";
 import { Users } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { Class, Prisma, Student } from "@prisma/client";
+import { Class, Prisma, Student, Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import Tooltip from "@/components/ui/Tooltip";
@@ -13,6 +13,7 @@ import { auth } from "@clerk/nextjs/server";
 import StudentFilters from "@/components/filters/StudentFilters";
 import StudentSort from "@/components/filters/StudentSort";
 import StudentCard from "@/components/mobile/StudentCard";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 /* ================= TYPES ================= */
 
@@ -37,7 +38,7 @@ const StudentListPage = async ({
   const params = await searchParams;
   const { page, sort, action, id, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
-
+  const queryString = new URLSearchParams(params as any).toString();
   const { sessionClaims, userId } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
@@ -181,20 +182,26 @@ const StudentListPage = async ({
 
               {/* EDIT */}
               <Tooltip content="Edit Student">
-                <span className="inline-flex">
+                <span className="inline-flex shrink-0">
                   <FormContainer
                     table="student"
                     type="update"
                     data={item}
                     id={item.id}
+                    query={queryString}
                   />
                 </span>
               </Tooltip>
 
               {/* DELETE */}
               <Tooltip content="Delete Student">
-                <span className="inline-flex">
-                  <FormContainer table="student" type="delete" id={item.id} />
+                <span className="inline-flex shrink-0">
+                  <FormContainer
+                    table="student"
+                    type="delete"
+                    id={item.id}
+                    query={queryString}
+                  />
                 </span>
               </Tooltip>
             </div>
@@ -209,11 +216,21 @@ const StudentListPage = async ({
   const query: Prisma.StudentWhereInput = {};
 
   /* 🔐 ROLE-BASED SCOPE */
+  let teacherRecord: Teacher | null = null;
+
   if (role === "teacher") {
+    teacherRecord = await prisma.teacher.findUnique({
+      where: { userId: userId! },
+    });
+
+    if (!teacherRecord) {
+      throw new Error("Teacher not mapped to system");
+    }
+
     query.class = {
       lessons: {
         some: {
-          teacherId: userId,
+          teacherId: teacherRecord.id, // ✅ FIX
         },
       },
     };
@@ -238,7 +255,7 @@ const StudentListPage = async ({
               { id: Number(value) },
               {
                 lessons: {
-                  some: { teacherId: userId },
+                  some: { teacherId: teacherRecord?.id },
                 },
               },
             ],
@@ -275,9 +292,50 @@ const StudentListPage = async ({
 
   /* ================= FILTER DATA ================= */
 
-  const classes = await prisma.class.findMany({
-    orderBy: { name: "asc" },
-  });
+  const [classes, teachers] = await Promise.all([
+    prisma.class.findMany({ orderBy: { name: "asc" } }),
+    prisma.teacher.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  /* ================= FILTER CONFIG ================= */
+
+  const studentFilterConfig = {
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    teacherId: {
+      label: "Teacher",
+      icon: "👨‍🏫",
+      options: teachers.map((t) => ({
+        label: `${t.name} ${t.surname}`,
+        value: t.id,
+      })),
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Name", value: "name" },
+    //     { label: "Date", value: "date" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ================= DATA ================= */
 
@@ -303,17 +361,37 @@ const StudentListPage = async ({
     prisma.student.count({ where: query }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   /* ================= UI ================= */
 
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       <div className="flex items-center justify-between gap-3 w-full">
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <Users size={14} />
-          </span>
-          Students
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <Users size={14} />
+            </span>
+            Students
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span>{" "}
+              students
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           <div className="flex-1 min-w-0 max-w-[160px] sm:max-w-[200px] md:max-w-none">
@@ -331,6 +409,7 @@ const StudentListPage = async ({
       </div>
 
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={studentFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

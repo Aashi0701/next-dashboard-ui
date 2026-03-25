@@ -19,7 +19,7 @@ const AttendanceChartContainer = async () => {
     },
     select: {
       date: true,
-      present: true,
+      status: true,
     },
   });
 
@@ -44,7 +44,7 @@ const AttendanceChartContainer = async () => {
     if (dayOfWeek >= 1 && dayOfWeek <= 6) {
       const dayName = daysOfWeek[dayOfWeek - 1];
 
-      if (item.present) {
+      if (item.status === "present") {
         attendanceMap[dayName].present += 1;
       } else {
         attendanceMap[dayName].absent += 1;
@@ -61,7 +61,9 @@ const AttendanceChartContainer = async () => {
   return (
     <div className="bg-white rounded-lg p-4 w-full flex flex-col h-[360px]">
       <div className="flex justify-between items-center mb-2">
-        <h1 className="text-sm font-semibold text-gray-800 tracking-wide">Attendance</h1>
+        <h1 className="text-sm font-semibold text-gray-800 tracking-wide">
+          Attendance
+        </h1>
         <Image src="/moreDark.png" alt="" width={14} height={14} />
       </div>
 

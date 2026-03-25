@@ -11,6 +11,7 @@ import AssignmentSort from "@/components/filters/AssignmentSort";
 import AssignmentCard from "@/components/mobile/AssignmentCard";
 import { ClipboardList } from "lucide-react";
 import Tooltip from "@/components/ui/Tooltip";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -27,6 +28,7 @@ export default async function AssignmentListPage({
 }) {
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...queryParams } = params;
+  const queryString = new URLSearchParams(params as any).toString();
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
@@ -40,6 +42,78 @@ export default async function AssignmentListPage({
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.teacher.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  /* ================= LESSON DATA FOR FORM ================= */
+
+  let lessonFilter: Prisma.LessonWhereInput = {};
+
+  if (role === "teacher") {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: currentUserId! },
+    });
+
+    if (teacher) {
+      lessonFilter.teacherId = teacher.id;
+    }
+  }
+
+  const lessons = await prisma.lesson.findMany({
+    where: lessonFilter,
+    include: {
+      class: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  /* ================= FILTER CONFIG ================= */
+  const assignmentFilterConfig = {
+    subjectId: {
+      label: "Subject",
+      icon: "📘",
+      options: subjects.map((s) => ({
+        label: s.name,
+        value: String(s.id),
+      })),
+    },
+
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    teacherId: {
+      label: "Teacher",
+      icon: "👨‍🏫",
+      options: teachers.map((t) => ({
+        label: `${t.name} ${t.surname}`,
+        value: t.id,
+      })),
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Subject", value: "subject" },
+    //     { label: "Class", value: "class" },
+    //     { label: "Teacher", value: "teacher" },
+    //     { label: "Due Date", value: "dueDate" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ================= TABLE STRUCTURE ================= */
   const columns = [
@@ -93,16 +167,27 @@ export default async function AssignmentListPage({
               <span className="inline-flex">
                 <FormContainer
                   table="assignment"
-                  type="update"
-                  data={item}
-                  id={item.id}
+                  type="create"
+                  relatedData={{
+                    lessons: lessons.map((l) => ({
+                      id: l.id,
+                      name: l.name,
+                      classId: l.classId,
+                      className: l.class.name,
+                    })),
+                  }}
                 />
               </span>
             </Tooltip>
 
             <Tooltip content="Delete Assignment">
               <span className="inline-flex">
-                <FormContainer table="assignment" type="delete" id={item.id} />
+                <FormContainer
+                  table="assignment"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
           </div>
@@ -112,56 +197,96 @@ export default async function AssignmentListPage({
   );
 
   /* ================= QUERY ================= */
-  const query: Prisma.AssignmentWhereInput = {
-    lesson: { subject: {}, teacher: {}, class: {} },
-  };
 
+  // ✅ Build lesson filter separately (IMPORTANT)
+  let lessonWhere: Prisma.LessonWhereInput = {};
+
+  /* ================= ROLE-BASED FILTER ================= */
+  let teacherRecord: Teacher | null = null;
+
+  if (role === "teacher") {
+    teacherRecord = await prisma.teacher.findUnique({
+      where: { userId: currentUserId! },
+    });
+
+    if (!teacherRecord) {
+      return (
+        <div className="p-6 text-sm text-red-500">
+          Teacher not mapped to system.
+        </div>
+      );
+    }
+
+    lessonWhere.teacherId = teacherRecord.id;
+  }
+
+  if (role === "student") {
+    lessonWhere.class = {
+      students: {
+        some: { id: currentUserId! },
+      },
+    };
+  }
+
+  if (role === "parent") {
+    lessonWhere.class = {
+      students: {
+        some: { parentId: currentUserId! },
+      },
+    };
+  }
+
+  /* ================= FILTER PARAMS ================= */
   for (const [key, value] of Object.entries(queryParams)) {
     if (!value) continue;
 
     switch (key) {
       case "subjectId":
-        query.lesson!.subjectId = Number(value);
+        lessonWhere.subjectId = Number(value);
         break;
+
       case "classId":
-        query.lesson!.classId = Number(value);
+        lessonWhere.classId = Number(value);
         break;
+
       case "teacherId":
-        query.lesson!.teacherId = value;
+        if (role !== "teacher") {
+          lessonWhere.teacherId = value;
+        }
         break;
-      case "dateFrom":
-        query.dueDate = { gte: new Date(value) };
-        break;
-      case "dateTo":
-        query.dueDate = {
-          ...((query.dueDate as any)?.gte
-            ? { gte: (query.dueDate as any).gte }
-            : {}),
-          lte: new Date(value),
-        };
-        break;
+
       case "search":
-        query.lesson!.subject = {
-          name: { contains: value, mode: "insensitive" },
+        lessonWhere = {
+          ...lessonWhere,
+          subject: {
+            name: { contains: value, mode: "insensitive" },
+          },
         };
         break;
     }
   }
 
-  if (role === "teacher") {
-    query.lesson!.teacherId = currentUserId!;
-  }
+  /* ================= FINAL QUERY ================= */
+  const query: Prisma.AssignmentWhereInput = {
+    lesson: lessonWhere,
+  };
 
-  if (role === "student") {
-    query.lesson!.class = {
-      students: { some: { id: currentUserId! } },
-    };
-  }
+  /* ================= DATE FILTER ================= */
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (!value) continue;
 
-  if (role === "parent") {
-    query.lesson!.class = {
-      students: { some: { parentId: currentUserId! } },
-    };
+    if (key === "dateFrom") {
+      query.dueDate = { gte: new Date(value) };
+    }
+
+    if (key === "dateTo") {
+      query.dueDate = {
+        ...((query.dueDate as any)?.gte
+          ? { gte: (query.dueDate as any).gte }
+          : {}),
+        lte: new Date(value),
+      };
+    }
   }
 
   /* ================= SORT ================= */
@@ -197,17 +322,37 @@ export default async function AssignmentListPage({
     prisma.assignment.count({ where: query }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <ClipboardList size={14} />
-          </span>
-          Assignments
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <ClipboardList size={14} />
+            </span>
+            Assignments
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span>{" "}
+              assignments
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -231,6 +376,7 @@ export default async function AssignmentListPage({
 
       {/* DESKTOP TABLE */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={assignmentFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

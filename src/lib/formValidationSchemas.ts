@@ -1,4 +1,5 @@
 import { z, ZodType } from "zod";
+import { TermType } from "@prisma/client";
 
 // Class
 export const classSchema = z.object({
@@ -189,7 +190,11 @@ export const assignmentSchema = z.object({
 
   dueDate: z.coerce.date({ message: "Due Date is required" }),
 
-  lessonId: z.coerce.number({ message: "Lesson is required" }),
+  lessonId: z
+    .number({
+      message: "Lesson is required",
+    })
+    .refine((val) => val > 0, "Lesson is required"),
 });
 
 export type AssignmentFormValues = z.infer<typeof assignmentSchema>;
@@ -249,7 +254,8 @@ export const FeeSchema = z.object({
   classId: z.coerce.number().nullable().optional(),
 
   type: z.enum(["ADMISSION", "TERM", "ANNUAL", "MISC"]),
-  term: z.enum(["TERM_1", "TERM_2"]).nullable().optional(),
+  // term: z.enum(["TERM_1", "TERM_2", "TERM_3",]).nullable().optional(),
+  term: z.nativeEnum(TermType).nullable().optional(),
 
   isActive: z.boolean().optional(),
 });

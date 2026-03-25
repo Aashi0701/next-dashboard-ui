@@ -3,17 +3,21 @@
 import { useEffect, useState } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
   attendanceSchema,
   AttendanceFormInput,
   AttendanceFormValues,
 } from "@/lib/formValidationSchemas";
+
 import { createAttendance, updateAttendance } from "@/lib/actions";
 import { toast } from "react-toastify";
+
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import RadixSelect from "@/components/ui/RadixSelect";
 import RadixDatePicker from "@/components/ui/RadixDatePicker";
+
 import { CalendarDays, UserCheck } from "lucide-react";
 
 export default function AttendanceForm({
@@ -26,24 +30,30 @@ export default function AttendanceForm({
   data?: AttendanceFormValues;
   close: () => void;
   relatedData: {
-    students: { id: string; name: string; surname: string }[];
+    students: {
+      id: string;
+      name: string;
+      surname: string;
+      classId: number;
+      className: string;
+    }[];
     lessons: {
       id: number;
-      subject?: { name: string };
-      class?: { name: string };
+      subjectName: string;
+      classId: number;
+      className: string;
     }[];
   };
 }) {
-  const { students, lessons } = relatedData;
-
-  /* ---------------- ACCORDION ---------------- */
+  const { students = [], lessons = [] } = relatedData;
 
   const [openSection, setOpenSection] = useState<"lesson" | "student">(
     "lesson",
   );
   const [submitting, setSubmitting] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
-  /* ---------------- RHF ---------------- */
+  /* ================= RHF ================= */
 
   const methods = useForm<AttendanceFormInput>({
     resolver: zodResolver(attendanceSchema),
@@ -62,13 +72,37 @@ export default function AttendanceForm({
     control,
     name: "date",
   }) as Date | undefined;
+  const watchedLessonId = useWatch({ control, name: "lessonId" });
 
-  const watchedLessonId = useWatch({
-    control,
-    name: "lessonId",
-  });
+  /* ================= DERIVED ================= */
 
-  /* ---------------- AUTO ADVANCE ---------------- */
+  const classOptions = Array.from(
+    new Map(lessons.map((l) => [l.classId, l.className])).entries(),
+  ).map(([id, name]) => ({
+    value: String(id),
+    label: name,
+  }));
+
+  const filteredLessons = selectedClassId
+    ? lessons.filter((l) => l.classId === selectedClassId)
+    : [];
+
+  const filteredStudents = selectedClassId
+    ? students.filter((s) => s.classId === selectedClassId)
+    : [];
+
+  /* ================= AUTO SET CLASS (EDIT) ================= */
+
+  useEffect(() => {
+    if (data?.lessonId && lessons.length) {
+      const lesson = lessons.find((l) => l.id === data.lessonId);
+      if (lesson) {
+        setSelectedClassId(lesson.classId);
+      }
+    }
+  }, [data, lessons]);
+
+  /* ================= AUTO ADVANCE ================= */
 
   useEffect(() => {
     if (watchedLessonId && watchedDate) {
@@ -76,7 +110,7 @@ export default function AttendanceForm({
     }
   }, [watchedLessonId, watchedDate]);
 
-  /* ---------------- SUBMIT ---------------- */
+  /* ================= SUBMIT ================= */
 
   const onSubmit = handleSubmit(async (values) => {
     if (submitting) return;
@@ -90,15 +124,15 @@ export default function AttendanceForm({
 
       if (result.success) {
         toast.success(
-          `Attendance ${type === "create" ? "created" : "updated"} successfully`,
+          `Attendance ${
+            type === "create" ? "created" : "updated"
+          } successfully`,
         );
-        close(); // ✅ ALWAYS closes modal
+        close();
         return;
       }
 
-      if (result.error) {
-        toast.error(result.error);
-      }
+      if (result.error) toast.error(result.error);
     } catch (err: any) {
       toast.error(err?.message ?? "Something went wrong");
     } finally {
@@ -106,7 +140,7 @@ export default function AttendanceForm({
     }
   });
 
-  /* ---------------- UI ---------------- */
+  /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
@@ -117,32 +151,55 @@ export default function AttendanceForm({
           <h1 className="text-base font-semibold">
             {type === "create" ? "Create Attendance" : "Update Attendance"}
           </h1>
+          <p className="text-xs text-gray-500">
+            Manage Student Attendance Details 
+          </p>
         </div>
 
         {/* CONTENT */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {/* LESSON */}
           <CollapsibleSection
-            title="Lesson & Date"
+            title="Class & Date"
+            description="Class and Date mapping"
             icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
             open={openSection === "lesson"}
             onToggle={() => setOpenSection("lesson")}
           >
             <div className="space-y-3">
+              {/* CLASS */}
               <RadixSelect
-                placeholder="Select lesson"
-                value={watch("lessonId") ? String(watch("lessonId")) : ""}
-                onChange={(v) =>
-                  setValue("lessonId", Number(v), { shouldValidate: true })
-                }
-                options={lessons.map((l) => ({
-                  value: String(l.id),
-                  label: `${l.subject?.name ?? "Subject"} / ${
-                    l.class?.name ?? "Class"
-                  }`,
-                }))}
+                placeholder="Select class"
+                value={selectedClassId ? String(selectedClassId) : ""}
+                onChange={(v) => {
+                  const classId = Number(v);
+                  setSelectedClassId(classId);
+
+                  setValue("lessonId", undefined);
+                  setValue("studentId", "");
+                }}
+                options={classOptions}
               />
 
+              {/* LESSON */}
+              {/* <RadixSelect
+                placeholder={
+                  selectedClassId ? "Select lesson" : "Select class first"
+                }
+                value={watch("lessonId") ? String(watch("lessonId")) : ""}
+                onChange={(v) =>
+                  setValue("lessonId", Number(v), {
+                    shouldValidate: true,
+                  })
+                }
+                options={filteredLessons.map((l) => ({
+                  value: String(l.id),
+                  label: `${l.subjectName} / ${l.className}`,
+                }))}
+                disabled={!selectedClassId}
+              /> */}
+
+              {/* DATE */}
               <RadixDatePicker
                 value={watchedDate}
                 onChange={(d) =>
@@ -155,23 +212,27 @@ export default function AttendanceForm({
           {/* STUDENT */}
           <CollapsibleSection
             title="Student Attendance"
+            description="Present or Absent mapping"
             icon={<UserCheck className="h-4 w-4 text-purple-600" />}
             open={openSection === "student"}
             onToggle={() => setOpenSection("student")}
           >
             <div className="space-y-3">
               <RadixSelect
-                placeholder="Select student"
+                placeholder={
+                  selectedClassId ? "Select student" : "Select class first"
+                }
                 value={watch("studentId")}
                 onChange={(v) =>
                   setValue("studentId", v ?? "", {
                     shouldValidate: true,
                   })
                 }
-                options={students.map((s) => ({
+                options={filteredStudents.map((s) => ({
                   value: s.id,
                   label: `${s.name} ${s.surname}`,
                 }))}
+                disabled={!selectedClassId}
               />
 
               <RadixSelect
@@ -196,8 +257,8 @@ export default function AttendanceForm({
           <button
             type="button"
             onClick={close}
-            className="text-xs text-gray-600"
             disabled={submitting}
+            className="text-xs text-gray-600"
           >
             Cancel
           </button>

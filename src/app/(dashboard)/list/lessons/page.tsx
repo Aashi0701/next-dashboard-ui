@@ -5,12 +5,14 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Lesson, Prisma, Subject, Teacher } from "@prisma/client";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthUser } from "@/lib/auth";
+import { scopeLessons } from "@/lib/rbac";
 import LessonFilters from "@/components/filters/LessonFilters";
 import LessonSort from "@/components/filters/LessonSort";
 import LessonCard from "@/components/mobile/LessonCard";
 import { BookOpen } from "lucide-react";
 import Tooltip from "@/components/ui/Tooltip";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 type LessonList = Lesson & {
   subject: Subject;
@@ -23,10 +25,9 @@ const LessonListPage = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) => {
-  const { sessionClaims } = await auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
-
+  const { role, userId, isAdmin } = await getAuthUser();
   const params = await searchParams;
+  const queryString = new URLSearchParams(params as any).toString();
   const { page, sortBy, sortOrder, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
 
@@ -49,8 +50,14 @@ const LessonListPage = async ({
       accessor: "teacher",
       className: "hidden md:table-cell",
     },
-    ...(role === "admin"
-      ? [{ header: "Actions", accessor: "action", className: "text-center" }]
+    ...(isAdmin
+      ? [
+          {
+            header: "Actions",
+            accessor: "action",
+            className: "text-center w-[120px]",
+          },
+        ]
       : []),
   ];
 
@@ -66,24 +73,30 @@ const LessonListPage = async ({
         {item.teacher.name} {item.teacher.surname}
       </td>
 
-      {role === "admin" && (
+      {isAdmin && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
-          <div className="flex justify-center gap-2">
+          <div className="flex justify-center items-center gap-2 whitespace-nowrap">
             <Tooltip content="Edit lesson">
-              <span className="inline-flex">
+              <span className="inline-flex shrink-0">
                 <FormContainer
                   table="lesson"
                   type="update"
                   id={item.id} // ✅ REQUIRED
                   data={item}
                   relatedData={relatedData}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
 
             <Tooltip content="Delete lesson">
-              <span className="inline-flex">
-                <FormContainer table="lesson" type="delete" id={item.id} />
+              <span className="inline-flex shrink-0">
+                <FormContainer
+                  table="lesson"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
           </div>
@@ -93,7 +106,9 @@ const LessonListPage = async ({
   );
 
   /* ================= QUERY ================= */
-  const query: Prisma.LessonWhereInput = {};
+  const query: Prisma.LessonWhereInput = {
+    ...scopeLessons(role, userId),
+  };
 
   for (const [key, value] of Object.entries(queryParams)) {
     if (!value) continue;
@@ -102,11 +117,21 @@ const LessonListPage = async ({
       case "subjectId":
         query.subjectId = Number(value);
         break;
-      case "classId":
+      case "classId": {
+        const selectedClass = classes.find((c) => String(c.id) === value);
+
+        // 🚀 If "All Classes" → DO NOT apply filter
+        if (selectedClass?.name === "All Classes") {
+          break;
+        }
+
         query.classId = Number(value);
         break;
+      }
       case "teacherId":
-        query.teacherId = value;
+        if (isAdmin) {
+          query.teacherId = value;
+        }
         break;
       case "search":
         query.OR = [
@@ -155,17 +180,65 @@ const LessonListPage = async ({
     prisma.lesson.count({ where: query }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+
+  const lessonFilterConfig = {
+    subjectId: {
+      label: "Subject",
+      icon: "📘",
+      options: subjects.map((s) => ({
+        label: s.name,
+        value: String(s.id),
+      })),
+    },
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+    teacherId: {
+      label: "Teacher",
+      icon: "👨‍🏫",
+      options: teachers.map((t) => ({
+        label: `${t.name} ${t.surname}`,
+        value: t.id,
+      })),
+    },
+  };
+
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <BookOpen size={14} />
-          </span>
-          Lessons
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <BookOpen size={14} />
+            </span>
+            Lessons
+          </h1>
+
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span> lessons
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         {/* ===== SEARCH + ACTIONS ===== */}
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
@@ -180,6 +253,7 @@ const LessonListPage = async ({
               subjects={subjects}
               teachers={teachers}
               classes={classes}
+              role={role}
             />
             <LessonSort />
 
@@ -193,6 +267,8 @@ const LessonListPage = async ({
           </div>
         </div>
       </div>
+
+      <AdvancedFilterBar config={lessonFilterConfig} />
 
       {/* ===== DESKTOP TABLE ===== */}
       <div className="hidden md:block mt-4">

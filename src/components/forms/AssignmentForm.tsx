@@ -31,13 +31,19 @@ export default function AssignmentForm({
   data?: AssignmentFormValues;
   close: () => void;
   relatedData?: {
-    lessons: { id: number; name: string }[];
+    lessons: {
+      id: number;
+      name: string;
+      classId: number;
+      className: string;
+    }[];
   };
 }) {
   const router = useRouter();
   const lessons = relatedData?.lessons ?? [];
 
   const [openSection, setOpenSection] = useState<Section>("details");
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
   /* ================= FORM ================= */
 
@@ -46,7 +52,7 @@ export default function AssignmentForm({
     defaultValues: {
       id: data?.id,
       title: data?.title ?? "",
-      lessonId: data?.lessonId ?? undefined,
+      lessonId: data?.lessonId ?? 0, // ✅ FIX: no undefined
       startDate: data?.startDate ? new Date(data.startDate) : undefined,
       dueDate: data?.dueDate ? new Date(data.dueDate) : undefined,
     },
@@ -60,14 +66,40 @@ export default function AssignmentForm({
     formState: { errors, submitCount, isSubmitting },
   } = methods;
 
+  /* ================= DERIVED DATA ================= */
+
+  // ✅ Filter lessons based on selected class
+  const filteredLessons = selectedClassId
+    ? lessons.filter((l) => l.classId === selectedClassId)
+    : [];
+
+  // ✅ Unique class list
+  const classOptions = Array.from(
+    new Map(lessons.map((l) => [l.classId, l.className])).entries()
+  ).map(([id, name]) => ({
+    value: String(id),
+    label: name,
+  }));
+
   /* ================= ACTION ================= */
 
   const [state, formAction] = useActionState<ActionState, AssignmentFormValues>(
     type === "create" ? createAssignment : updateAssignment,
-    { success: false },
+    { success: false }
   );
 
-  /* ================= AUTO-OPEN ERROR SECTION ================= */
+  /* ================= AUTO SET CLASS (EDIT MODE) ================= */
+
+  useEffect(() => {
+    if (data?.lessonId && lessons.length) {
+      const lesson = lessons.find((l) => l.id === data.lessonId);
+      if (lesson) {
+        setSelectedClassId(lesson.classId);
+      }
+    }
+  }, [data, lessons]);
+
+  /* ================= AUTO-OPEN ERROR ================= */
 
   useEffect(() => {
     if (submitCount > 0 && Object.keys(errors).length > 0) {
@@ -97,7 +129,7 @@ export default function AssignmentForm({
   useEffect(() => {
     if (state.success) {
       toast.success(
-        `Assignment ${type === "create" ? "created" : "updated"} successfully`,
+        `Assignment ${type === "create" ? "created" : "updated"} successfully`
       );
       close();
       router.refresh();
@@ -111,7 +143,7 @@ export default function AssignmentForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={onSubmit} className="flex flex-col h-[60vh] max-h-[75vh]">
-        {/* ===== HEADER (FIXED) ===== */}
+        {/* ===== HEADER ===== */}
         <div className="shrink-0 px-4 sm:px-6 pb-3">
           <ModalCloseButton onClose={close} />
           <h1 className="text-base font-semibold">
@@ -122,12 +154,12 @@ export default function AssignmentForm({
           </p>
         </div>
 
-        {/* ===== CONTENT (SCROLLS) ===== */}
+        {/* ===== CONTENT ===== */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
           {/* DETAILS */}
           <CollapsibleSection
             title="Assignment Details"
-            description="Title and lesson mapping"
+            description="Title, class and lesson mapping"
             icon="📝"
             open={openSection === "details"}
             onToggle={() => setOpenSection("details")}
@@ -135,6 +167,21 @@ export default function AssignmentForm({
             <div className="space-y-4">
               <InputField label="Assignment Title" name="title" />
 
+              {/* CLASS DROPDOWN */}
+              <RadixSelect
+                value={selectedClassId ? String(selectedClassId) : ""}
+                onChange={(v) => {
+                  const classId = Number(v);
+                  setSelectedClassId(classId);
+
+                  // ✅ reset lesson safely
+                  setValue("lessonId", 0, { shouldValidate: true });
+                }}
+                placeholder="Select Class"
+                options={classOptions}
+              />
+
+              {/* LESSON DROPDOWN */}
               <RadixSelect
                 value={watch("lessonId") ? String(watch("lessonId")) : ""}
                 onChange={(v) =>
@@ -142,11 +189,16 @@ export default function AssignmentForm({
                     shouldValidate: true,
                   })
                 }
-                placeholder="Select Lesson"
-                options={lessons.map((l) => ({
+                placeholder={
+                  selectedClassId
+                    ? "Select Lesson"
+                    : "Select class first"
+                }
+                options={filteredLessons.map((l) => ({
                   value: String(l.id),
                   label: l.name,
                 }))}
+                disabled={!selectedClassId}
               />
             </div>
           </CollapsibleSection>
@@ -182,6 +234,7 @@ export default function AssignmentForm({
             </div>
           </CollapsibleSection>
 
+          {/* ERROR MESSAGE */}
           {submitCount > 0 && Object.keys(errors).length > 0 && (
             <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
               Please fix the highlighted fields before saving.
@@ -189,7 +242,7 @@ export default function AssignmentForm({
           )}
         </div>
 
-        {/* ===== FOOTER (FIXED) ===== */}
+        {/* ===== FOOTER ===== */}
         <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
           <div className="flex justify-end gap-2">
             <button
@@ -208,8 +261,8 @@ export default function AssignmentForm({
               {isSubmitting
                 ? "Saving..."
                 : type === "create"
-                  ? "Create Assignment"
-                  : "Update Assignment"}
+                ? "Create Assignment"
+                : "Update Assignment"}
             </button>
           </div>
         </div>

@@ -541,7 +541,6 @@ export const updateStudent = async (
   }
 
   try {
-
     const studentData: Prisma.StudentUpdateInput = {
       name: data.name,
       surname: data.surname,
@@ -1061,7 +1060,7 @@ export async function createFee(
         amount: data.amount,
         classId: data.classId ?? null,
         type: data.type,
-        term: data.term ?? null,
+        term: data.type === "TERM" && data.term ? data.term : null,
         isActive: true,
       },
     });

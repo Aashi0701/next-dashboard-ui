@@ -7,12 +7,13 @@ import { Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthUser } from "@/lib/auth";
 import TeacherFilters from "@/components/filters/TeacherFilters";
 import TeacherSort from "@/components/filters/TeacherSort";
 import TeacherCard from "@/components/mobile/TeacherCard";
 import { Users } from "lucide-react";
 import Tooltip from "@/components/ui/Tooltip";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 type TeacherList = Teacher & {
   lessons: {
@@ -29,9 +30,9 @@ const TeacherListPage = async ({
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...queryParams } = params;
   const p = page ? parseInt(page) : 1;
-
-  const { sessionClaims } = await auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const queryString = new URLSearchParams(params as any).toString();
+  const { role, userId, isAdmin, isTeacher, isParent, isStudent } =
+    await getAuthUser();
 
   /* ================= TABLE STRUCTURE (DESKTOP) ================= */
   const columns = [
@@ -64,7 +65,7 @@ const TeacherListPage = async ({
       className: "hidden lg:table-cell",
       sortable: true,
     },
-    ...(role === "admin"
+    ...(isAdmin
       ? [{ header: "Actions", accessor: "action", className: "text-center" }]
       : []),
   ];
@@ -111,7 +112,7 @@ const TeacherListPage = async ({
         {item.address}
       </td>
 
-      {role === "admin" && (
+      {isAdmin && (
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             {/* VIEW */}
@@ -137,6 +138,7 @@ const TeacherListPage = async ({
                   id={item.id}
                   data={item}
                   relatedData={{ subjects, classes }}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
@@ -144,7 +146,12 @@ const TeacherListPage = async ({
             {/* DELETE */}
             <Tooltip content="Delete Teacher">
               <span className="inline-flex">
-                <FormContainer table="teacher" type="delete" id={item.id} />
+                <FormContainer
+                  table="teacher"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
           </div>
@@ -154,7 +161,44 @@ const TeacherListPage = async ({
   );
 
   /* ================= QUERY ================= */
+
   const query: Prisma.TeacherWhereInput = {};
+
+  /* ===== ROLE BASED ACCESS ===== */
+
+  if (isTeacher && userId) {
+    query.id = userId;
+  }
+
+  if (isStudent && userId) {
+    query.lessons = {
+      some: {
+        class: {
+          students: {
+            some: {
+              id: userId,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  if (isParent && userId) {
+    query.lessons = {
+      some: {
+        class: {
+          students: {
+            some: {
+              parentId: userId,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  /* ===== URL FILTERS ===== */
 
   for (const [key, value] of Object.entries(queryParams)) {
     if (!value) continue;
@@ -163,11 +207,13 @@ const TeacherListPage = async ({
       case "search":
         query.name = { contains: value, mode: "insensitive" };
         break;
+
       case "classId":
         query.supervisedClasses = {
           some: { id: Number(value) },
         };
         break;
+
       case "subjectId":
         query.lessons = {
           some: {
@@ -214,17 +260,75 @@ const TeacherListPage = async ({
     prisma.teacher.count({ where: query }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
+  const teacherFilterConfig = {
+    subjectId: {
+      label: "Subject",
+      icon: "📘",
+      options: subjects.map((s) => ({
+        label: s.name,
+        value: String(s.id),
+      })),
+    },
+
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    sortBy: {
+      label: "Sort By",
+      icon: "↕️",
+      options: [
+        { label: "Teacher ID", value: "teacherId" },
+        { label: "Phone", value: "phone" },
+        { label: "Address", value: "address" },
+      ],
+    },
+
+    sortOrder: {
+      label: "Order",
+      icon: "🔽",
+      options: [
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ],
+    },
+  };
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <Users size={14} />
-          </span>
-          Teachers
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <Users size={14} />
+            </span>
+            Teachers
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span> teachers
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         {/* ===== SEARCH + ACTIONS ===== */}
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
@@ -235,13 +339,16 @@ const TeacherListPage = async ({
 
           {/* Icons */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <TeacherFilters subjects={subjects} classes={classes} />
+            {isAdmin && (
+              <TeacherFilters subjects={subjects} classes={classes} />
+            )}
             <TeacherSort />
-            {role === "admin" && (
+            {isAdmin && (
               <FormContainer
                 table="teacher"
                 type="create"
                 relatedData={{ subjects, classes }}
+                query={queryString}
               />
             )}
           </div>
@@ -250,6 +357,7 @@ const TeacherListPage = async ({
 
       {/* ===== DESKTOP TABLE ===== */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={teacherFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

@@ -10,6 +10,7 @@ import EventFilters from "@/components/filters/EventFilters";
 import EventSort from "@/components/filters/EventSort";
 import EventCard from "@/components/mobile/EventCard";
 import { CalendarDays } from "lucide-react";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 export default async function EventListPage({
   searchParams,
@@ -19,12 +20,47 @@ export default async function EventListPage({
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...filters } = params;
   const p = page ? parseInt(page) : 1;
+  const queryString = new URLSearchParams(params as any).toString();
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
   /* ================= FILTER DATA ================= */
   const classes = await prisma.class.findMany({ orderBy: { name: "asc" } });
+
+  /* ================= FILTER CONFIG ================= */
+  const eventFilterConfig = {
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: [
+        { label: "All", value: "null" },
+        ...classes.map((c) => ({
+          label: c.name,
+          value: String(c.id),
+        })),
+      ],
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Title", value: "title" },
+    //     { label: "Class", value: "class" },
+    //     { label: "Date", value: "date" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ================= COLUMNS (DESKTOP) ================= */
   const columns = [
@@ -83,8 +119,14 @@ export default async function EventListPage({
               type="update"
               data={item}
               id={item.id}
+              query={queryString}
             />
-            <FormContainer table="event" type="delete" id={item.id} />
+            <FormContainer
+              table="event"
+              type="delete"
+              id={item.id}
+              query={queryString}
+            />
           </div>
         </td>
       )}
@@ -137,17 +179,37 @@ export default async function EventListPage({
     prisma.event.count({ where: query }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* ===== TOP BAR ===== */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <CalendarDays size={14} />
-          </span>
-          Events
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <CalendarDays size={14} />
+            </span>
+            Events
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span>{" "}
+              events
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -158,13 +220,16 @@ export default async function EventListPage({
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <EventFilters classes={classes} />
             <EventSort />
-            {role === "admin" && <FormContainer table="event" type="create" />}
+            {role === "admin" && (
+              <FormContainer table="event" type="create" query={queryString} />
+            )}
           </div>
         </div>
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={eventFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

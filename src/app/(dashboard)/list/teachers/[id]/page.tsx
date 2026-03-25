@@ -121,7 +121,7 @@ const SingleTeacherPage = async ({
         {/* ===== HEADER BAR ===== */}
         <div className="flex items-center gap-2 px-1 sm:px-0">
           <Link
-            href="/list/students"
+            href="/list/teachers"
             className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />

@@ -9,6 +9,7 @@ import AnnouncementFilters from "@/components/filters/AnnouncementFilters";
 import AnnouncementSort from "@/components/filters/AnnouncementSort";
 import FormContainer from "@/components/FormContainer";
 import AnnouncementTableClient from "./AnnouncementTableClient";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 /* ---------------- TYPES ---------------- */
 export default async function AnnouncementListPage({
@@ -20,6 +21,7 @@ export default async function AnnouncementListPage({
   const { page, sortBy, sortOrder, ...filters } = params;
 
   const p = page ? parseInt(page) : 1;
+  const queryString = new URLSearchParams(params as any).toString();
 
   const { userId, sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
@@ -29,6 +31,38 @@ export default async function AnnouncementListPage({
   const classes = await prisma.class.findMany({
     orderBy: { name: "asc" },
   });
+
+  /* ---------------- FILTER CONFIG ---------------- */
+
+  const announcementFilterConfig = {
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Title", value: "title" },
+    //     { label: "Class", value: "class" },
+    //     { label: "Date", value: "date" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ---------------- ROLE FILTERING ---------------- */
 
@@ -122,12 +156,8 @@ export default async function AnnouncementListPage({
         description: true,
         date: true,
         classId: true,
-
-        // ✅ REQUIRED for "Last Sent"
         whatsappSent: true,
         whatsappSentAt: true,
-
-        // relations
         class: true,
         reads: {
           where: { userId: userId ?? undefined },
@@ -138,17 +168,37 @@ export default async function AnnouncementListPage({
     prisma.announcement.count({ where }),
   ]);
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* HEADER */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <Megaphone size={14} />
-          </span>
-          Announcements
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <Megaphone size={14} />
+            </span>
+            Announcements
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span>{" "}
+              announcements
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -159,14 +209,19 @@ export default async function AnnouncementListPage({
             <AnnouncementFilters classes={classes} />
             <AnnouncementSort />
             {role === "admin" && (
-              <FormContainer table="announcement" type="create" />
+              <FormContainer
+                table="announcement"
+                type="create"
+                query={queryString}
+              />
             )}
           </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <AnnouncementTableClient data={data} role={role} />
+      <AdvancedFilterBar config={announcementFilterConfig} />
+      <AnnouncementTableClient data={data} role={role} query={queryString} />
 
       {/* PAGINATION */}
       <Pagination page={p} count={count} />

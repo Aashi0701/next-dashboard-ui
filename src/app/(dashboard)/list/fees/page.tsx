@@ -12,6 +12,7 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 import Tooltip from "@/components/ui/Tooltip";
 import { FeeTypeChip, FeeStatusBadge } from "@/components/ui/FeeBadges";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 /* ================= TYPES ================= */
 
@@ -32,12 +33,13 @@ const FeesPage = async ({
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) => {
   const params = await searchParams;
-  const { page, search, classId, sortBy, sortOrder } = params;
+  const { page, search, classId, type, sortBy, sortOrder } = params;
 
   const { sessionClaims } = await auth();
   const role = (sessionClaims?.metadata as { role?: string })?.role;
 
   const p = page ? Number(page) : 1;
+  const queryString = new URLSearchParams(params as any).toString();
 
   /* ================= FILTER ================= */
   const where: Prisma.FeeStructureWhereInput = {};
@@ -48,6 +50,10 @@ const FeesPage = async ({
 
   if (classId) {
     where.classId = Number(classId);
+  }
+
+  if (type) {
+    where.type = type as any;
   }
 
   /* ================= SORT ================= */
@@ -62,10 +68,63 @@ const FeesPage = async ({
   }
 
   /* ================= FILTER DATA ================= */
+
   const classes = await prisma.class.findMany({
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
+
+  /* ================= FILTER CONFIG ================= */
+
+  const feeFilterConfig = {
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    type: {
+      label: "Fee Type",
+      icon: "💰",
+      options: [
+        { label: "Admission", value: "ADMISSION" },
+        { label: "Term", value: "TERM" },
+        { label: "Transport", value: "TRANSPORT" },
+        { label: "Other", value: "OTHER" },
+      ],
+    },
+
+    isActive: {
+      label: "Status",
+      icon: "📊",
+      options: [
+        { label: "Active", value: "true" },
+        { label: "Inactive", value: "false" },
+      ],
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Title", value: "title" },
+    //     { label: "Amount", value: "amount" },
+    //     { label: "Created", value: "createdAt" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ================= FETCH ================= */
   const [rows, count] = await prisma.$transaction([
@@ -125,18 +184,24 @@ const FeesPage = async ({
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <Tooltip content="Edit Fee">
-              <span className="inline-flex">
+              <span className="inline-flex shrink-0">
                 <FormContainer
                   table="fee"
                   type="update"
                   data={item}
                   id={item.id}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
             <Tooltip content="Delete Fee">
-              <span className="inline-flex">
-                <FormContainer table="fee" type="delete" id={item.id} />
+              <span className="inline-flex shrink-0">
+                <FormContainer
+                  table="fee"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
             <Tooltip content="Assign Fee">
@@ -146,6 +211,7 @@ const FeesPage = async ({
                   type="assign"
                   data={item}
                   id={item.id}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
@@ -155,18 +221,37 @@ const FeesPage = async ({
     </tr>
   );
 
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   /* ================= UI ================= */
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <Wallet size={14} />
-          </span>
-          Fee Structures
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <Wallet size={14} />
+            </span>
+            Fee Structures
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span> fees
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -183,6 +268,7 @@ const FeesPage = async ({
 
       {/* DESKTOP TABLE */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={feeFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

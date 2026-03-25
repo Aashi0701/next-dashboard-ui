@@ -121,18 +121,12 @@ export default function FeeForm({
             <div className="space-y-4">
               <InputField label="Fee Title" name="title" />
 
-              <InputField
-                label="Amount (₹)"
-                name="amount"
-                type="number"
-              />
+              <InputField label="Amount (₹)" name="amount" type="number" />
 
               <RadixSelect
                 placeholder="Fee Type"
                 value={watch("type")}
-                onChange={(v) =>
-                  setValue("type", v as FeeFormInput["type"])
-                }
+                onChange={(v) => setValue("type", v as FeeFormInput["type"])}
                 options={[
                   { value: "ADMISSION", label: "Admission" },
                   { value: "TERM", label: "Term" },
@@ -144,13 +138,14 @@ export default function FeeForm({
               {feeType === "TERM" && (
                 <RadixSelect
                   placeholder="Select Term"
-                  value={watch("term") ?? ""}
+                  value={watch("term") ?? undefined}
                   onChange={(v) =>
-                    setValue("term", v as FeeFormInput["term"])
+                    setValue("term", v ? (v as FeeFormInput["term"]) : null)
                   }
                   options={[
                     { value: "TERM_1", label: "Term 1" },
                     { value: "TERM_2", label: "Term 2" },
+                    { value: "TERM_3", label: "Term 3" },
                   ]}
                 />
               )}
@@ -158,13 +153,9 @@ export default function FeeForm({
               <RadixSelect
                 placeholder="Applicable Class"
                 value={
-                  watch("classId") !== null
-                    ? String(watch("classId"))
-                    : ""
+                  watch("classId") !== null ? String(watch("classId")) : ""
                 }
-                onChange={(v) =>
-                  setValue("classId", v ? Number(v) : null)
-                }
+                onChange={(v) => setValue("classId", v ? Number(v) : null)}
                 options={classes.map((cls) => ({
                   value: String(cls.id),
                   label: cls.name,
@@ -188,8 +179,8 @@ export default function FeeForm({
             {isSubmitting
               ? "Saving..."
               : type === "create"
-              ? "Create Fee"
-              : "Update Fee"}
+                ? "Create Fee"
+                : "Update Fee"}
           </button>
         </div>
       </form>

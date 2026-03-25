@@ -13,6 +13,7 @@ import ResultSort from "@/components/filters/ResultSort";
 import ResultsCard from "@/components/mobile/ResultsCard";
 import { BarChart3 } from "lucide-react";
 import Tooltip from "@/components/ui/Tooltip";
+import AdvancedFilterBar from "@/components/filters/ActiveFilterChips";
 
 /* ================= TYPES ================= */
 
@@ -57,6 +58,7 @@ export default async function ResultListPage({
 }) {
   const params = await searchParams;
   const { page, sortBy, sortOrder, ...filters } = params;
+  const queryString = new URLSearchParams(params as any).toString();
 
   const p = page ? parseInt(page) : 1;
 
@@ -71,6 +73,75 @@ export default async function ResultListPage({
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  /* ================= FILTER CONFIG ================= */
+
+  const resultFilterConfig = {
+    studentId: {
+      label: "Student",
+      icon: "🎓",
+      options: students.map((s) => ({
+        label: `${s.name} ${s.surname}`,
+        value: s.id,
+      })),
+    },
+
+    classId: {
+      label: "Class",
+      icon: "🏫",
+      options: classes.map((c) => ({
+        label: c.name,
+        value: String(c.id),
+      })),
+    },
+
+    subjectId: {
+      label: "Subject",
+      icon: "📘",
+      options: subjects.map((s) => ({
+        label: s.name,
+        value: String(s.id),
+      })),
+    },
+
+    teacherId: {
+      label: "Teacher",
+      icon: "👨‍🏫",
+      options: teachers.map((t) => ({
+        label: `${t.name} ${t.surname}`,
+        value: t.id,
+      })),
+    },
+
+    type: {
+      label: "Type",
+      icon: "📝",
+      options: [
+        { label: "Exam", value: "exam" },
+        { label: "Assignment", value: "assignment" },
+      ],
+    },
+
+    // sortBy: {
+    //   label: "Sort By",
+    //   icon: "↕️",
+    //   options: [
+    //     { label: "Title", value: "title" },
+    //     { label: "Student", value: "student" },
+    //     { label: "Teacher", value: "teacher" },
+    //     { label: "Class", value: "class" },
+    //   ],
+    // },
+
+    // sortOrder: {
+    //   label: "Order",
+    //   icon: "🔽",
+    //   options: [
+    //     { label: "Ascending", value: "asc" },
+    //     { label: "Descending", value: "desc" },
+    //   ],
+    // },
+  };
 
   /* ================= TABLE STRUCTURE ================= */
   const columns = [
@@ -129,19 +200,25 @@ export default async function ResultListPage({
         <td className="px-2 py-1.5 md:px-3 md:py-2 text-center">
           <div className="flex justify-center gap-2">
             <Tooltip content="Edit Result">
-              <span className="inline-flex">
+              <span className="inline-flex shrink-0">
                 <FormContainer
                   table="result"
                   type="update"
                   data={item}
                   id={item.id}
+                  query={queryString}
                 />
               </span>
             </Tooltip>
 
             <Tooltip content="Delete Result">
-              <span className="inline-flex">
-                <FormContainer table="result" type="delete" id={item.id} />
+              <span className="inline-flex shrink-0">
+                <FormContainer
+                  table="result"
+                  type="delete"
+                  id={item.id}
+                  query={queryString}
+                />
               </span>
             </Tooltip>
           </div>
@@ -282,18 +359,37 @@ export default async function ResultListPage({
     })
     .filter(Boolean) as ResultList[];
 
-  /* ================= UI ================= */
+  /* ================= PAGINATION ================= */
+  const start = count === 0 ? 0 : (p - 1) * ITEM_PER_PAGE + 1;
+  const end = Math.min(p * ITEM_PER_PAGE, count);
+  const totalPages = Math.ceil(count / ITEM_PER_PAGE);
+  const isEmpty = data.length === 0;
+
   return (
     <div className="bg-white rounded-md flex-1 m-0 md:m-4 mt-0 p-3 md:p-6">
       {/* TOP BAR */}
       <div className="flex items-center justify-between gap-3 w-full">
         {/* ===== TITLE ===== */}
-        <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
-            <BarChart3 size={14} />
-          </span>
-          Results
-        </h1>
+        <div className="flex flex-col">
+          <h1 className="flex items-center gap-2 text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-600">
+              <BarChart3 size={14} />
+            </span>
+            Results
+          </h1>
+          {!isEmpty && (
+            <p className="text-xs text-gray-500 mt-1">
+              Showing <span className="font-medium text-gray-700">{start}</span>
+              –<span className="font-medium text-gray-700">{end}</span> of{" "}
+              <span className="font-medium text-gray-700">{count}</span>{" "}
+              results
+              <span className="ml-2 text-gray-400">
+                • Page <span className="font-medium text-gray-700">{p}</span> of{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-nowrap mb-4 mt-4">
           {/* Search */}
@@ -318,6 +414,7 @@ export default async function ResultListPage({
 
       {/* DESKTOP TABLE */}
       <div className="hidden md:block mt-4">
+        <AdvancedFilterBar config={resultFilterConfig} />
         <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
 

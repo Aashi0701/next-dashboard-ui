@@ -10,9 +10,11 @@ import FormModal from "@/components/FormModal";
 export default function AnnouncementTableClient({
   data,
   role,
+  query,
 }: {
   data: any[];
   role?: string;
+  query?: string;
 }) {
   const [confirmItem, setConfirmItem] = useState<any | null>(null);
 
@@ -152,9 +154,10 @@ export default function AnnouncementTableClient({
                 type="update"
                 id={item.id}
                 data={item}
+                query={query}
               />
 
-              <FormModal table="announcement" type="delete" id={item.id} />
+              <FormModal table="announcement" type="delete" id={item.id} query={query}/>
             </div>
           </td>
         )}

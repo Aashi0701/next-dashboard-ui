@@ -42,7 +42,7 @@ const menuGroups: MenuGroup[] = [
         icon: "/book.png",
         label: "Subjects",
         href: "/list/subjects",
-        visible: ["admin","parent"],
+        visible: ["admin", "teacher", "parent"],
       },
     ],
   },
@@ -53,7 +53,7 @@ const menuGroups: MenuGroup[] = [
         icon: "/man.png",
         label: "Teachers",
         href: "/list/teachers",
-        visible: ["admin", "teacher"],
+        visible: ["admin"],
       },
       {
         icon: "/education.png",

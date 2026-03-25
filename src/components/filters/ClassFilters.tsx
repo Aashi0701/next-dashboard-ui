@@ -5,14 +5,16 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import RadixSelect from "@/components/ui/RadixSelect";
 
-export default function ClassFilters({ supervisors }: any) {
+export default function ClassFilters({ supervisors, classes }: any) {
   const router = useRouter();
   const params = useSearchParams();
 
   const [open, setOpen] = useState(false);
   const [supervisorId, setSupervisorId] = useState(
-    params.get("supervisorId") || ""
+    params.get("supervisorId") || "ALL",
   );
+
+  const [classId, setClassId] = useState(params.get("classId") || "ALL");
 
   /* ================= LOCK BACKGROUND SCROLL ================= */
   useEffect(() => {
@@ -27,9 +29,21 @@ export default function ClassFilters({ supervisors }: any) {
   const applyFilters = () => {
     const query = new URLSearchParams(params.toString());
 
-    supervisorId
-      ? query.set("supervisorId", supervisorId)
-      : query.delete("supervisorId");
+    // Supervisor
+    if (!supervisorId || supervisorId === "ALL") {
+      query.delete("supervisorId");
+    } else {
+      query.set("supervisorId", supervisorId);
+    }
+
+    // Class
+    if (!classId || classId === "ALL") {
+      query.delete("classId");
+    } else {
+      query.set("classId", classId);
+    }
+
+    query.delete("page");
 
     router.push("?" + query.toString());
     setOpen(false);
@@ -38,9 +52,13 @@ export default function ClassFilters({ supervisors }: any) {
   const resetFilters = () => {
     const query = new URLSearchParams(params.toString());
     query.delete("supervisorId");
+    query.delete("classId");
+
+    query.delete("page");
 
     router.push("?" + query.toString());
-    setSupervisorId("");
+    setSupervisorId("ALL");
+    setClassId("ALL");
     setOpen(false);
   };
 
@@ -69,10 +87,7 @@ export default function ClassFilters({ supervisors }: any) {
       {open && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
           {/* CLICK OUTSIDE */}
-          <div
-            className="absolute inset-0"
-            onClick={() => setOpen(false)}
-          />
+          <div className="absolute inset-0" onClick={() => setOpen(false)} />
 
           <div
             className="
@@ -100,6 +115,27 @@ export default function ClassFilters({ supervisors }: any) {
 
             {/* BODY */}
             <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+              {/* ===== CLASS FILTER ===== */}
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Class
+                </label>
+
+                <RadixSelect
+                  value={classId}
+                  onChange={(v) => setClassId(v ?? "")}
+                  placeholder="All Classes"
+                  options={[
+                    { value: "ALL", label: "All Classes" }, // ✅ important
+                    ...classes.map((c: any) => ({
+                      value: String(c.id),
+                      label: c.name,
+                    })),
+                  ]}
+                />
+              </div>
+
+              {/* ===== SUPERVISOR FILTER ===== */}
               <div>
                 <label className="text-sm font-medium text-gray-700">
                   Supervisor
@@ -109,10 +145,13 @@ export default function ClassFilters({ supervisors }: any) {
                   value={supervisorId}
                   onChange={(v) => setSupervisorId(v ?? "")}
                   placeholder="All Supervisors"
-                  options={supervisors.map((s: any) => ({
-                    value: String(s.id), // ✅ non-empty
-                    label: `${s.name} ${s.surname}`,
-                  }))}
+                  options={[
+                    { value: "ALL", label: "All Supervisors" }, // ✅ consistency
+                    ...supervisors.map((s: any) => ({
+                      value: String(s.id),
+                      label: `${s.name} ${s.surname}`,
+                    })),
+                  ]}
                 />
               </div>
             </div>

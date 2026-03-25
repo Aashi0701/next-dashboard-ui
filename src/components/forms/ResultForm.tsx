@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -32,15 +27,22 @@ export default function ResultForm({
   data?: ResultFormValues;
   close: () => void;
   relatedData?: {
-    students: { id: string; name: string; surname: string }[];
-    exams: { id: number; title: string }[];
-    assignments: { id: number; title: string }[];
+    students: {
+      id: string;
+      name: string;
+      surname: string;
+      classId: number;
+      className: string;
+    }[];
+    exams: { id: number; title: string; classId: number }[];
+    assignments: { id: number; title: string; classId: number }[];
   };
 }) {
   const router = useRouter();
   const { students = [], exams = [], assignments = [] } = relatedData || {};
 
   const [openSection, setOpenSection] = useState<Section>("score");
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
   /* ================= RHF ================= */
 
@@ -63,6 +65,27 @@ export default function ResultForm({
     formState: { errors, submitCount, isSubmitting },
   } = methods;
 
+  /* ================= DERIVED ================= */
+
+  const classOptions = Array.from(
+    new Map(students.map((s) => [s.classId, s.className])).entries(),
+  ).map(([id, name]) => ({
+    value: String(id),
+    label: name,
+  }));
+
+  const filteredStudents = selectedClassId
+    ? students.filter((s) => s.classId === selectedClassId)
+    : [];
+
+  const filteredExams = selectedClassId
+    ? exams.filter((e) => e.classId === selectedClassId)
+    : [];
+
+  const filteredAssignments = selectedClassId
+    ? assignments.filter((a) => a.classId === selectedClassId)
+    : [];
+
   /* ================= ACTION ================= */
 
   const [state, formAction] = useActionState<ActionState, ResultFormValues>(
@@ -70,7 +93,18 @@ export default function ResultForm({
     { success: false },
   );
 
-  /* ================= AUTO-OPEN ERROR SECTION ================= */
+  /* ================= AUTO SET CLASS (EDIT) ================= */
+
+  useEffect(() => {
+    if (data?.studentId) {
+      const student = students.find((s) => s.id === data.studentId);
+      if (student) {
+        setSelectedClassId(student.classId);
+      }
+    }
+  }, [data, students]);
+
+  /* ================= ERROR SECTION ================= */
 
   useEffect(() => {
     if (submitCount > 0 && Object.keys(errors).length > 0) {
@@ -96,30 +130,25 @@ export default function ResultForm({
       router.refresh();
     }
 
-    if (state.error) {
-      toast.error(state.error);
-    }
+    if (state.error) toast.error(state.error);
   }, [state, router, close, type]);
 
   /* ================= UI ================= */
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} className="flex flex-col h-[60vh] max-h-[65vh]">
-        {/* ================= HEADER ================= */}
-        <div className="shrink-0 px-4 sm:px-6 pb-3">
+      <form className="flex flex-col h-[60vh]" onSubmit={onSubmit}>
+        {/* HEADER */}
+        <div className="shrink-0 px-4 pb-3">
           <ModalCloseButton onClose={close} />
           <h1 className="text-base font-semibold">
             {type === "create" ? "Create Result" : "Update Result"}
           </h1>
-          <p className="text-xs text-gray-500">
-            Student score and assessment mapping
-          </p>
+          <p className="text-xs text-gray-500"> Student score and assessment mapping </p>
         </div>
 
-        {/* ================= CONTENT ================= */}
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-4">
-          {/* SCORE */}
           <CollapsibleSection
             title="Score Details"
             description="Score and student"
@@ -130,23 +159,37 @@ export default function ResultForm({
             <div className="space-y-4">
               <InputField label="Score" name="score" />
 
+              {/* CLASS */}
+              <RadixSelect
+                placeholder="Select Class"
+                value={selectedClassId ? String(selectedClassId) : ""}
+                onChange={(v) => {
+                  const classId = Number(v);
+                  setSelectedClassId(classId);
+
+                  setValue("studentId", "");
+                  setValue("examId", undefined);
+                  setValue("assignmentId", undefined);
+                }}
+                options={classOptions}
+              />
+
+              {/* STUDENT */}
               <RadixSelect
                 placeholder="Select student"
                 value={watch("studentId") || ""}
                 onChange={(v) =>
-                  setValue("studentId", v ?? "", {
-                    shouldValidate: true,
-                  })
+                  setValue("studentId", v ?? "", { shouldValidate: true })
                 }
-                options={students.map((s) => ({
+                options={filteredStudents.map((s) => ({
                   value: s.id,
                   label: `${s.name} ${s.surname}`,
                 }))}
+                disabled={!selectedClassId}
               />
             </div>
           </CollapsibleSection>
 
-          {/* TARGET */}
           <CollapsibleSection
             title="Target"
             description="Exam or assignment"
@@ -156,53 +199,35 @@ export default function ResultForm({
           >
             <div className="grid sm:grid-cols-2 gap-4">
               <RadixSelect
-                placeholder="Select exam (optional)"
+                placeholder="Select exam"
                 value={watch("examId") ? String(watch("examId")) : ""}
-                onChange={(v) =>
-                  setValue("examId", v ? Number(v) : undefined, {
-                    shouldValidate: true,
-                  })
-                }
-                options={exams.map((e) => ({
+                onChange={(v) => setValue("examId", v ? Number(v) : undefined)}
+                options={filteredExams.map((e) => ({
                   value: String(e.id),
                   label: e.title,
                 }))}
+                disabled={!selectedClassId}
               />
 
               <RadixSelect
-                placeholder="Select assignment (optional)"
+                placeholder="Select assignment"
                 value={
-                  watch("assignmentId")
-                    ? String(watch("assignmentId"))
-                    : ""
+                  watch("assignmentId") ? String(watch("assignmentId")) : ""
                 }
                 onChange={(v) =>
-                  setValue("assignmentId", v ? Number(v) : undefined, {
-                    shouldValidate: true,
-                  })
+                  setValue("assignmentId", v ? Number(v) : undefined)
                 }
-                options={assignments.map((a) => ({
+                options={filteredAssignments.map((a) => ({
                   value: String(a.id),
                   label: a.title,
                 }))}
+                disabled={!selectedClassId}
               />
             </div>
-
-            {(errors.examId || errors.assignmentId) && (
-              <p className="text-xs text-red-500 mt-1">
-                Select either an exam or an assignment
-              </p>
-            )}
           </CollapsibleSection>
-
-          {submitCount > 0 && Object.keys(errors).length > 0 && (
-            <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">
-              Please fix the highlighted fields before saving.
-            </div>
-          )}
         </div>
 
-        {/* ================= FOOTER ================= */}
+        {/* FOOTER */}
         <div className="shrink-0 border-t bg-white px-4 sm:px-6 py-3">
           <div className="flex justify-end gap-2">
             <button
