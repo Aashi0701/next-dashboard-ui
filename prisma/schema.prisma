@@ -291,6 +291,34 @@ model Holiday {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
+model Lead {
+  id              String   @id @default(uuid())
+  name            String?
+  phone           String?
+  message         String?
+  classInterested String?
+  source          String?
+
+  status          LeadStatus @default(NEW)   // ✅ ADD THIS
+
+  createdAt       DateTime @default(now())
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  VISIT_SCHEDULED
+  CONVERTED
+  LOST
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+}
+
 enum UserSex {
   MALE
   FEMALE

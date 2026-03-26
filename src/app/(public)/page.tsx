@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import "swiper/css";
 import "swiper/css/autoplay";
 import "swiper/css/pagination";
+import ChatWidget from "@/components/ChatWidget";
 
 // ---------------- ZOD SCHEMA ----------------
 const ContactSchema = z.object({
@@ -108,6 +109,7 @@ export default function HomePage() {
         ];
 
   const canLoopTestimonials = displayedReviews.length > 1;
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -178,16 +180,18 @@ export default function HomePage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src="/school_logo_short.png"
+              src="/newBrandLogo.png"
               alt="TrueSunshine Logo"
-              width={34}
-              height={34}
+              width={180}
+              height={60}
+              priority
+              quality={100}
               className="object-contain"
             />
 
-            <span className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-rose-500 bg-clip-text text-transparent">
+            {/* <span className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-rose-500 bg-clip-text text-transparent">
               TrueSunshine
-            </span>
+            </span> */}
           </div>
 
           {/* Desktop Menu */}
@@ -333,9 +337,9 @@ export default function HomePage() {
           <div className="relative z-40 flex justify-center mb-6 sm:mb-8 mt-6 sm:mt-14">
             <div className="bg-white/30 backdrop-blur-md p-2 sm:p-3 rounded-full shadow-2xl animate-float-soft pongal-glow">
               <Image
-                src="/school_logo.png"
+                src="/newLogo.png"
                 alt="TrueSunshine Logo"
-                width={240}
+                width={280}
                 height={240}
                 priority
                 className="w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] object-contain"
@@ -929,37 +933,67 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ================= FLOATING UI LAYER ================= */}
-      <div className="fixed inset-0 pointer-events-none z-[9999]">
+      {/* ================= PREMIUM FLOATING DOCK ================= */}
+      <div
+        className="
+    fixed right-5 bottom-6 z-[9999]
+    flex flex-col items-center gap-3
+    p-2
+    rounded-full
+    bg-transparent backdrop-blur-xl
+    border border-white/40
+    shadow-2xl
+  "
+      >
         {/* WhatsApp */}
         <a
           href="https://wa.me/7989599833"
           target="_blank"
           rel="noopener noreferrer"
-          className="pointer-events-auto fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-none text-white w-10 h-10 sm:w-12 sm:h-12
-            rounded-full flex items-center justify-center shadow-xl hover:scale-20 transition-all duration-300 animate-pulse-soft"
+          className="
+      w-11 h-11 rounded-full
+      flex items-center justify-center
+      hover:scale-110 transition
+    "
         >
-          <Image
-            src="/whatsapp.png"
-            alt="WhatsApp"
-            width={26} /* 📱 mobile */
-            height={26}
-            className="sm:w-[38px] sm:h-[38px]" /* tablet+ */
-          />
+          <Image src="/whatsapp.png" alt="WhatsApp" width={32} height={32} />
         </a>
 
         {/* Scroll To Top */}
-        {showScrollTop && (
+        {showScrollTop && !chatOpen && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="pointer-events-auto fixed bottom-20 right-4 sm:bottom-24 sm:right-7 bg-gradient-to-r from-rose-400 to-indigo-500 text-white sm:w-10 sm:h-10 w-8 h-8 
-      rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform duration-200
-          "
+            className="
+        w-8 h-8 rounded-full
+        bg-gradient-to-r from-rose-400 to-indigo-500
+        text-white flex items-center justify-center
+        shadow-md hover:scale-110 transition
+      "
           >
-            <span className="text-lg font-bold">↑</span>
+            ↑
           </button>
         )}
+
+        {/* Chat Toggle */}
+        <button
+          onClick={() => setChatOpen((prev) => !prev)}
+          className="
+      w-8 h-8 rounded-full
+      bg-gradient-to-r from-purple-600 to-pink-500
+      text-white flex items-center justify-center
+      shadow-md hover:scale-110 transition
+    "
+        >
+          💬
+        </button>
       </div>
+
+      {/* Chat Box */}
+      {chatOpen && (
+        <div className="fixed right-5 bottom-40 sm:bottom-44 z-[9999]">
+          <ChatWidget open={chatOpen} onClose={() => setChatOpen(false)} />
+        </div>
+      )}
     </main>
   );
 }

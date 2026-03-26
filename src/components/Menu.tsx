@@ -67,6 +67,12 @@ const menuGroups: MenuGroup[] = [
         href: "/list/parents",
         visible: ["admin", "teacher"],
       },
+      {
+        icon: "/users.png",
+        label: "Leads",
+        href: "/list/leads",
+        visible: ["admin"],
+      },
     ],
   },
   {
@@ -105,13 +111,13 @@ const menuGroups: MenuGroup[] = [
         icon: "/fees.png",
         label: "Fee",
         href: "/list/fees",
-        visible: ["admin"]
+        visible: ["admin"],
       },
       {
         icon: "/payments.png",
         label: "Payments",
         href: "/list/payments",
-        visible: ["admin"]
+        visible: ["admin"],
       },
     ],
   },

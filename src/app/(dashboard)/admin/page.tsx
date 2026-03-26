@@ -7,7 +7,7 @@ import UserCard from "@/components/UserCard";
 import { getGreeting } from "@/lib/getGreeting";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
-import { IndianRupee, CreditCard, BarChart3 } from "lucide-react";
+import { IndianRupee, BarChart3 } from "lucide-react";
 import KPICard from "@/components/KPICard";
 
 const AdminPage = async ({
@@ -57,76 +57,86 @@ const AdminPage = async ({
 
     const totalFees = monthPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    return {
-      month,
-      fees: totalFees,
-    };
+    return { month, fees: totalFees };
   });
-
-  /* ================= FINANCE STATS ================= */
 
   const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
 
-  const averagePayment = payments.length
-    ? Math.round(totalCollected / payments.length)
-    : 0;
+  /* ================= LEADS DATA ================= */
+
+  const leads = await prisma.lead.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 6,
+  });
+
+  const totalLeads = await prisma.lead.count();
+
+  const todayLeads = await prisma.lead.count({
+    where: {
+      createdAt: {
+        gte: new Date(new Date().setHours(0, 0, 0, 0)),
+      },
+    },
+  });
 
   return (
     <div className="p-2 sm:p-3 md:p-4 lg:p-5 w-full space-y-6">
       {/* ================= HEADER ================= */}
-
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs lg:text-sm text-gray-500">Welcome back</p>
-
-          <h1 className="text-xs lg:text-sm font-semibold text-gray-800">
-            {greeting} 👋
-          </h1>
+          <h1 className="text-sm font-semibold text-gray-800">{greeting} 👋</h1>
         </div>
       </div>
 
       {/* ================= KPI CARDS ================= */}
-
       <div className="grid grid-cols-2 md:grid-cols-6 gap-5">
-        <UserCard type="admin" />
         <UserCard type="teacher" />
         <UserCard type="student" />
         <UserCard type="parent" />
+
         <KPICard
           title="Total Amount"
           value={totalCollected}
           prefix="₹ "
-          icon={<IndianRupee size={10} />}
+          icon={<IndianRupee size={12} />}
           color="text-emerald-600"
           bg="bg-gradient-to-br from-rose-50 to-rose-100/60"
-          trend={12}
         />
+
         <KPICard
-          title="Average"
-          value={averagePayment}
-          prefix="₹ "
-          icon={<BarChart3 size={10} />}
-          color="text-blue-600"
-          bg="bg-gradient-to-br from-indigo-50 to-indigo-100/60"
-          trend={8}
+          title="Leads Today"
+          value={todayLeads}
+          icon={<BarChart3 size={12} />}
+          color="text-purple-600"
+          bg="bg-gradient-to-br from-purple-50 to-purple-100/60"
+        />
+
+        <KPICard
+          title="Total Leads"
+          value={totalLeads}
+          icon={<BarChart3 size={12} />}
+          color="text-pink-600"
+          bg="bg-gradient-to-br from-pink-50 to-pink-100/60"
         />
       </div>
 
       {/* ================= MAIN GRID ================= */}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="h-[340px] overflow-hidden rounded-xl">
+            <div className="h-[340px] rounded-xl overflow-hidden">
               <CountChartContainer />
             </div>
 
-            <div className="h-[340px] overflow-hidden rounded-xl">
+            <div className="h-[340px] rounded-xl overflow-hidden">
               <AttendanceChartContainer />
             </div>
           </div>
 
+          {/* Finance */}
           <div className="h-[240px]">
             <FinanceChart data={financeData} />
           </div>
@@ -134,15 +144,6 @@ const AdminPage = async ({
 
         {/* RIGHT */}
         <div className="space-y-6 mt-12 lg:mt-0">
-          {/* <div className="grid grid-cols-1 gap-5">
-            <KPICard
-              title="Payments"
-              value={payments.length}
-              icon={<CreditCard size={18} />}
-              color="text-indigo-600"
-              trend={5}
-            />
-          </div> */}
           <EventCalendarContainer date={date} />
           <Announcements />
         </div>
