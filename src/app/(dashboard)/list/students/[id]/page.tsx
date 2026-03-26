@@ -47,7 +47,7 @@ const SingleStudentPage = async ({
     where: { studentId: student.id },
     select: {
       date: true,
-      present: true,
+      status: true,
     },
   });
 
@@ -120,7 +120,7 @@ const SingleStudentPage = async ({
 
   const attendance: Attendance[] = attendanceRaw.map((a) => ({
     date: a.date,
-    status: a.present ? "PRESENT" : "ABSENT",
+    status: a.status ? "PRESENT" : "ABSENT",
   }));
 
   const holidays = holidaysRaw.map((h) => ({

@@ -134,7 +134,7 @@ const ParentPage = async ({
   });
 
   const totalDays = monthlyAttendance.length;
-  const presentDays = monthlyAttendance.filter((a) => a.present).length;
+  const presentDays = monthlyAttendance.filter((a) => a.status).length;
 
   const attendancePercent =
     totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
@@ -160,7 +160,7 @@ const ParentPage = async ({
     });
 
     const total = records.length;
-    const present = records.filter((a) => a.present).length;
+    const present = records.filter((a) => a.status).length;
 
     return {
       month,
@@ -444,7 +444,7 @@ const ParentPage = async ({
 
           {/* ASSIGNMENTS */}
           <div className="bg-white rounded-2xl p-5 border shadow-sm">
-            <h3 className="font-semibold mb-3">📚 Today's Classes</h3>
+            <h3 className="font-semibold mb-3">📚 TodayIt&apos;s Classes</h3>
 
             <div className="space-y-2 text-sm">
               {todayLessons.map((l) => (

@@ -332,6 +332,7 @@ export const createTeacher = async (
     // ✅ BUILD PRISMA DATA OBJECT SAFELY
     const teacherData: Prisma.TeacherCreateInput = {
       id: user.id,
+      userId: user.id,
       username: data.username,
       name: data.name,
       surname: data.surname,
@@ -938,20 +939,20 @@ export async function createAttendance(
 
     await prisma.attendance.upsert({
       where: {
-        studentId_lessonId_date: {
+        studentId_date: {
           studentId: parsed.studentId,
-          lessonId: parsed.lessonId,
           date: normalizedDate,
         },
       },
+
       update: {
-        present: parsed.present,
+        status: parsed.present ? "PRESENT" : "ABSENT", // ✅ FIX
       },
+
       create: {
         studentId: parsed.studentId,
-        lessonId: parsed.lessonId,
         date: normalizedDate,
-        present: parsed.present,
+        status: parsed.present ? "PRESENT" : "ABSENT", // ✅ FIX
       },
     });
 
@@ -998,9 +999,8 @@ export async function updateAttendance(
     await prisma.attendance.update({
       where: { id: parsed.id },
       data: {
-        present: parsed.present,
+        status: parsed.present ? "PRESENT" : "ABSENT",
         studentId: parsed.studentId,
-        lessonId: parsed.lessonId,
         date: normalizeDate(parsed.date),
       },
     });

@@ -7,9 +7,9 @@ export async function POST(req: Request) {
 
     const entries = Object.entries(attendance).map(
       ([studentId, present]) => ({
-        studentId: studentId, // ✅ FIX: keep as string
-        lessonId: Number(lessonId), // ✅ assuming lessonId is number
-        present: Boolean(present),
+        studentId: studentId,
+        lessonId: Number(lessonId),
+        status: present ? "PRESENT" : "ABSENT", // ✅ FIX
         date: new Date(),
       })
     );

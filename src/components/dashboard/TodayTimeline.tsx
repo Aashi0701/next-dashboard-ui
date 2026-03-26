@@ -36,7 +36,7 @@ export default function TodayTimeline({ lessons }: { lessons: Lesson[] }) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
       <div className="flex justify-between mb-5">
-        <h2 className="text-lg font-semibold">Today's Timeline</h2>
+        <h2 className="text-lg font-semibold">Today&apos;s Timeline</h2>
         <span className="text-xs text-gray-400">
           {lessons.length} sessions
         </span>
