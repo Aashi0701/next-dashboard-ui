@@ -178,20 +178,20 @@ export default function HomePage() {
       <nav className="sticky top-0 z-50 bg-white/20 backdrop-blur-xl border-b border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <Image
-              src="/newBrandLogo.png"
+              src="/school_logo_short.png"
               alt="TrueSunshine Logo"
-              width={180}
+              width={60}
               height={60}
               priority
               quality={100}
               className="object-contain"
             />
 
-            {/* <span className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-rose-500 bg-clip-text text-transparent">
+            <span className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-rose-500 bg-clip-text text-transparent">
               TrueSunshine
-            </span> */}
+            </span>
           </div>
 
           {/* Desktop Menu */}

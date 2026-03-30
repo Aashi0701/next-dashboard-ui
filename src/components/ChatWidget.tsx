@@ -94,7 +94,7 @@ export default function ChatWidget({
         {
           role: "assistant",
           text: "Which class are you interested in?",
-          options: ["PlayGroup", "Nursery", "JuniorKG", "SeniorKG", "Grade1", "Grade2", "Grade3"], // ✅ THIS WAS MISSING
+          options: ["PlayGroup", "Nursery", "JuniorKG", "SeniorKG", "Grade1", "Grade2", "Grade3"], 
         },
       ]);
       return;
