@@ -12,6 +12,7 @@ import "swiper/css";
 import "swiper/css/autoplay";
 import "swiper/css/pagination";
 import ChatWidget from "@/components/ChatWidget";
+import { motion, Variants } from "framer-motion";
 
 // ---------------- ZOD SCHEMA ----------------
 const ContactSchema = z.object({
@@ -171,6 +172,51 @@ export default function HomePage() {
 
     return () => clearTimeout(timer);
   }, [activeGalleryImage]);
+
+  const fadeUp: Variants = {
+    hidden: {
+      opacity: 0,
+      y: 40,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const fadeDown: Variants = {
+    hidden: {
+      opacity: 0,
+      y: -30,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.7,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const zoomIn: Variants = {
+    hidden: {
+      opacity: 0,
+      scale: 0.8,
+    },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.7,
+        ease: "easeOut",
+      },
+    },
+  };
 
   return (
     <main className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 text-gray-800 font-sans">
@@ -348,33 +394,61 @@ export default function HomePage() {
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.15] pb-2.5 mb-3 sm:mb-6 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-700 bg-clip-text text-transparent">
+          <motion.h1
+            initial={{ opacity: 0, y: -40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.15] pb-2.5 mb-3 sm:mb-6 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-700 bg-clip-text text-transparent"
+          >
             {taglines[index]}
-          </h1>
+          </motion.h1>
 
           {/* Subtitle */}
-          <p className="max-w-xl mx-auto text-sm sm:text-lg text-white/95 font-medium leading-relaxed mb-6 sm:mb-10">
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="max-w-xl mx-auto text-sm sm:text-lg text-white/95 font-medium leading-relaxed mb-6 sm:mb-10"
+          >
             TrueSunshine Montessori helps children grow with confidence,
             curiosity, and compassion — fostering joyful learning every day.
-          </p>
+          </motion.p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <Link
-              href="https://forms.gle/iETUsNBC3C7UfD3E7"
-              target="_blank"
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="flex flex-row sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-2 mt-2 w-full max-w-md mx-auto"
+          >
+            <motion.div
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.96 }}
             >
-              Enroll Now →
-            </Link>
+              <Link
+                href="https://forms.gle/iETUsNBC3C7UfD3E7"
+                target="_blank"
+                className="w-full sm:w-auto inline-block px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-2xl transition"
+              >
+                Enroll Now →
+              </Link>
+            </motion.div>
 
-            <Link
-              href="#contact"
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition"
+            <motion.div
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.96 }}
             >
-              Contact Us →
-            </Link>
-          </div>
+              <Link
+                href="#contact"
+                className="w-full sm:w-auto inline-block px-6 py-3 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-2xl transition"
+              >
+                Contact Us →
+              </Link>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -386,20 +460,31 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-10 sm:gap-14">
           {/* ================= LEFT — ABOUT TEXT ================= */}
           <div className="flex-1 text-center md:text-left animate-fade-in-up">
-            <h2
-              className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500
-                 bg-clip-text text-transparent mb-3"
+            <motion.h2
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent mb-3"
             >
               About TrueSunshine Preschool
-            </h2>
+            </motion.h2>
 
-            <div
-              className="mx-auto w-24 h-1 rounded-full
-                    bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-                    mb-8 sm:mb-10"
-            ></div>
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              whileInView={{ width: "6rem", opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="mx-auto md:mx-0 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10"
+            />
 
-            <p className="text-gray-600 leading-relaxed text-xs sm:text-sm lg:text-base mb-4">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="text-gray-600 leading-relaxed text-xs sm:text-sm lg:text-base mb-4"
+            >
               At{" "}
               <span className="font-semibold text-amber-700">
                 TrueSunshine Preschool
@@ -408,20 +493,32 @@ export default function HomePage() {
               through hands-on exploration and purposeful play. Our classrooms
               are designed to inspire creativity, responsibility, and a lifelong
               love for learning.
-            </p>
+            </motion.p>
 
-            <p className="text-gray-600 leading-relaxed text-xs sm:text-sm lg:text-base">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.5 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="text-gray-600 leading-relaxed text-xs sm:text-sm lg:text-base"
+            >
               Guided by the Montessori philosophy, we help children grow not
               just academically — but emotionally and socially — in a calm,
               caring, and stimulating environment that celebrates individuality
               and joy.
-            </p>
+            </motion.p>
           </div>
 
           {/* ================= RIGHT — IMAGE + MESSAGE ================= */}
           <div className="flex-1 animate-fade-in-delayed flex flex-col items-center text-center">
             {/* Image with responsive size */}
-            <div className="relative mb-4 sm:mb-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
+              whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.9, delay: 0.3 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="relative mb-4 sm:mb-6"
+            >
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-300 via-pink-300 to-purple-300 blur-xl opacity-40"></div>
 
               <div className="relative p-1 rounded-full">
@@ -436,23 +533,35 @@ export default function HomePage() {
                  lg:w-[260px] lg:h-[260px]"
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* Chairman Message */}
-            <p className="leading-relaxed text-gray-700 text-xs sm:text-sm lg:text-base mb-3 sm:mb-4 max-w-md">
+            <motion.p
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="leading-relaxed text-gray-700 text-xs sm:text-sm lg:text-base mb-3 sm:mb-4 max-w-md"
+            >
               “Every child is a seed of possibility. At TrueSunshine, our goal
               is to nurture that possibility with love, guidance, and meaningful
               experiences that empower children to grow with confidence and
               compassion.”
-            </p>
+            </motion.p>
 
-            <p className="italic text-amber-700 font-semibold text-sm sm:text-base lg:text-lg">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+              viewport={{ once: false, amount: 0.3 }}
+              className="italic text-amber-700 font-semibold text-sm sm:text-base lg:text-lg"
+            >
               — Mrs. Alekhya Kumar V
               <br />
               <span className="text-gray-600 not-italic text-xs sm:text-sm">
                 Managing Director and Principal, TrueSunshine Preschool
               </span>
-            </p>
+            </motion.p>
           </div>
         </div>
       </section>
@@ -464,73 +573,135 @@ export default function HomePage() {
       >
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
           {/* LEFT – Cartoon Illustration */}
-          <div className="hidden lg:flex justify-center relative">
-            <Image
-              src="/mission_vision.png"
-              alt="Mission and Vision illustration"
-              width={740}
-              height={740}
-              priority={false}
-              className="opacity-95 drop-shadow-2xl select-none float-slow"
-            />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, x: -100, scale: 0.9 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="hidden lg:flex justify-center relative"
+          >
+            <motion.div
+              animate={{ y: [0, -12, 0] }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <Image
+                src="/mission_vision.png"
+                alt="Mission and Vision illustration"
+                width={740}
+                height={740}
+                priority={false}
+                className="opacity-95 drop-shadow-2xl select-none"
+              />
+            </motion.div>
+          </motion.div>
 
           {/* RIGHT – Text Content */}
           <div>
             {/* Section Header */}
             <div className="max-w-2xl mb-14 sm:mb-20">
-              <h2
-                className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500
-          bg-clip-text text-transparent mb-3 text-center"
+              <motion.h2
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="text-2xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent mb-3 text-center"
               >
                 Mission & Vision
-              </h2>
+              </motion.h2>
 
-              <div
-                className="mx-auto w-24 h-1 rounded-full
-          bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400
-          mb-8 sm:mb-10"
-              ></div>
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                whileInView={{ width: "6rem", opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="mx-auto h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10"
+              />
 
-              <p className="mt-5 text-purple-900/70 text-xs sm:text-sm lg:text-base">
+              <motion.p
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="mt-5 text-purple-900/70 text-xs sm:text-sm lg:text-base"
+              >
                 At TrueSunshine, every decision we make is guided by a clear
                 purpose — nurturing confident learners and compassionate global
                 citizens.
-              </p>
+              </motion.p>
             </div>
 
             {/* Mission */}
             <div className="relative mb-12">
-              <span className="absolute -top-8 left-0 text-7xl font-bold text-indigo-200/60">
+              <motion.span
+                initial={{ opacity: 0, scale: 0.7 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="absolute -top-8 left-0 text-7xl font-bold text-indigo-200/60"
+              >
                 01
-              </span>
+              </motion.span>
 
-              <h3 className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4">
+              <motion.h3
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.6 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4"
+              >
                 Our Mission
-              </h3>
+              </motion.h3>
 
-              <p className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base">
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.7 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base"
+              >
                 To inspire self-motivated learners through the Montessori
                 philosophy — fostering independence, curiosity, empathy, and
                 respect for themselves, others, and the environment.
-              </p>
+              </motion.p>
             </div>
 
             {/* Vision */}
             <div className="relative">
-              <span className="absolute -top-8 left-0 text-7xl font-bold text-pink-200/60">
+              <motion.span
+                initial={{ opacity: 0, scale: 0.7 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="absolute -top-8 left-0 text-7xl font-bold text-pink-200/60"
+              >
                 02
-              </span>
+              </motion.span>
 
-              <h3 className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4">
+              <motion.h3
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 1 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="relative text-2xl sm:text-3xl font-bold text-indigo-700 mb-4"
+              >
                 Our Vision
-              </h3>
+              </motion.h3>
 
-              <p className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base">
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 1.1 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="text-purple-900/70 leading-relaxed text-xs sm:text-sm lg:text-base"
+              >
                 To become a leading Montessori institution that nurtures
                 confident, compassionate, and capable lifelong learners who
                 create a positive impact on the world.
-              </p>
+              </motion.p>
             </div>
           </div>
         </div>
@@ -543,11 +714,23 @@ export default function HomePage() {
       >
         <div className="max-w-4xl mx-auto text-center">
           {/* Heading */}
-          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
+          <motion.h3
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent"
+          >
             What Parents Say
-          </h3>
+          </motion.h3>
 
-          <div className="mx-auto w-20 h-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 mb-12" />
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            whileInView={{ width: "5rem", opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="mx-auto h-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 mb-12"
+          />
 
           {/* Swiper Wrapper */}
           <div className="relative max-w-5xl mx-auto">
@@ -576,12 +759,27 @@ export default function HomePage() {
                   key={i}
                   className="flex items-center justify-center px-2"
                 >
-                  <CenteredTestimonialCard
-                    text={review.text}
-                    name={review.author_name}
-                    rating={review.rating}
-                    isFallback={review.fallback}
-                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.8,
+                      delay: 0.2 + i * 0.1,
+                    }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    whileHover={{
+                      scale: 1.02,
+                      y: -4,
+                    }}
+                    className="w-full"
+                  >
+                    <CenteredTestimonialCard
+                      text={review.text}
+                      name={review.author_name}
+                      rating={review.rating}
+                      isFallback={review.fallback}
+                    />
+                  </motion.div>
                 </SwiperSlide>
               ))}
             </Swiper>
@@ -595,9 +793,15 @@ export default function HomePage() {
         className="bg-gradient-to-b from-indigo-200 to-purple-200 py-6 sm:py-14 px-4 sm:px-6 text-center"
       >
         {/* Title */}
-        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
+        <motion.h3
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          viewport={{ once: false, amount: 0.2 }}
+          className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent"
+        >
           Gallery
-        </h3>
+        </motion.h3>
 
         {/* Decorative Divider */}
         <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-8 sm:mb-10" />
@@ -623,9 +827,19 @@ export default function HomePage() {
           >
             {images.map((img, i) => (
               <SwiperSlide key={i}>
-                <div
-                  onClick={() => setActiveGalleryImage(`/${img}`)}
-                  className="relative cursor-pointer overflow-hidden rounded-xl shadow-md hover:shadow-xl transition group"
+                <motion.div
+                  initial={{ opacity: 0, y: 50, scale: 0.92 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0.7,
+                    delay: i * 0.08,
+                  }}
+                  viewport={{ once: false, amount: 0.2 }}
+                  whileHover={{
+                    scale: 1.04,
+                    y: -6,
+                  }}
+                  className="w-full"
                 >
                   {/* Image (aspect ratio safe for tablet) */}
                   <div className="relative w-full aspect-[4/3]">
@@ -637,13 +851,24 @@ export default function HomePage() {
                     />
                   </div>
 
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition duration-500" />
+
                   {/* Caption Overlay */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.6,
+                      delay: 0.2 + i * 0.05,
+                    }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2"
+                  >
                     <p className="text-xs text-white text-left">
                       Montessori Activities · TrueSunshine Preschool
                     </p>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               </SwiperSlide>
             ))}
           </Swiper>
@@ -741,103 +966,90 @@ export default function HomePage() {
 
         <div className="relative max-w-6xl mx-auto text-center">
           {/* Title */}
-          <h3 className=" text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
+          <motion.h3
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent"
+          >
             Contact Us
-          </h3>
+          </motion.h3>
 
           {/* Divider */}
-          <div className="mx-auto w-24 h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-6" />
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            whileInView={{ width: "6rem", opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="mx-auto h-1 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-6"
+          />
 
-          <p className="text-purple-900/70 text-sm sm:text-base max-w-xl mx-auto mb-12">
+          <motion.p
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            viewport={{ once: false, amount: 0.2 }}
+            className="text-purple-900/70 text-sm sm:text-base max-w-xl mx-auto mb-12"
+          >
             We’d love to connect with you. Reach out for admissions, campus
             visits, or general queries.
-          </p>
-
-          {/* ================= CONTACT INFO CARDS ================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-14">
-            {/* Address */}
-            <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
-              <div className="text-2xl mb-3">📍</div>
-              <h4 className="font-semibold text-indigo-800 mb-1">Address</h4>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                Mohan&apos;s Elite Apartments, Khanamet <br />
-                Hyderabad, Telangana – 500084
-              </p>
-            </div>
-
-            {/* Phone */}
-            <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-sm hover:shadow-lg transition">
-              <div className="text-2xl mb-3">📞</div>
-              <h4 className="font-semibold text-indigo-800 mb-1">Phone</h4>
-              <p className="text-gray-600 text-sm">+91 79895 99833</p>
-            </div>
-
-            {/* Email */}
-            <div className="bg-white shadow-sm border border-stone-200 p-6 rounded-2xl hover:shadow-lg transition">
-              <div className="text-2xl mb-3">📧</div>
-              <h4 className="font-semibold text-indigo-800 mb-1">Email</h4>
-              <p className="text-gray-600 text-sm break-words">
-                truesunshine.playschools@gmail.com
-              </p>
-            </div>
-          </div>
+          </motion.p>
 
           {/* ================= MAP + FORM ================= */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.8fr] gap-8 items-stretch">
             {/* Map */}
-            <div className="rounded-2xl overflow-hidden shadow-lg bg-white">
+            <motion.div
+              initial={{ opacity: 0, x: -60 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: false, amount: 0.2 }}
+              className="overflow-hidden rounded-[32px] border border-white/40 bg-white/70 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.08)]"
+            >
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3805.97106829474!2d78.38164457414304!3d17.461098800679487!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93d6209e0f0d%3A0x95c9fe94d6e83177!2sMohan's%20Elite%20Apartment!5e0!3m2!1sen!2sin!4v1763088792805!5m2!1sen!2sin"
-                className="w-full h-64 sm:h-72 border-0"
+                className="w-full h-[320px] border-0"
                 allowFullScreen
                 loading="lazy"
               />
-            </div>
+            </motion.div>
 
-            {/* Form */}
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="bg-white/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-lg space-y-4 text-left"
+            {/* Chatbot Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 60 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              viewport={{ once: false, amount: 0.2 }}
+              className="rounded-[32px] border border-white/40 bg-white/70 backdrop-blur-xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)] flex flex-col justify-center"
             >
-              <h4 className="text-lg font-semibold text-indigo-700">
-                Send Us a Message
+              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-rose-400 to-indigo-500 mb-5 mx-auto shadow-lg">
+                <Image
+                  src="/live-chat.png"
+                  alt="Chat"
+                  width={28}
+                  height={28}
+                  className="object-contain"
+                />
+              </div>
+
+              <h4 className="text-xl font-bold text-indigo-800 text-center mb-3">
+                Need Quick Help?
               </h4>
 
-              <input
-                type="text"
-                placeholder="Your Name"
-                {...register("name")}
-                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
-              />
+              <p className="text-gray-600 text-sm sm:text-base text-center leading-relaxed mb-6">
+                Use our chatbot available on the bottom-right corner to enquire
+                about admissions, fees, classes, timings, and more.
+              </p>
 
-              <input
-                type="email"
-                placeholder="Your Email"
-                {...register("email")}
-                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
-              />
-
-              <textarea
-                placeholder="Your Message"
-                rows={4}
-                {...register("message")}
-                className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-purple-400 outline-none"
-              />
-
-              <button
-                type="submit"
-                className="
-            w-full py-3
-            bg-gradient-to-r from-rose-400 to-indigo-500
-            text-white font-semibold
-            rounded-md
-            hover:scale-[1.02]
-            transition
-          "
-              >
-                Send Message
-              </button>
-            </form>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setChatOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-400 to-indigo-500 px-6 py-3 text-white font-semibold shadow-lg hover:scale-105 transition"
+                >
+                  Open Chat
+                </button>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -847,90 +1059,172 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <h3 className="text-2xl font-bold mb-3">TrueSunshine</h3>
-            <p className="text-black text-sm leading-relaxed">
+            <motion.h3
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: false, amount: 0.2 }}
+              className="text-2xl font-bold mb-3"
+            >
+              TrueSunshine
+            </motion.h3>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: false, amount: 0.2 }}
+              className="text-black text-sm leading-relaxed"
+            >
               Nurturing curiosity, independence, and joyful learning through the
               Montessori way.
-            </p>
+            </motion.p>
           </div>
 
           {/* Quick Links */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            viewport={{ once: false, amount: 0.2 }}
+          >
             <h4 className="text-lg font-semibold mb-3">Quick Links</h4>
+
             <ul className="space-y-2 text-black text-sm">
-              <li>
-                <a href="#about" className="hover:text-white transition">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <a href="#admissions" className="hover:text-white transition">
-                  Admissions
-                </a>
-              </li>
-              <li>
-                <a href="#gallery" className="hover:text-white transition">
-                  Gallery
-                </a>
-              </li>
-              <li>
-                <a href="#contact" className="hover:text-white transition">
-                  Contact
-                </a>
-              </li>
+              {[
+                { href: "#about", label: "About Us" },
+                { href: "#admissions", label: "Admissions" },
+                { href: "#gallery", label: "Gallery" },
+                { href: "#contact", label: "Contact" },
+              ].map((item, i) => (
+                <motion.li
+                  key={item.label}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }}
+                  viewport={{ once: false, amount: 0.2 }}
+                >
+                  <a
+                    href={item.href}
+                    className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  >
+                    {item.label}
+                  </a>
+                </motion.li>
+              ))}
             </ul>
-          </div>
+          </motion.div>
 
           {/* Contact Info */}
           <div>
             <h4 className="text-lg font-semibold mb-3">Contact</h4>
             <ul className="space-y-2 text-black text-sm">
-              <li>
-                📍 Mohan&apos;s Elite Appartments Khanamet, Hyderabad
-                Telangana-500084
-              </li>
-              <li>📞 +91 79895 99833</li>
-              <li>📧 truesunshine.playschools@gmail.com</li>
+              <motion.li
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="flex items-start gap-2"
+              >
+                <Image
+                  src="/placeholder.png"
+                  alt="Location"
+                  width={18}
+                  height={18}
+                  className="mt-0.5 object-contain"
+                />
+                <span>
+                  Mohan&apos;s Elite Apartments Khanamet, Hyderabad
+                  Telangana-500084
+                </span>
+              </motion.li>
+              <motion.li
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="flex items-start gap-2"
+              >
+                <Image
+                  src="/phone.png"
+                  alt="Phone"
+                  width={18}
+                  height={18}
+                  className="object-contain"
+                />
+                <span>+91 79895 99833</span>
+              </motion.li>
+              <motion.li
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: false, amount: 0.2 }}
+                className="flex items-start gap-2"
+              >
+                <Image
+                  src="/email.png"
+                  alt="Email"
+                  width={18}
+                  height={18}
+                  className="object-contain"
+                />
+                <span>truesunshine.playschools@gmail.com</span>
+              </motion.li>
             </ul>
           </div>
 
           {/* Social Icons */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            viewport={{ once: false, amount: 0.2 }}
+          >
             <h4 className="text-lg font-semibold mb-3">Follow Us</h4>
+
             <div className="flex gap-4">
-              <a href="#" className="hover:scale-110 transition">
-                <Image
-                  src="/facebook.png"
-                  alt="Facebook"
-                  width={26}
-                  height={26}
-                />
-              </a>
-              <a href="#" className="hover:scale-110 transition">
-                <Image
-                  src="/instagram.png"
-                  alt="Instagram"
-                  width={26}
-                  height={26}
-                />
-              </a>
-              <a href="#" className="hover:scale-110 transition">
-                <Image
-                  src="/youtube.png"
-                  alt="YouTube"
-                  width={26}
-                  height={26}
-                />
-              </a>
+              {[
+                { src: "/facebook.png", alt: "Facebook" },
+                { src: "/instagram.png", alt: "Instagram" },
+                { src: "/youtube.png", alt: "YouTube" },
+              ].map((social, i) => (
+                <motion.a
+                  key={social.alt}
+                  href="#"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
+                  viewport={{ once: false, amount: 0.2 }}
+                  whileHover={{
+                    scale: 1.2,
+                    rotate: 8,
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all duration-300"
+                >
+                  <Image
+                    src={social.src}
+                    alt={social.alt}
+                    width={26}
+                    height={26}
+                  />
+                </motion.a>
+              ))}
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Divider */}
-        <div className="border-t-4 border-radius-0 border-purple-800 mt-10 pt-4 text-center text-sm text-black font-bold">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          viewport={{ once: false, amount: 0.2 }}
+          className="border-t-2 border-purple-800/50 mt-10 pt-4 text-center text-sm text-black font-bold"
+        >
           © {new Date().getFullYear()} TrueSunshine Montessori — Growing Minds,
           Shaping Futures 🌻
-        </div>
+        </motion.div>
       </footer>
 
       {/* ================= PREMIUM FLOATING DOCK ================= */}
@@ -946,46 +1240,99 @@ export default function HomePage() {
   "
       >
         {/* WhatsApp */}
-        <a
-          href="https://wa.me/7989599833"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="
-      w-11 h-11 rounded-full
-      flex items-center justify-center
-      hover:scale-110 transition
-    "
-        >
-          <Image src="/whatsapp.png" alt="WhatsApp" width={32} height={32} />
-        </a>
+        <div className="relative group">
+          <span
+            className="
+        absolute right-14 top-1/2 -translate-y-1/2
+        whitespace-nowrap
+        rounded-lg bg-black/80 px-3 py-1.5
+        text-xs text-white
+        opacity-0 group-hover:opacity-100
+        transition duration-300
+        pointer-events-none
+      "
+          >
+            Chat on WhatsApp
+          </span>
+
+          <a
+            href="https://wa.me/7989599833"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+        w-11 h-11 rounded-full
+        flex items-center justify-center
+        hover:scale-110 transition
+      "
+          >
+            <Image src="/whatsapp.png" alt="WhatsApp" width={32} height={32} />
+          </a>
+        </div>
 
         {/* Scroll To Top */}
         {showScrollTop && !chatOpen && (
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="
-        w-8 h-8 rounded-full
-        bg-gradient-to-r from-rose-400 to-indigo-500
-        text-white flex items-center justify-center
-        shadow-md hover:scale-110 transition
-      "
-          >
-            ↑
-          </button>
+          <div className="relative group">
+            <span
+              className="
+          absolute right-12 top-1/2 -translate-y-1/2
+          whitespace-nowrap
+          rounded-lg bg-black/80 px-3 py-1.5
+          text-xs text-white
+          opacity-0 group-hover:opacity-100
+          transition duration-300
+          pointer-events-none
+        "
+            >
+              Scroll to Top
+            </span>
+
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="
+          w-8 h-8 rounded-full
+          bg-gradient-to-r from-rose-400 to-indigo-500
+          text-white flex items-center justify-center
+          shadow-md hover:scale-110 transition
+        "
+            >
+              ↑
+            </button>
+          </div>
         )}
 
         {/* Chat Toggle */}
-        <button
-          onClick={() => setChatOpen((prev) => !prev)}
-          className="
-      w-8 h-8 rounded-full
-      bg-gradient-to-r from-purple-600 to-pink-500
-      text-white flex items-center justify-center
-      shadow-md hover:scale-110 transition
-    "
-        >
-          💬
-        </button>
+        <div className="relative group">
+          <span
+            className="
+        absolute right-12 top-1/2 -translate-y-1/2
+        whitespace-nowrap
+        rounded-lg bg-black/80 px-3 py-1.5
+        text-xs text-white
+        opacity-0 group-hover:opacity-100
+        transition duration-300
+        pointer-events-none
+      "
+          >
+            {chatOpen ? "Close Chat" : "Open Chat"}
+          </span>
+
+          <button
+            onClick={() => setChatOpen((prev) => !prev)}
+            className="
+        w-8 h-8 rounded-full
+        flex items-center justify-center
+        shadow-md hover:scale-110 transition
+      "
+          >
+            <Image
+              src="/chat-bot.png"
+              alt="Chat"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
+          </button>
+        </div>
       </div>
 
       {/* Chat Box */}
