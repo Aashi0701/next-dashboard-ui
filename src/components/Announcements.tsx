@@ -19,7 +19,7 @@ const Announcements = async () => {
   if (role === "admin") {
     announcements = await prisma.announcement.findMany({
       include: { class: true },
-      orderBy: { date: "desc" },
+      orderBy: { publishDate: "desc" },
       take: 5,
     });
   } else if (role === "teacher" && userId) {
@@ -42,7 +42,7 @@ const Announcements = async () => {
         ],
       },
       include: { class: true },
-      orderBy: { date: "desc" },
+      orderBy: { publishDate: "desc" },
       take: 5,
     });
   } else if (role === "student" && userId) {
@@ -60,7 +60,7 @@ const Announcements = async () => {
         OR: [{ classId: null }, { classId: student?.classId }],
       },
       include: { class: true },
-      orderBy: { date: "desc" },
+      orderBy: { publishDate: "desc" },
       take: 5,
     });
   } else if (role === "parent" && userId) {
@@ -82,7 +82,7 @@ const Announcements = async () => {
         OR: [{ classId: null }, { classId: { in: classIds } }],
       },
       include: { class: true },
-      orderBy: { date: "desc" },
+      orderBy: { publishDate: "desc" },
       take: 5,
     });
   }
@@ -120,7 +120,7 @@ const Announcements = async () => {
 
           <p className="text-xs text-gray-500 mt-1">
             {a.class?.name ?? "All Classes"} ·{" "}
-            {new Date(a.date).toLocaleDateString("en-IN", {
+            {new Date(a.publishDate).toLocaleDateString("en-IN", {
               day: "numeric",
               month: "short",
               year: "numeric",

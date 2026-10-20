@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 
 /* TYPES */
+
 type Role = "admin" | "teacher" | "student" | "parent";
 
 type MenuItem = {
@@ -22,154 +23,209 @@ type MenuGroup = {
 };
 
 /* MENU GROUPS */
+
 const menuGroups: MenuGroup[] = [
   {
     title: "ACADEMICS",
     items: [
       {
-        icon: "/training.png",
+        icon: "/academicYearsIcon.png",
+        label: "Academic Years",
+        href: "/admin/academic-years",
+        visible: ["admin"],
+      },
+      {
+        icon: "/classesIcon.png",
         label: "Classes",
-        href: "/list/classes",
+        href: "/admin/classes",
         visible: ["admin", "teacher"],
       },
       {
-        icon: "/lessons.png",
-        label: "Lessons",
-        href: "/list/lessons",
+        icon: "/subjetsIcon.png",
+        label: "Subjects",
+        href: "/admin/subjects",
         visible: ["admin", "teacher", "parent"],
       },
       {
-        icon: "/book.png",
-        label: "Subjects",
-        href: "/list/subjects",
+        icon: "/lessonsIcon.png",
+        label: "Lessons",
+        href: "/admin/lessons",
         visible: ["admin", "teacher", "parent"],
       },
+      // {
+      //   icon: "/timetable.png",
+      //   label: "Timetable",
+      //   href: "/admin/timetable",
+      //   visible: ["admin", "teacher", "student", "parent"],
+      // },
     ],
   },
+
   {
-    title: "PEOPLE",
+    title: "STUDENTS & ADMISSIONS",
     items: [
       {
-        icon: "/man.png",
-        label: "Teachers",
-        href: "/list/teachers",
+        icon: "/admissionsIcon.png",
+        label: "Admissions",
+        href: "/admin/admissions",
         visible: ["admin"],
       },
       {
-        icon: "/education.png",
+        icon: "/studentsIcon.png",
         label: "Students",
-        href: "/list/students",
+        href: "/admin/students",
         visible: ["admin", "teacher"],
       },
       {
-        icon: "/love.png",
+        icon: "/parentsIcon.png",
         label: "Parents",
-        href: "/list/parents",
+        href: "/admin/parents",
         visible: ["admin", "teacher"],
       },
+    ],
+  },
+
+  {
+    title: "STAFF",
+    items: [
       {
-        icon: "/users.png",
-        label: "Leads",
-        href: "/list/leads",
+        icon: "/teachersIcon.png",
+        label: "Teachers",
+        href: "/admin/teachers",
+        visible: ["admin"],
+      },
+      {
+        icon: "/teacherLeavesIcon.png",
+        label: "Teacher Leaves",
+        href: "/admin/teacher-leaves",
         visible: ["admin"],
       },
     ],
   },
+
+  {
+    title: "ATTENDANCE",
+    items: [
+      {
+        icon: "/studentAttendanceIcon.png",
+        label: "Student Attendance",
+        href: "/admin/student-attendance",
+        visible: ["admin", "teacher", "student", "parent"],
+      },
+      {
+        icon: "/teacherAttendanceIcon.png",
+        label: "Teacher Attendance",
+        href: "/admin/teacher-attendance",
+        visible: ["admin"],
+      },
+    ],
+  },
+
   {
     title: "ASSESSMENT",
     items: [
       {
-        icon: "/exams.png",
+        icon: "/examsIcon.png",
         label: "Exams",
-        href: "/list/exams",
+        href: "/admin/exams",
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
-        icon: "/assignments.png",
-        label: "Assignments",
-        href: "/list/assignments",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/rankings.png",
+        icon: "/resultsIcon.png",
         label: "Results",
-        href: "/list/results",
+        href: "/admin/results",
         visible: ["admin", "teacher", "student", "parent"],
       },
-      {
-        icon: "/attendances.png",
-        label: "Attendance",
-        href: "/list/attendance",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
+      // {
+      //   icon: "/report-cards.png",
+      //   label: "Report Cards",
+      //   href: "/admin/report-cards",
+      //   visible: ["admin", "teacher", "student", "parent"],
+      // },
     ],
   },
+
   {
-    title: "FEES",
+    title: "FINANCE",
     items: [
       {
-        icon: "/fees.png",
-        label: "Fee",
-        href: "/list/fees",
+        icon: "/feeStructuresIcon.png",
+        label: "Fee Structures",
+        href: "/admin/fee-structures",
         visible: ["admin"],
       },
       {
-        icon: "/payments.png",
-        label: "Payments",
-        href: "/list/payments",
+        icon: "/feeManagementIcon.png",
+        label: "Fee Management",
+        href: "/admin/fees",
         visible: ["admin"],
       },
+      {
+        icon: "/paymentsIcon.png",
+        label: "Payments",
+        href: "/admin/payments",
+        visible: ["admin"],
+      },
+      // {
+      //   icon: "/expenses.png",
+      //   label: "Expenses",
+      //   href: "/admin/expenses",
+      //   visible: ["admin"],
+      // },
     ],
   },
+
   {
     title: "COMMUNICATION",
     items: [
       {
-        icon: "/announcements.png",
+        icon: "/announcementsIcon.png",
         label: "Announcements",
-        href: "/list/announcements",
+        href: "/admin/announcements",
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
-        icon: "/events.png",
+        icon: "/eventsIcon.png",
         label: "Events",
-        href: "/list/events",
+        href: "/admin/events",
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
-        icon: "/holidays.png",
-        label: "Holidays",
-        href: "/list/holidays",
+        icon: "/galleryIcon.png",
+        label: "Gallery",
+        href: "/admin/gallery",
         visible: ["admin"],
+      },
+      {
+        icon: "/holidaysIcon.png",
+        label: "Holidays",
+        href: "/admin/holidays",
+        visible: ["admin", "teacher", "student", "parent"],
       },
     ],
   },
+
   {
-    title: "OTHER",
+    title: "SETTINGS",
     items: [
       {
-        icon: "/users.png",
+        icon: "/profileIcon.png",
         label: "Profile",
-        href: "/list/profile",
+        href: "/profile",
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
-        icon: "/settings.png",
-        label: "Settings",
-        href: "/list/settings",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/logouts.png",
-        label: "Logout",
-        href: "/logout",
-        visible: ["admin", "teacher", "student", "parent"],
+        icon: "/systemSettingsIcon.png",
+        label: "System Settings",
+        href: "/admin/settings",
+        visible: ["admin"],
       },
     ],
   },
 ];
 
 /* COMPONENT */
+
 export default function Menu({
   mode,
   role,
@@ -180,13 +236,40 @@ export default function Menu({
   onItemClick?: () => void;
 }) {
   const pathname = usePathname();
+
   const shouldAutoOpen = mode === "desktop";
 
-  /* -------- helpers -------- */
-  const isGroupActive = (items: MenuItem[]) =>
-    items.some(
+  /* =======================================================
+     VISIBLE MENU ITEMS
+  ======================================================= */
+
+  const visibleMenuGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.visible.includes(role)),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const activeItem = visibleMenuGroups
+    .flatMap((group) => group.items)
+    .filter(
       (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
-    );
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  const activeHref = activeItem?.href ?? null;
+
+  /* =======================================================
+     ACTIVE GROUP
+  ======================================================= */
+
+  const activeGroup = visibleMenuGroups.find((group) =>
+    group.items.some((item) => item.href === activeHref),
+  );
+
+  /* =======================================================
+     HOME ROUTE
+  ======================================================= */
 
   const homeRoute =
     role === "admin"
@@ -199,33 +282,34 @@ export default function Menu({
             ? "/parent"
             : "/";
 
-  /* -------- open accordion state -------- */
-  const [openSection, setOpenSection] = useState<string | null>(() => {
-    const activeGroup = menuGroups.find((group) =>
-      group.items.some(
-        (item) =>
-          pathname === item.href || pathname.startsWith(item.href + "/"),
-      ),
-    );
-    return activeGroup?.title ?? null;
-  });
+  /* =======================================================
+     OPEN SECTION
+  ======================================================= */
+
+  const [openSection, setOpenSection] = useState<string | null>(
+    () => activeGroup?.title ?? null,
+  );
+
+  /* =======================================================
+     AUTO OPEN ACTIVE GROUP
+  ======================================================= */
 
   useEffect(() => {
     if (!shouldAutoOpen) return;
 
-    const activeGroup = menuGroups.find((group) =>
-      group.items.some(
-        (item) =>
-          pathname === item.href || pathname.startsWith(item.href + "/"),
-      ),
-    );
-
     setOpenSection(activeGroup?.title ?? null);
-  }, [pathname, shouldAutoOpen]);
+  }, [pathname, shouldAutoOpen, activeGroup?.title]);
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
-    <div className="space-y-3">
-      {/* HOME */}
+    <div className="space-y-1">
+      {/* ===================================================
+        DASHBOARD
+    =================================================== */}
+
       <Link
         href={homeRoute}
         onClick={() => {
@@ -234,90 +318,164 @@ export default function Menu({
             onItemClick?.();
           }
         }}
-        className={`group flex items-center gap-3 px-4 py-2 rounded-md text-sm
-          transition-all duration-200 ease-out
-          ${
-            pathname === homeRoute
-              ? "bg-white/30 backdrop-blur-sm text-gray-900 font-semibold shadow-sm"
-              : "text-white/90 hover:bg-white/20 hover:text-gray-900"
-          }
-        `}
+        className={`
+  group flex items-center gap-2.5
+  rounded-xl px-2.5 py-2
+  transition-all duration-200
+  ${
+    pathname === homeRoute
+      ? "bg-[#FF9100] text-white shadow-sm"
+      : "text-[#FF9100] hover:bg-[#37374b] hover:text-white"
+  }
+`}
       >
-        <Image src="/home.png" alt="" width={18} height={18} />
-        <span className="tracking-wide">Home</span>
+        {/* Dashboard icon */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+          <Image
+            src="/home-icon-silhouette.png"
+            alt=""
+            width={21}
+            height={21}
+            className="object-contain"
+          />
+        </div>
+
+        <span className="text-[14px] font-medium">Dashboard</span>
       </Link>
 
-      <div className="h-px bg-gray-200" />
+      {/* Divider */}
+      <div className="my-1.5 h-px bg-white/30" />
 
-      {/* GROUPS */}
-      {menuGroups.map((group) => {
-        const visibleItems = group.items.filter((i) =>
-          i.visible.includes(role),
-        );
-        if (!visibleItems.length) return null;
+      {/* MENU GROUPS */}
 
-        const groupActive = isGroupActive(visibleItems);
+      <div className="space-y-0.5">
+        {visibleMenuGroups.map((group) => {
+          const groupActive = activeGroup?.title === group.title;
 
-        return (
-          <div key={group.title}>
-            {/* GROUP HEADER */}
-            <button
-              onClick={() => {
-                setOpenSection((prev) =>
-                  prev === group.title ? null : group.title,
-                );
-              }}
-              className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold
-                transition-colors
-                ${groupActive ? "text-white" : "text-black hover:text-white"}
+          const groupOpen = openSection === group.title;
+
+          return (
+            <div key={group.title}>
+              {/* GROUP HEADER */}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenSection((prev) =>
+                    prev === group.title ? null : group.title,
+                  );
+                }}
+                className={`
+                flex w-full items-center
+                justify-between
+                rounded-lg
+                px-2.5 py-2
+                text-[11px]
+                font-bold
+                tracking-wide
+                transition-all duration-200
+                ${
+                  groupActive
+                    ? "text-white"
+                    : "text-black/90 hover:bg-white/10 hover:text-white"
+                }
               `}
-            >
-              {group.title}
-              <ChevronRight
-                size={14}
-                className={`transition-transform duration-300 ${
-                  openSection === group.title ? "rotate-90" : ""
-                }`}
-              />
-            </button>
+              >
+                <span>{group.title}</span>
 
-            {/* GROUP ITEMS */}
-            {openSection === group.title && (
-              <div className="mt-1 space-y-1">
-                {visibleItems.map((item) => {
-                  const active =
-                    pathname === item.href ||
-                    pathname.startsWith(item.href + "/");
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2.5}
+                  className={`
+                  transition-transform duration-200
+                  ${groupOpen ? "rotate-90" : ""}
+                `}
+                />
+              </button>
 
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => {
-                        if (mode === "mobile") {
-                          setOpenSection(null);
-                          onItemClick?.();
-                        }
-                      }}
-                      className={`group flex items-center gap-3 px-4 py-2 rounded-lg text-sm
+              {/* GROUP ITEMS */}
+
+              {groupOpen && (
+                <div className="mt-0.5 space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = activeHref === item.href;
+
+                    return (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        onClick={() => {
+                          if (mode === "mobile") {
+                            setOpenSection(null);
+                            onItemClick?.();
+                          }
+                        }}
+                        className={`
+                        group flex items-center gap-2.5
+                        rounded-xl
+                        px-2.5 py-1.5
                         transition-all duration-200
                         ${
                           active
-                            ? "bg-white/70 text-indigo-900 font-semibold shadow-sm"
-                            : "text-white/90 hover:bg-white/20 hover:text-white"
+                            ? "bg-[#FF9100] text-white shadow-sm"
+                            : "text-[#FF9100] hover:bg-[#37374b] hover:text-white"
                         }
                       `}
-                    >
-                      <Image src={item.icon} alt="" width={16} height={16} />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                      >
+                        {/* 3D ICON */}
+
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+                          <Image
+                            src={item.icon}
+                            alt=""
+                            width={21}
+                            height={21}
+                            className="
+      object-contain
+      drop-shadow-[0_2px_2px_rgba(0,0,0,0.22)]
+      transition-transform
+      duration-200
+      group-hover:scale-105
+    "
+                          />
+                        </div>
+
+                        {/* LABEL */}
+
+                        <span
+                          className={`
+                          min-w-0
+                          flex-1
+                          truncate
+                          whitespace-nowrap
+                          text-[13px]
+                          ${active ? "font-semibold" : "font-medium"}
+                        `}
+                        >
+                          {item.label}
+                        </span>
+
+                        {/* ACTIVE DOT */}
+
+                        {active && (
+                          <span
+                            className="
+                            h-1.5 w-1.5
+                            shrink-0
+                            rounded-full
+                            bg-indigo-600
+                          "
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

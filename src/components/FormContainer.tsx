@@ -146,32 +146,36 @@ const FormContainer = async ({
         break;
 
       case "assignment": {
-        const lessonFilter: Prisma.LessonWhereInput = {};
-
-        if (role === "teacher") {
-          const teacher = await prisma.teacher.findUnique({
-            where: { userId: currentUserId! },
-          });
-
-          if (teacher) {
-            lessonFilter.teacherId = teacher.id;
-          }
-        }
-
-        const lessons = await prisma.lesson.findMany({
-          where: lessonFilter,
-          include: { class: true },
-          orderBy: { name: "asc" },
-        });
+        const teacher =
+          role === "teacher"
+            ? await prisma.teacher.findUnique({
+                where: { userId: currentUserId! },
+                select: { id: true },
+              })
+            : null;
 
         relatedData = {
-          lessons: lessons.map((l) => ({
-            id: l.id,
-            name: l.name,
-            classId: l.classId,
-            className: l.class.name,
-          })),
+          classes: await prisma.class.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+          }),
+
+          subjects: await prisma.subject.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+          }),
+
+          teachers: teacher
+            ? await prisma.teacher.findMany({
+                where: { id: teacher.id },
+                select: { id: true, name: true, surname: true },
+              })
+            : await prisma.teacher.findMany({
+                select: { id: true, name: true, surname: true },
+                orderBy: { name: "asc" },
+              }),
         };
+
         break;
       }
 
@@ -204,16 +208,20 @@ const FormContainer = async ({
 
         const exams = await prisma.exam.findMany({
           where: {
-            lesson: teacherFilter,
+            ...(role === "teacher" ? { teacherId: currentUserId! } : {}),
           },
-          include: { lesson: { include: { class: true } } },
+          include: {
+            class: true,
+          },
         });
 
         const assignments = await prisma.assignment.findMany({
           where: {
-            lesson: teacherFilter,
+            ...(role === "teacher" ? { teacherId: currentUserId! } : {}),
           },
-          include: { lesson: { include: { class: true } } },
+          include: {
+            class: true,
+          },
         });
 
         relatedData = {
@@ -228,13 +236,13 @@ const FormContainer = async ({
           exams: exams.map((e) => ({
             id: e.id,
             title: e.title,
-            classId: e.lesson.classId,
+            classId: e.classId,
           })),
 
           assignments: assignments.map((a) => ({
             id: a.id,
             title: a.title,
-            classId: a.lesson.classId,
+            classId: a.classId,
           })),
         };
 

@@ -25,24 +25,32 @@ export async function GET() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const where: any = {
-    date: { gte: sevenDaysAgo },
+    publishDate: {
+      gte: sevenDaysAgo,
+    },
+
+    isPublished: true,
+
     NOT: {
-      reads: { some: { userId } },
+      reads: {
+        some: {
+          userId,
+        },
+      },
     },
   };
 
   if (role !== "admin") {
-    where.OR = [
-      { classId: null },
-      ...(classId ? [{ classId }] : []),
-    ];
+    where.OR = [{ classId: null }, ...(classId ? [{ classId }] : [])];
   }
 
-  const unreadAnnouncements = await prisma.announcement.count({ where });
+  const unreadAnnouncements = await prisma.announcement.count({
+    where,
+  });
 
   return NextResponse.json({
-    fullName,
-    role,
-    unreadAnnouncements,
-  });
+  fullName,
+  role,
+  unreadAnnouncements,
+});
 }

@@ -3,16 +3,17 @@ import prisma from "@/lib/prisma";
 import { generateVerifyHash } from "@/lib/receipt/generateVerifyHash";
 import { generateReceiptNo } from "@/lib/receipt/generateReceiptNo";
 
-export async function GET(
-  _req: Request,
-  context: any
-) {
+export async function GET(_req: Request, context: any) {
   const { hash } = await context.params;
 
   const fees = await prisma.studentFee.findMany({
     include: {
       student: true,
-      feeStructure: true,
+      plan: {
+        include: {
+          feeStructure: true,
+        },
+      },
       payments: true,
     },
   });

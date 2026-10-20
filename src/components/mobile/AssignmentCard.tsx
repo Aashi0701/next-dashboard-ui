@@ -2,12 +2,10 @@ import FormContainer from "@/components/FormContainer";
 import AssignmentCardClient from "./AssignmentCardClient";
 import { Assignment, Class, Subject, Teacher } from "@prisma/client";
 
-type AssignmentWithLesson = Assignment & {
-  lesson: {
-    subject: Subject;
-    class: Class;
-    teacher: Teacher;
-  };
+type AssignmentWithRelations = Assignment & {
+  subject: Subject;
+  class: Class;
+  teacher: Teacher;
 };
 
 export default function AssignmentCard({
@@ -15,16 +13,14 @@ export default function AssignmentCard({
   role,
   action,
 }: {
-  item: AssignmentWithLesson;
+  item: AssignmentWithRelations;
   role?: string;
   action?: "edit" | "delete";
 }) {
   return (
     <>
-      {/* CLIENT UI */}
       <AssignmentCardClient item={item} role={role} />
 
-      {/* SERVER-SIDE MODALS */}
       {action === "edit" && (
         <FormContainer
           key={`edit-${item.id}`}

@@ -3,6 +3,13 @@
 import { useFormContext, Controller } from "react-hook-form";
 import clsx from "clsx";
 
+function getNestedValue(
+  obj: Record<string, unknown> | undefined,
+  path: string,
+) {
+  return path.split(".").reduce<any>((acc, key) => acc?.[key], obj);
+}
+
 type Props = {
   label?: string;
   type?: "text" | "number" | "email" | "password" | "textarea" | "phone";
@@ -26,11 +33,11 @@ export default function InputField({
     formState: { errors, touchedFields, submitCount },
   } = useFormContext();
 
-  const error = (errors as Record<string, any>)?.[name]?.message as
-    | string
-    | undefined;
+  const fieldError = getNestedValue(errors, name);
 
-  const isTouched = (touchedFields as Record<string, boolean>)?.[name];
+  const error = fieldError?.message as string | undefined;
+
+  const isTouched = Boolean(getNestedValue(touchedFields, name));
   const showError = Boolean(error && (isTouched || submitCount > 0));
 
   if (hidden) {
@@ -50,10 +57,6 @@ export default function InputField({
 
   const maskPhone = (digits: string) =>
     digits.replace(/^(\d{5})(\d{0,5}).*/, "$1 $2").trim();
-
-  if (hidden) {
-    return <input type="hidden" {...register(name)} />;
-  }
 
   return (
     <div className={clsx("w-full space-y-1 relative", className)}>

@@ -1,7 +1,9 @@
 "use client";
 
 import * as Select from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Inbox } from "lucide-react";
+import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export type Option = {
   value: string;
@@ -10,10 +12,26 @@ export type Option = {
 
 interface RadixSelectProps {
   value?: string;
-  onChange?: (v?: string) => void;
+
+  onChange?: (v: string) => void;
+
   placeholder?: string;
-  options: Option[];
+
+  options: readonly Option[];
+
   disabled?: boolean;
+
+  emptyTitle?: string;
+
+  emptyDescription?: string;
+
+  className?: string;
+
+  icon?: ReactNode;
+
+  open?: boolean;
+
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function RadixSelect({
@@ -22,76 +40,153 @@ export default function RadixSelect({
   placeholder = "Select",
   options,
   disabled = false,
+  emptyTitle = "No data available",
+  emptyDescription = "Please create records first.",
+  className,
+  icon,
+  open,
+  onOpenChange,
 }: RadixSelectProps) {
+  const hasOptions = options.length > 0;
+
   return (
-    <Select.Root value={value ?? undefined} onValueChange={onChange} disabled={disabled}>
-  <Select.Trigger
-    type="button"
-    className="
-      w-full
-      px-1.5 sm:px-2.5
-      py-1.5 sm:py-2
-      flex items-center justify-between
-      rounded-lg border bg-white
-      text-xs
-      outline-none transition
-      focus:border-blue-600 focus:ring-2 focus:ring-blue-100
-      disabled:bg-gray-50 disabled:text-gray-500
-    "
-  >
-    <Select.Value
-      placeholder={<span className="text-gray-400">{placeholder}</span>}
-    />
-    <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-  </Select.Trigger>
+    <Select.Root
+      value={value ?? ""}
+      open={open}
+      onOpenChange={onOpenChange}
+      onValueChange={(v) => {
+        if (v === "") {
+          return;
+        }
+        onChange?.(v);
+        onOpenChange?.(false);
+      }}
+    >
+      <Select.Trigger
+        type="button"
+        disabled={disabled}
+        className={cn(
+          `
+            flex
+            h-11
+            w-full
+            items-center
+            justify-between
+            rounded-lg
+            border
+            border-slate-300
+            bg-white
+            px-3
+            text-sm
+            text-slate-700
+            shadow-sm
+            outline-none
+            transition
+
+            focus:border-blue-600
+            focus:ring-2
+            focus:ring-blue-100
+
+            disabled:cursor-not-allowed
+            disabled:bg-slate-50
+            disabled:text-slate-400
+          `,
+          className,
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <span className="flex shrink-0 items-center text-slate-500">
+              {icon}
+            </span>
+          )}
+
+          <Select.Value
+            placeholder={<span className="text-slate-400">{placeholder}</span>}
+          />
+        </span>
+
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
+      </Select.Trigger>
 
       <Select.Portal>
         <Select.Content
           position="popper"
-          side="top" // ✅ FORCE UPWARD OPEN
           align="start"
           sideOffset={6}
-          collisionPadding={8}
+          collisionPadding={12}
+          avoidCollisions
+          onPointerDown={(event) => {
+            event.stopPropagation();
+          }}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
           className="
-    z-[9999]
-    w-[--radix-select-trigger-width]
-    rounded-lg border bg-white shadow-xl
-    max-h-[240px]
-    flex flex-col
-    overflow-hidden
-  "
+            z-[9999]
+            w-[--radix-select-trigger-width]
+            overflow-hidden
+            rounded-xl
+            border
+            border-slate-200
+            bg-white
+            shadow-xl
+          "
         >
-          {/* Scroll Up */}
-          <Select.ScrollUpButton className="flex justify-center py-1 bg-white">
-            <ChevronUp className="w-4 h-4 text-gray-400" />
+          <Select.ScrollUpButton className="flex h-8 items-center justify-center bg-white">
+            <ChevronUp className="h-4 w-4 text-slate-400" />
           </Select.ScrollUpButton>
 
-          {/* Viewport fills remaining space */}
-          <Select.Viewport className="flex-1 p-1 overflow-y-auto overscroll-contain">
-            {options.map((opt) => (
-              <Select.Item
-                key={opt.value}
-                value={opt.value}
-                className="
-                  flex items-center justify-between
-                  px-3 py-2 text-sm
-                  rounded-md cursor-pointer
-                  outline-none
-                  hover:bg-blue-50
-                  data-[state=checked]:bg-blue-50
-                "
-              >
-                <Select.ItemText>{opt.label}</Select.ItemText>
-                <Select.ItemIndicator>
-                  <Check className="w-4 h-4 text-blue-600" />
-                </Select.ItemIndicator>
-              </Select.Item>
-            ))}
+          <Select.Viewport className="max-h-64 p-1">
+            {!hasOptions ? (
+              <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
+                <Inbox className="mb-3 h-8 w-8 text-slate-300" />
+
+                <p className="font-medium text-slate-700">{emptyTitle}</p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {emptyDescription}
+                </p>
+              </div>
+            ) : (
+              options
+                .filter((opt) => opt.value.trim() !== "")
+                .map((opt) => (
+                  <Select.Item
+                    key={opt.value}
+                    value={opt.value}
+                    className="
+                      relative
+                      flex
+                      h-10
+                      cursor-pointer
+                      select-none
+                      items-center
+                      rounded-md
+                      px-3
+                      text-sm
+                      text-slate-700
+                      outline-none
+
+                      hover:bg-blue-50
+                      focus:bg-blue-50
+
+                      data-[state=checked]:bg-blue-50
+                      data-[state=checked]:text-blue-700
+                    "
+                  >
+                    <Select.ItemText>{opt.label}</Select.ItemText>
+
+                    <Select.ItemIndicator className="absolute right-3">
+                      <Check className="h-4 w-4 text-blue-600" />
+                    </Select.ItemIndicator>
+                  </Select.Item>
+                ))
+            )}
           </Select.Viewport>
 
-          {/* Scroll Down */}
-          <Select.ScrollDownButton className="flex justify-center py-1 bg-white">
-            <ChevronDown className="w-4 h-4 text-gray-400" />
+          <Select.ScrollDownButton className="flex h-8 items-center justify-center bg-white">
+            <ChevronDown className="h-4 w-4 text-slate-400" />
           </Select.ScrollDownButton>
         </Select.Content>
       </Select.Portal>

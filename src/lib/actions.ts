@@ -4,8 +4,14 @@ import bcrypt from "bcryptjs";
 import prisma from "./prisma";
 import { clerkAdmin } from "./clerkAdmin";
 import { auth } from "@clerk/nextjs/server";
-import { assignFeeSchema } from "@/lib/formValidationSchemas";
-import { PaymentMode, FeeStatus, Prisma } from "@prisma/client";
+import { generateRollNumber } from "@/lib/generateRollNumber";
+import { generateAdmissionNumber } from "./generateAdmissionNumber";
+import {
+  PaymentMode,
+  FeeStatus,
+  Prisma,
+  AnnouncementPriority,
+} from "@prisma/client";
 import {
   SubjectSchema,
   ClassSchema,
@@ -17,29 +23,39 @@ import {
   ResultFormValues,
   EventFormInput,
   eventSchema,
-  AnnouncementSchema,
   AnnouncementFormValues,
   attendanceSchema,
   AttendanceFormInput,
   ParentFormValues,
   FeeSchemaType,
   AssignFeeValues,
+  academicYearSchema,
+  AcademicYearSchema,
+  FeeStructureFormValues,
+  feeStructureSchema,
 } from "./formValidationSchemas";
-
+import { sendAnnouncementWhatsApp } from "@/lib/sendAnnouncementWhatsApp";
+import { getAttendanceCalendarBlock } from "@/lib/attendanceLock";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { HomeworkFormValues } from "./formValidationSchemas";
+import type { MonthlyAttendanceDay } from "@/app/(dashboard)/admin/student-attendance/components/types";
 
 export type ActionState = {
   success: boolean;
   error?: string;
+  message?: string;
   ts?: number;
 };
 
 type AnnouncementCreateData = {
   title: string;
   description: string;
-  date: Date;
+  priority: AnnouncementPriority;
+  publishDate: Date;
+  expiryDate: Date | null;
+  isPublished: boolean;
   classId: number | null;
 };
 
@@ -49,9 +65,8 @@ export const createClass = async (
   data: ClassSchema,
 ): Promise<ActionState> => {
   try {
-    // 🔐 Determine academic year on the server
     const academicYear = await prisma.academicYear.findFirst({
-      where: { isActive: true }, // or however you mark current year
+      where: { isActive: true },
       select: { id: true },
     });
 
@@ -62,16 +77,33 @@ export const createClass = async (
       };
     }
 
+    // Get the highest order
+    const lastClass = await prisma.class.findFirst({
+      orderBy: {
+        order: "desc",
+      },
+      select: {
+        order: true,
+      },
+    });
+
+    const nextOrder = (lastClass?.order ?? 0) + 1;
+
     await prisma.class.create({
       data: {
         name: data.name,
         capacity: data.capacity,
+        rollPrefix: data.rollPrefix,
         supervisorId: data.supervisorId,
-        academicYearId: academicYear.id, // ✅ REQUIRED
+        gradeId: data.gradeId,
+        academicYearId: academicYear.id,
+        order: nextOrder,
       },
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -84,6 +116,7 @@ export const createClass = async (
     }
 
     console.error(error);
+
     return {
       success: false,
       error: "Something went wrong. Please try again.",
@@ -98,7 +131,12 @@ export const updateClass = async (
   try {
     await prisma.class.update({
       where: { id: data.id! },
-      data,
+      data: {
+        name: data.name,
+        capacity: data.capacity,
+        rollPrefix: data.rollPrefix,
+        supervisorId: data.supervisorId,
+      },
     });
 
     return { success: true };
@@ -111,20 +149,48 @@ export const updateClass = async (
   }
 };
 
-export const deleteClass = async (
-  _prevState: ActionState,
-  data: FormData,
-): Promise<ActionState> => {
-  const id = Number(data.get("id"));
-
+export const deleteClass = async (id: number): Promise<ActionState> => {
   try {
-    await prisma.class.delete({ where: { id } });
-    return { success: true };
+    const cls = await prisma.class.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            students: true,
+          },
+        },
+      },
+    });
+
+    if (!cls) {
+      return {
+        success: false,
+        error: "Class not found.",
+      };
+    }
+
+    if (cls._count.students > 0) {
+      return {
+        success: false,
+        error: "Cannot delete a class that has students assigned.",
+      };
+    }
+
+    await prisma.class.delete({
+      where: { id },
+    });
+
+    revalidatePath("/admin/classes");
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error(error);
+
     return {
       success: false,
-      error: "Failed to delete class",
+      error: "Failed to delete class.",
     };
   }
 };
@@ -138,6 +204,7 @@ export const createLesson = async (
     await prisma.lesson.create({
       data: {
         name: data.name,
+        scheduleDate: data.scheduleDate,
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -147,9 +214,12 @@ export const createLesson = async (
       },
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("createLesson error:", error);
+
     return {
       success: false,
       error: "Failed to create lesson",
@@ -170,9 +240,12 @@ export const updateLesson = async (
 
   try {
     await prisma.lesson.update({
-      where: { id: data.id },
+      where: {
+        id: data.id,
+      },
       data: {
         name: data.name,
+        scheduleDate: data.scheduleDate,
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -182,9 +255,12 @@ export const updateLesson = async (
       },
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("updateLesson error:", error);
+
     return {
       success: false,
       error: "Failed to update lesson",
@@ -192,12 +268,7 @@ export const updateLesson = async (
   }
 };
 
-export const deleteLesson = async (
-  _prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> => {
-  const id = Number(formData.get("id"));
-
+export const deleteLesson = async (id: number): Promise<ActionState> => {
   if (!id) {
     return {
       success: false,
@@ -207,12 +278,17 @@ export const deleteLesson = async (
 
   try {
     await prisma.lesson.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("deleteLesson error:", error);
+
     return {
       success: false,
       error: "Failed to delete lesson",
@@ -464,10 +540,14 @@ export const createStudent = async (
   data: StudentFormValues,
 ): Promise<ActionState> => {
   try {
-    /* PHONE UNIQUENESS */
     if (data.phone) {
       const existingPhone = await prisma.student.findFirst({
-        where: { phone: data.phone },
+        where: {
+          phone: data.phone,
+        },
+        select: {
+          id: true,
+        },
       });
 
       if (existingPhone) {
@@ -478,10 +558,13 @@ export const createStudent = async (
       }
     }
 
-    /* ACTIVE ACADEMIC YEAR */
     const academicYear = await prisma.academicYear.findFirst({
-      where: { isActive: true },
-      select: { id: true },
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!academicYear) {
@@ -491,44 +574,221 @@ export const createStudent = async (
       };
     }
 
-    /* CLASS CAPACITY */
     const classItem = await prisma.class.findUnique({
-      where: { id: data.classId },
-      include: { _count: { select: { students: true } } },
+      where: {
+        id: data.classId,
+      },
+      include: {
+        _count: {
+          select: {
+            students: true,
+          },
+        },
+      },
     });
 
-    if (classItem && classItem.capacity <= classItem._count.students) {
+    if (!classItem) {
+      return {
+        success: false,
+        error: "Class not found",
+      };
+    }
+
+    if (classItem.capacity <= classItem._count.students) {
       return {
         success: false,
         error: "Class capacity is already full",
       };
     }
 
-    /* CREATE STUDENT */
-    await prisma.student.create({
-      data: {
-        name: data.name,
-        surname: data.surname,
-        email: data.email || null,
-        phone: data.phone || null,
-        address: data.address,
-        img: data.img || null,
-        bloodType: data.bloodType,
-        sex: data.sex,
-        birthday: data.birthday,
-
-        class: { connect: { id: data.classId } },
-        parent: { connect: { id: data.parentId } },
-        academicYear: { connect: { id: academicYear.id } },
+    const feeStructure = await prisma.feeStructure.findFirst({
+      where: {
+        id: data.feeStructureId,
+        classId: data.classId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        classId: true,
+        annualFee: true,
+        admissionFee: true,
       },
     });
 
-    return { success: true };
+    if (!feeStructure) {
+      return {
+        success: false,
+        error: "No valid fee structure found for this class",
+      };
+    }
+
+    const discount = Math.max(Number(data.discount) || 0, 0);
+
+    const paidAmount = Math.max(Number(data.paidAmount) || 0, 0);
+
+    if (discount > feeStructure.annualFee) {
+      return {
+        success: false,
+        error: "Discount cannot be greater than the annual fee",
+      };
+    }
+
+    const originalFee = feeStructure.annualFee;
+
+    const finalFee = Math.max(originalFee - discount, 0);
+
+    if (paidAmount > finalFee) {
+      return {
+        success: false,
+        error: "Paid amount cannot be greater than the final fee",
+      };
+    }
+
+    const admissionAmount = Math.min(feeStructure.admissionFee, finalFee);
+
+    const remainingAmount = Math.max(finalFee - admissionAmount, 0);
+
+    const term1Amount = Math.floor(remainingAmount / 2);
+
+    const term2Amount = remainingAmount - term1Amount;
+
+    const rollNo = await generateRollNumber(data.classId, academicYear.id);
+
+    const admissionNo = await generateAdmissionNumber();
+
+    const admissionPaidAmount = Math.min(paidAmount, admissionAmount);
+
+    const remainingPaidAfterAdmission = Math.max(
+      paidAmount - admissionPaidAmount,
+      0,
+    );
+
+    const term1PaidAmount = Math.min(remainingPaidAfterAdmission, term1Amount);
+
+    const term2PaidAmount = Math.min(
+      Math.max(remainingPaidAfterAdmission - term1PaidAmount, 0),
+      term2Amount,
+    );
+
+    const getFeeStatus = (
+      totalAmount: number,
+      paidAmount: number,
+    ): "PENDING" | "PARTIAL" | "PAID" => {
+      if (paidAmount <= 0) {
+        return "PENDING";
+      }
+
+      if (paidAmount >= totalAmount) {
+        return "PAID";
+      }
+
+      return "PARTIAL";
+    };
+
+    await prisma.$transaction(async (tx) => {
+      const student = await tx.student.create({
+        data: {
+          name: data.name,
+          surname: data.surname,
+
+          rollNo,
+          admissionNo,
+
+          email: data.email || null,
+          phone: data.phone || null,
+          address: data.address,
+
+          img: data.img || null,
+
+          bloodType: data.bloodType,
+          sex: data.sex,
+
+          birthday: data.birthday ?? null,
+
+          class: {
+            connect: {
+              id: data.classId,
+            },
+          },
+
+          parent: {
+            connect: {
+              id: data.parentId,
+            },
+          },
+
+          academicYear: {
+            connect: {
+              id: academicYear.id,
+            },
+          },
+        },
+      });
+
+      const feePlan = await tx.studentFeePlan.create({
+        data: {
+          studentId: student.id,
+          academicYearId: academicYear.id,
+          feeStructureId: feeStructure.id,
+
+          originalFee,
+          discount,
+          finalFee,
+
+          admissionAmount,
+          term1Amount,
+          term2Amount,
+        },
+      });
+
+      await tx.studentFee.createMany({
+        data: [
+          {
+            studentId: student.id,
+            planId: feePlan.id,
+
+            installment: "ADMISSION",
+
+            totalAmount: admissionAmount,
+            paidAmount: admissionPaidAmount,
+
+            status: getFeeStatus(admissionAmount, admissionPaidAmount),
+          },
+          {
+            studentId: student.id,
+            planId: feePlan.id,
+
+            installment: "TERM_1",
+
+            totalAmount: term1Amount,
+            paidAmount: term1PaidAmount,
+
+            status: getFeeStatus(term1Amount, term1PaidAmount),
+          },
+          {
+            studentId: student.id,
+            planId: feePlan.id,
+
+            installment: "TERM_2",
+
+            totalAmount: term2Amount,
+            paidAmount: term2PaidAmount,
+
+            status: getFeeStatus(term2Amount, term2PaidAmount),
+          },
+        ],
+      });
+    });
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("createStudent error:", error);
+
     return {
       success: false,
-      error: "Failed to create student",
+      error: "Failed to create student admission",
     };
   }
 };
@@ -538,35 +798,321 @@ export const updateStudent = async (
   data: StudentFormValues,
 ): Promise<ActionState> => {
   if (!data.id) {
-    return { success: false, error: "Student ID missing" };
+    return {
+      success: false,
+      error: "Student ID missing",
+    };
   }
 
-  try {
-    const studentData: Prisma.StudentUpdateInput = {
-      name: data.name,
-      surname: data.surname,
-      email: data.email || null,
-      phone: data.phone || null,
-      address: data.address,
-      img: data.img || null,
-      bloodType: data.bloodType,
-      sex: data.sex,
-      class: { connect: { id: data.classId } },
-      parent: { connect: { id: data.parentId } },
-    };
+  const studentId = data.id;
 
-    if (data.birthday) {
-      studentData.birthday = data.birthday;
+  try {
+    if (data.phone) {
+      const existingPhone = await prisma.student.findFirst({
+        where: {
+          phone: data.phone,
+          NOT: {
+            id: studentId,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingPhone) {
+        return {
+          success: false,
+          error: "A student with this phone number already exists",
+        };
+      }
     }
 
-    await prisma.student.update({
-      where: { id: data.id },
-      data: studentData,
+    const classItem = await prisma.class.findUnique({
+      where: {
+        id: data.classId,
+      },
+      include: {
+        _count: {
+          select: {
+            students: true,
+          },
+        },
+      },
     });
 
-    return { success: true };
+    if (!classItem) {
+      return {
+        success: false,
+        error: "Class not found",
+      };
+    }
+
+    const currentStudent = await prisma.student.findUnique({
+      where: {
+        id: studentId,
+      },
+      select: {
+        classId: true,
+      },
+    });
+
+    if (!currentStudent) {
+      return {
+        success: false,
+        error: "Student not found",
+      };
+    }
+
+    if (
+      currentStudent.classId !== data.classId &&
+      classItem.capacity <= classItem._count.students
+    ) {
+      return {
+        success: false,
+        error: "Class capacity is already full",
+      };
+    }
+
+    const academicYear = await prisma.academicYear.findFirst({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!academicYear) {
+      return {
+        success: false,
+        error: "No active academic year found",
+      };
+    }
+
+    const feeStructure = await prisma.feeStructure.findFirst({
+      where: {
+        id: data.feeStructureId,
+        classId: data.classId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        classId: true,
+        annualFee: true,
+        admissionFee: true,
+      },
+    });
+
+    if (!feeStructure) {
+      return {
+        success: false,
+        error: "No valid fee structure found for this class",
+      };
+    }
+
+    const discount = Math.max(Number(data.discount) || 0, 0);
+
+    const paidAmount = Math.max(Number(data.paidAmount) || 0, 0);
+
+    if (discount > feeStructure.annualFee) {
+      return {
+        success: false,
+        error: "Discount cannot be greater than the annual fee",
+      };
+    }
+
+    const originalFee = feeStructure.annualFee;
+
+    const finalFee = Math.max(originalFee - discount, 0);
+
+    if (paidAmount > finalFee) {
+      return {
+        success: false,
+        error: "Paid amount cannot be greater than the final fee",
+      };
+    }
+
+    const admissionAmount = Math.min(feeStructure.admissionFee, finalFee);
+
+    const remainingAmount = Math.max(finalFee - admissionAmount, 0);
+
+    const term1Amount = Math.floor(remainingAmount / 2);
+
+    const term2Amount = remainingAmount - term1Amount;
+
+    const admissionPaidAmount = Math.min(paidAmount, admissionAmount);
+
+    const remainingPaidAfterAdmission = Math.max(
+      paidAmount - admissionPaidAmount,
+      0,
+    );
+
+    const term1PaidAmount = Math.min(remainingPaidAfterAdmission, term1Amount);
+
+    const term2PaidAmount = Math.min(
+      Math.max(remainingPaidAfterAdmission - term1PaidAmount, 0),
+      term2Amount,
+    );
+
+    const getFeeStatus = (
+      totalAmount: number,
+      paidAmount: number,
+    ): "PENDING" | "PARTIAL" | "PAID" => {
+      if (paidAmount <= 0) {
+        return "PENDING";
+      }
+
+      if (paidAmount >= totalAmount) {
+        return "PAID";
+      }
+
+      return "PARTIAL";
+    };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.student.update({
+        where: {
+          id: studentId,
+        },
+
+        data: {
+          name: data.name,
+          surname: data.surname,
+
+          email: data.email || null,
+          phone: data.phone || null,
+          address: data.address,
+
+          img: data.img || null,
+
+          bloodType: data.bloodType,
+          sex: data.sex,
+
+          birthday: data.birthday ?? null,
+
+          class: {
+            connect: {
+              id: data.classId,
+            },
+          },
+
+          parent: {
+            connect: {
+              id: data.parentId,
+            },
+          },
+        },
+      });
+
+      const existingPlan = await tx.studentFeePlan.findUnique({
+        where: {
+          studentId_academicYearId: {
+            studentId,
+            academicYearId: academicYear.id,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      let feePlanId: number;
+
+      if (existingPlan) {
+        feePlanId = existingPlan.id;
+
+        await tx.studentFeePlan.update({
+          where: {
+            id: existingPlan.id,
+          },
+
+          data: {
+            feeStructureId: feeStructure.id,
+
+            originalFee,
+            discount,
+            finalFee,
+
+            admissionAmount,
+            term1Amount,
+            term2Amount,
+          },
+        });
+
+        await tx.studentFee.deleteMany({
+          where: {
+            planId: existingPlan.id,
+          },
+        });
+      } else {
+        const newPlan = await tx.studentFeePlan.create({
+          data: {
+            studentId,
+            academicYearId: academicYear.id,
+            feeStructureId: feeStructure.id,
+
+            originalFee,
+            discount,
+            finalFee,
+
+            admissionAmount,
+            term1Amount,
+            term2Amount,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        feePlanId = newPlan.id;
+      }
+
+      await tx.studentFee.createMany({
+        data: [
+          {
+            studentId,
+            planId: feePlanId,
+
+            installment: "ADMISSION",
+
+            totalAmount: admissionAmount,
+            paidAmount: admissionPaidAmount,
+
+            status: getFeeStatus(admissionAmount, admissionPaidAmount),
+          },
+          {
+            studentId,
+            planId: feePlanId,
+
+            installment: "TERM_1",
+
+            totalAmount: term1Amount,
+            paidAmount: term1PaidAmount,
+
+            status: getFeeStatus(term1Amount, term1PaidAmount),
+          },
+          {
+            studentId,
+            planId: feePlanId,
+
+            installment: "TERM_2",
+
+            totalAmount: term2Amount,
+            paidAmount: term2PaidAmount,
+
+            status: getFeeStatus(term2Amount, term2PaidAmount),
+          },
+        ],
+      });
+    });
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("updateStudent error:", error);
+
     return {
       success: false,
       error: "Failed to update student",
@@ -581,17 +1127,56 @@ export const deleteStudent = async (
   const id = String(formData.get("id") || "");
 
   if (!id) {
-    return { success: false, error: "Student ID missing" };
+    return {
+      success: false,
+      error: "Student ID missing",
+    };
   }
 
   try {
-    await prisma.student.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      const feePlans = await tx.studentFeePlan.findMany({
+        where: {
+          studentId: id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const planIds = feePlans.map((plan) => plan.id);
+
+      if (planIds.length > 0) {
+        await tx.studentFee.deleteMany({
+          where: {
+            planId: {
+              in: planIds,
+            },
+          },
+        });
+
+        await tx.studentFeePlan.deleteMany({
+          where: {
+            id: {
+              in: planIds,
+            },
+          },
+        });
+      }
+
+      await tx.student.delete({
+        where: {
+          id,
+        },
+      });
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("deleteStudent error:", error);
+
     return {
       success: false,
       error: "Failed to delete student",
@@ -600,47 +1185,23 @@ export const deleteStudent = async (
 };
 
 // ParentForm
-export async function createParent(
+export const createParent = async (
   _prevState: ActionState,
   data: ParentFormValues,
-): Promise<ActionState> {
+): Promise<ActionState> => {
   try {
-    const hashedPassword = await bcrypt.hash(data.password!, 12);
-
-    await prisma.parent.create({
-      data: {
-        id: crypto.randomUUID(),
-        username: data.username,
-        password: hashedPassword,
-
-        name: data.name,
-        surname: data.surname,
-        email: data.email || null,
-        phone: data.phone,
-        address: data.address,
+    const user = await clerkAdmin.users.createUser({
+      username: data.username,
+      password: data.password || undefined,
+      firstName: data.name,
+      lastName: data.surname,
+      publicMetadata: {
+        role: "parent",
       },
     });
 
-    return { success: true };
-  } catch (error: any) {
-    console.error("Create Parent Error:", error);
-    return {
-      success: false,
-      error: error.message ?? "Failed to create parent",
-    };
-  }
-}
-
-export async function updateParent(
-  _prevState: ActionState,
-  data: ParentFormValues,
-): Promise<ActionState> {
-  if (!data.id) {
-    return { success: false, error: "Parent ID is required" };
-  }
-
-  try {
-    const updateData: any = {
+    const parentData: Prisma.ParentCreateInput = {
+      id: user.id,
       username: data.username,
       name: data.name,
       surname: data.surname,
@@ -649,50 +1210,114 @@ export async function updateParent(
       address: data.address,
     };
 
-    // Only update password if provided
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 12);
-    }
-
-    await prisma.parent.update({
-      where: { id: data.id },
-      data: updateData,
+    await prisma.parent.create({
+      data: parentData,
     });
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error: any) {
-    console.error("Update Parent Error:", error);
+    console.error("createParent error:", error);
+
     return {
       success: false,
-      error: error.message ?? "Failed to update parent",
+      error:
+        error?.errors?.[0]?.message ??
+        error?.message ??
+        "Failed to create parent",
     };
   }
-}
+};
 
-export async function deleteParent(
+export const updateParent = async (
   _prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const id = String(formData.get("id") || "");
-
-  if (!id) {
-    return { success: false, error: "Parent ID missing" };
+  data: ParentFormValues,
+): Promise<ActionState> => {
+  if (!data.id) {
+    return {
+      success: false,
+      error: "Parent ID missing",
+    };
   }
 
   try {
-    await prisma.parent.delete({
-      where: { id },
+    await clerkAdmin.users.updateUser(data.id, {
+      username: data.username,
+      ...(data.password ? { password: data.password } : {}),
+      firstName: data.name,
+      lastName: data.surname,
     });
 
-    return { success: true };
+    const parentData: Prisma.ParentUpdateInput = {
+      username: data.username,
+      name: data.name,
+      surname: data.surname,
+      email: data.email || null,
+      phone: data.phone,
+      address: data.address,
+    };
+
+    await prisma.parent.update({
+      where: {
+        id: data.id,
+      },
+      data: parentData,
+    });
+
+    return {
+      success: true,
+    };
   } catch (error: any) {
-    console.error("Delete Parent Error:", error);
+    console.error("updateParent error:", error);
+
     return {
       success: false,
-      error: error.message ?? "Failed to delete parent",
+      error:
+        error?.errors?.[0]?.message ??
+        error?.message ??
+        "Failed to update parent",
     };
   }
-}
+};
+
+export const deleteParent = async (
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> => {
+  const id = String(formData.get("id") || "");
+
+  if (!id) {
+    return {
+      success: false,
+      error: "Parent ID missing",
+    };
+  }
+
+  try {
+    await clerkAdmin.users.deleteUser(id);
+
+    await prisma.parent.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error: any) {
+    console.error("deleteParent error:", error);
+
+    return {
+      success: false,
+      error:
+        error?.errors?.[0]?.message ??
+        error?.message ??
+        "Failed to delete parent",
+    };
+  }
+};
 
 // ExamForm
 export async function createExam(
@@ -703,15 +1328,20 @@ export async function createExam(
     await prisma.exam.create({
       data: {
         title: data.title,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        lessonId: data.lessonId,
+        description: data.description || null,
+        totalMarks: data.totalMarks,
+        examDate: data.examDate,
+
+        classId: data.classId,
+        subjectId: data.subjectId,
+        teacherId: data.teacherId,
       },
     });
 
     return { success: true };
   } catch (error: any) {
     console.error("Create Exam Error:", error);
+
     return {
       success: false,
       error: error.message ?? "Failed to create exam",
@@ -724,23 +1354,34 @@ export async function updateExam(
   data: ExamFormValues,
 ): Promise<ActionState> {
   if (!data.id) {
-    return { success: false, error: "Exam ID is required" };
+    return {
+      success: false,
+      error: "Exam ID is required",
+    };
   }
 
   try {
     await prisma.exam.update({
-      where: { id: data.id },
+      where: {
+        id: data.id,
+      },
+
       data: {
         title: data.title,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        lessonId: data.lessonId,
+        description: data.description || null,
+        totalMarks: data.totalMarks,
+        examDate: data.examDate,
+
+        classId: data.classId,
+        subjectId: data.subjectId,
+        teacherId: data.teacherId,
       },
     });
 
     return { success: true };
   } catch (error: any) {
     console.error("Update Exam Error:", error);
+
     return {
       success: false,
       error: error.message ?? "Failed to update exam",
@@ -774,23 +1415,34 @@ export async function deleteExam(
 }
 
 // AssignmentForm
+
 export async function createAssignment(
   _prevState: ActionState,
   data: AssignmentFormValues,
 ): Promise<ActionState> {
   try {
-    const { id, ...createData } = data;
+    const { id, ...formData } = data;
 
     await prisma.assignment.create({
-      data: createData,
+      data: {
+        title: formData.title,
+        startDate: formData.startDate,
+        dueDate: formData.dueDate,
+        totalMarks: formData.totalMarks,
+        classId: formData.classId,
+        subjectId: formData.subjectId,
+        teacherId: formData.teacherId,
+      },
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create Assignment Error:", error);
+
     return {
       success: false,
-      error: error.message ?? "Failed to create assignment",
+      error:
+        error instanceof Error ? error.message : "Failed to create assignment",
     };
   }
 }
@@ -929,6 +1581,7 @@ function normalizeDate(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+// Attendance
 export async function createAttendance(
   _prevState: ActionState,
   data: AttendanceFormInput,
@@ -956,7 +1609,7 @@ export async function createAttendance(
       },
     });
 
-    revalidatePath("/list/attendance");
+    revalidatePath("/admin/student-attendance");
 
     return {
       success: true,
@@ -1005,7 +1658,7 @@ export async function updateAttendance(
       },
     });
 
-    revalidatePath("/list/attendance");
+    revalidatePath("/admin/student-attendance");
 
     return {
       success: true,
@@ -1040,7 +1693,7 @@ export async function deleteAttendance(
     where: { id },
   });
 
-  revalidatePath("/list/attendance");
+  revalidatePath("/admin/student-attendance");
 
   return {
     success: true,
@@ -1051,117 +1704,527 @@ export async function deleteAttendance(
 // FeeForm
 export async function createFee(
   _prevState: ActionState,
-  data: FeeSchemaType,
+  data: FeeStructureFormValues,
 ): Promise<ActionState> {
   try {
     await prisma.feeStructure.create({
       data: {
+        classId: data.classId,
         title: data.title,
-        amount: data.amount,
-        classId: data.classId ?? null,
-        type: data.type,
-        term: data.type === "TERM" && data.term ? data.term : null,
-        isActive: true,
+        annualFee: data.annualFee,
+        admissionFee: data.admissionFee,
+        isActive: data.isActive,
       },
     });
 
     return { success: true };
   } catch (e) {
-    console.error(e);
-    return { success: false, error: "Failed to create fee" };
+    console.error("Create Fee Structure Error:", e);
+
+    return {
+      success: false,
+      error: "Failed to create fee structure",
+    };
   }
 }
 
 export async function updateFee(
   _prevState: ActionState,
-  data: FeeSchemaType & { id: number },
+  data: FeeStructureFormValues & { id: number },
 ): Promise<ActionState> {
   try {
     await prisma.feeStructure.update({
-      where: { id: data.id },
+      where: {
+        id: data.id,
+      },
       data: {
+        classId: data.classId,
         title: data.title,
-        amount: data.amount,
-        classId: data.classId ?? null,
-        type: data.type,
-        term: data.term ?? null,
-        isActive: data.isActive ?? true,
+        annualFee: data.annualFee,
+        admissionFee: data.admissionFee,
+        isActive: data.isActive,
       },
     });
 
     return { success: true };
   } catch (e) {
-    console.error(e);
-    return { success: false, error: "Failed to update fee" };
+    console.error("Update Fee Structure Error:", e);
+
+    return {
+      success: false,
+      error: "Failed to update fee structure",
+    };
   }
 }
 
 export async function deleteFee(_prevState: ActionState, formData: FormData) {
   const id = Number(formData.get("id"));
+
   try {
-    await prisma.feeStructure.delete({ where: { id } });
-    return { success: true, error: false };
-  } catch {
-    return { success: false, error: true };
+    await prisma.feeStructure.delete({
+      where: { id },
+    });
+
+    return {
+      success: true,
+      error: false,
+    };
+  } catch (e) {
+    console.error("Delete Fee Structure Error:", e);
+
+    return {
+      success: false,
+      error: true,
+    };
   }
 }
+
+// Fee Structure
+export const createFeeStructure = async (
+  _prevState: ActionState,
+  data: FeeStructureFormValues,
+): Promise<ActionState> => {
+  try {
+    const existing = await prisma.feeStructure.findFirst({
+      where: {
+        classId: data.classId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existing) {
+      return {
+        success: false,
+        error: "An active fee structure already exists for this class.",
+      };
+    }
+
+    await prisma.feeStructure.create({
+      data: {
+        classId: data.classId,
+        title: data.title,
+        annualFee: data.annualFee,
+        admissionFee: data.admissionFee,
+        isActive: data.isActive,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("createFeeStructure error:", error);
+
+    return {
+      success: false,
+      error: "Failed to create fee structure.",
+    };
+  }
+};
+
+export const updateFeeStructure = async (
+  _prevState: ActionState,
+  data: FeeStructureFormValues,
+): Promise<ActionState> => {
+  if (!data.id) {
+    return {
+      success: false,
+      error: "Fee structure ID missing.",
+    };
+  }
+
+  try {
+    const existing = await prisma.feeStructure.findFirst({
+      where: {
+        classId: data.classId,
+        isActive: true,
+        NOT: {
+          id: data.id,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existing) {
+      return {
+        success: false,
+        error: "Another active fee structure already exists for this class.",
+      };
+    }
+
+    await prisma.feeStructure.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        classId: data.classId,
+        title: data.title,
+        annualFee: data.annualFee,
+        admissionFee: data.admissionFee,
+        isActive: data.isActive,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("updateFeeStructure error:", error);
+
+    return {
+      success: false,
+      error: "Failed to update fee structure.",
+    };
+  }
+};
+
+export const deleteFeeStructure = async (
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return {
+      success: false,
+      error: "Fee structure ID missing.",
+    };
+  }
+
+  try {
+    const usage = await prisma.studentFeePlan.findFirst({
+      where: {
+        feeStructureId: id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (usage) {
+      return {
+        success: false,
+        error:
+          "This fee structure is already assigned to students and cannot be deleted.",
+      };
+    }
+
+    await prisma.feeStructure.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("deleteFeeStructure error:", error);
+
+    return {
+      success: false,
+      error: "Failed to delete fee structure.",
+    };
+  }
+};
 
 // AssignFee
 export async function assignFeeAction(
   _prev: { success: boolean; error?: string },
   input: AssignFeeValues,
-) {
+): Promise<{ success: boolean; error?: string }> {
   const { userId } = await auth();
-  if (!userId) return { success: false, error: "Unauthorized" };
+
+  if (!userId) {
+    return {
+      success: false,
+      error: "Unauthorized",
+    };
+  }
 
   try {
-    const { assignmentType, classId, studentId, feeStructureId } = input;
+    const {
+      studentId,
+      classId,
+      academicYearId,
+      totalFee,
+      admissionDueDate,
+      term1DueDate,
+      term2DueDate,
+    } = input;
 
-    const fee = await prisma.feeStructure.findUnique({
-      where: { id: feeStructureId },
-      select: { amount: true },
+    /* ============================================================
+       VALIDATION
+    ============================================================ */
+
+    if (!studentId) {
+      return {
+        success: false,
+        error: "Student is required.",
+      };
+    }
+
+    if (!classId) {
+      return {
+        success: false,
+        error: "Class is required.",
+      };
+    }
+
+    if (!academicYearId) {
+      return {
+        success: false,
+        error: "Academic year is required.",
+      };
+    }
+
+    const feeAmount = Number(totalFee);
+
+    if (!Number.isFinite(feeAmount) || feeAmount <= 0) {
+      return {
+        success: false,
+        error: "Please enter a valid total fee.",
+      };
+    }
+
+    /* ============================================================
+       GET STUDENT
+    ============================================================ */
+
+    const student = await prisma.student.findUnique({
+      where: {
+        id: studentId,
+      },
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        classId: true,
+        academicYearId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
-    if (!fee) {
-      return { success: false, error: "Fee structure not found" };
+    if (!student) {
+      return {
+        success: false,
+        error: "Student not found.",
+      };
     }
 
-    if (assignmentType === "CLASS") {
-      const students = await prisma.student.findMany({
-        where: { classId: classId! },
-        select: { id: true },
-      });
+    /* ============================================================
+       VERIFY CLASS
+    ============================================================ */
 
-      if (students.length === 0) {
-        return { success: false, error: "No students found in this class" };
-      }
+    if (student.classId !== Number(classId)) {
+      return {
+        success: false,
+        error: "Selected student does not belong to this class.",
+      };
+    }
 
-      await prisma.studentFee.createMany({
-        data: students.map((s) => ({
-          studentId: s.id,
-          feeStructureId,
-          totalAmount: fee.amount,
-          paidAmount: 0,
-          status: FeeStatus.PENDING,
-        })),
-        skipDuplicates: true,
-      });
-    } else {
-      await prisma.studentFee.create({
+    /* ============================================================
+       VERIFY ACADEMIC YEAR
+    ============================================================ */
+
+    const academicYear = await prisma.academicYear.findUnique({
+      where: {
+        id: Number(academicYearId),
+      },
+      select: {
+        id: true,
+        label: true,
+      },
+    });
+
+    if (!academicYear) {
+      return {
+        success: false,
+        error: "Academic year not found.",
+      };
+    }
+
+    if (student.academicYearId !== Number(academicYearId)) {
+      return {
+        success: false,
+        error:
+          "The selected student does not belong to the selected academic year.",
+      };
+    }
+
+    /* ============================================================
+       CHECK DUPLICATE PLAN
+    ============================================================ */
+
+    const existingPlan = await prisma.studentFeePlan.findUnique({
+      where: {
+        studentId_academicYearId: {
+          studentId: student.id,
+          academicYearId: Number(academicYearId),
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingPlan) {
+      return {
+        success: false,
+        error:
+          "A fee plan already exists for this student for the selected academic year.",
+      };
+    }
+
+    /* ============================================================
+       GET FEE STRUCTURE FOR CLASS
+    ============================================================ */
+
+    const feeStructure = await prisma.feeStructure.findUnique({
+      where: {
+        classId: Number(classId),
+      },
+      select: {
+        id: true,
+        classId: true,
+        title: true,
+        annualFee: true,
+        admissionFee: true,
+        isActive: true,
+      },
+    });
+
+    if (!feeStructure || !feeStructure.isActive) {
+      return {
+        success: false,
+        error: `No active fee structure is configured for ${
+          student.class?.name ?? "the selected class"
+        }.`,
+      };
+    }
+
+    /* ============================================================
+       CALCULATE FEE
+    ============================================================ */
+
+    const originalFee = feeAmount;
+    const discount = 0;
+
+    const finalFee = Math.max(originalFee - discount, 0);
+
+    const admissionAmount = Math.min(
+      Number(feeStructure.admissionFee ?? 11500),
+      finalFee,
+    );
+
+    const remainingAmount = Math.max(finalFee - admissionAmount, 0);
+
+    const term1Amount = Math.floor(remainingAmount / 2);
+
+    const term2Amount = remainingAmount - term1Amount;
+
+    /* ============================================================
+       CREATE PLAN + INSTALLMENTS
+    ============================================================ */
+
+    await prisma.$transaction(async (tx) => {
+      const plan = await tx.studentFeePlan.create({
         data: {
-          studentId: studentId!,
-          feeStructureId,
-          totalAmount: fee.amount,
-          paidAmount: 0,
-          status: FeeStatus.PENDING,
+          studentId: student.id,
+          academicYearId: Number(academicYearId),
+          feeStructureId: feeStructure.id,
+
+          originalFee,
+          discount,
+          finalFee,
+
+          admissionAmount,
+          term1Amount,
+          term2Amount,
         },
       });
-    }
 
-    return { success: true };
-  } catch (err) {
-    console.error("Assign Fee Error:", err);
-    return { success: false, error: "Failed to assign fee" };
+      /* ----------------------------------------------------------
+         ADMISSION
+      ---------------------------------------------------------- */
+
+      await tx.studentFee.create({
+        data: {
+          studentId: student.id,
+          planId: plan.id,
+
+          installment: "ADMISSION",
+
+          totalAmount: admissionAmount,
+          paidAmount: 0,
+
+          status: admissionAmount === 0 ? "PAID" : "PENDING",
+
+          dueDate: admissionDueDate ?? null,
+        },
+      });
+
+      /* ----------------------------------------------------------
+         TERM 1
+      ---------------------------------------------------------- */
+
+      await tx.studentFee.create({
+        data: {
+          studentId: student.id,
+          planId: plan.id,
+
+          installment: "TERM_1",
+
+          totalAmount: term1Amount,
+          paidAmount: 0,
+
+          status: term1Amount === 0 ? "PAID" : "PENDING",
+
+          dueDate: term1DueDate ?? null,
+        },
+      });
+
+      /* ----------------------------------------------------------
+         TERM 2
+      ---------------------------------------------------------- */
+
+      await tx.studentFee.create({
+        data: {
+          studentId: student.id,
+          planId: plan.id,
+
+          installment: "TERM_2",
+
+          totalAmount: term2Amount,
+          paidAmount: 0,
+
+          status: term2Amount === 0 ? "PAID" : "PENDING",
+
+          dueDate: term2DueDate ?? null,
+        },
+      });
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Assign Fee Error:", error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to assign fee.",
+    };
   }
 }
 
@@ -1228,21 +2291,53 @@ export const createAnnouncement = async (
     const createData: AnnouncementCreateData = {
       title: data.title,
       description: data.description,
-      date: data.date,
+      priority: data.priority,
+      publishDate: data.publishDate,
+      expiryDate: data.expiryDate ?? null,
+      isPublished: data.isPublished,
       classId:
         data.classId && data.classId !== "ALL" ? Number(data.classId) : null,
     };
 
-    await prisma.announcement.create({
-      data: createData, // ✅ id removed, classId fixed
+    const announcement = await prisma.announcement.create({
+      data: createData,
     });
 
-    return { success: true };
+    if (data.isPublished) {
+      const whatsappResult = await sendAnnouncementWhatsApp(announcement.id);
+
+      if (whatsappResult.sentCount > 0 && whatsappResult.failedCount === 0) {
+        return {
+          success: true,
+          message: `Announcement created successfully and sent to ${whatsappResult.sentCount} parent(s) on WhatsApp.`,
+        };
+      }
+
+      if (whatsappResult.sentCount > 0 && whatsappResult.failedCount > 0) {
+        return {
+          success: true,
+          message: `Announcement created successfully. ${whatsappResult.sentCount} WhatsApp message(s) sent and ${whatsappResult.failedCount} failed.`,
+        };
+      }
+
+      return {
+        success: true,
+        message:
+          "Announcement created successfully, but no parents with phone numbers were found.",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Announcement created successfully.",
+    };
   } catch (err) {
     console.error("❌ createAnnouncement:", err);
+
     return {
       success: false,
-      error: "Failed to create announcement",
+      error:
+        err instanceof Error ? err.message : "Failed to create announcement",
     };
   }
 };
@@ -1255,22 +2350,56 @@ export const updateAnnouncement = async (
     const updateData = {
       title: data.title,
       description: data.description,
-      date: data.date,
+      priority: data.priority,
+      publishDate: data.publishDate,
+      expiryDate: data.expiryDate ?? null,
+      isPublished: data.isPublished,
       classId:
         data.classId && data.classId !== "ALL" ? Number(data.classId) : null,
     };
 
-    await prisma.announcement.update({
-      where: { id: data.id! }, // ✅ id only here
+    const announcement = await prisma.announcement.update({
+      where: {
+        id: data.id!,
+      },
       data: updateData,
     });
 
-    return { success: true };
+    if (data.isPublished && !announcement.whatsappSent) {
+      const whatsappResult = await sendAnnouncementWhatsApp(announcement.id);
+
+      if (whatsappResult.sentCount > 0 && whatsappResult.failedCount === 0) {
+        return {
+          success: true,
+          message: `Announcement updated successfully and sent to ${whatsappResult.sentCount} parent(s) on WhatsApp.`,
+        };
+      }
+
+      if (whatsappResult.sentCount > 0 && whatsappResult.failedCount > 0) {
+        return {
+          success: true,
+          message: `Announcement updated successfully. ${whatsappResult.sentCount} WhatsApp message(s) sent and ${whatsappResult.failedCount} failed.`,
+        };
+      }
+
+      return {
+        success: true,
+        message:
+          "Announcement updated successfully, but no parents with phone numbers were found.",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Announcement updated successfully.",
+    };
   } catch (err) {
     console.error("❌ updateAnnouncement:", err);
+
     return {
       success: false,
-      error: "Failed to update announcement",
+      error:
+        err instanceof Error ? err.message : "Failed to update announcement",
     };
   }
 };
@@ -1476,7 +2605,7 @@ export async function updateAdminProfile(_: any, formData: FormData) {
       },
     });
 
-    revalidatePath("/list/profile");
+    revalidatePath("/profile");
     return { success: true };
   } catch (error) {
     console.error("ADMIN PROFILE UPDATE ERROR:", error);
@@ -1518,7 +2647,7 @@ export async function updateTeacherProfile(_: any, formData: FormData) {
       },
     });
 
-    revalidatePath("/list/profile");
+    revalidatePath("/profile");
     return { success: true };
   } catch (error) {
     console.error("TEACHER PROFILE UPDATE ERROR:", error);
@@ -1547,7 +2676,7 @@ export async function uploadAvatar(formData: FormData) {
       data: { img: `/uploads/${fileName}` },
     });
 
-    revalidatePath("/list/profile");
+    revalidatePath("/profile");
   } catch (error) {
     console.error("AVATAR UPLOAD ERROR:", error);
   }
@@ -1569,4 +2698,1057 @@ export async function updateAdminLastActive(userId: string) {
   } catch (error) {
     console.error("LAST ACTIVE UPDATE FAILED:", error);
   }
+}
+
+export const createHomework = async (
+  _prevState: ActionState,
+  data: HomeworkFormValues,
+): Promise<ActionState> => {
+  try {
+    await prisma.homework.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        dueDate: data.dueDate,
+        classId: data.classId,
+        subjectId: data.subjectId,
+        teacherId: data.teacherId,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("createHomework error:", error);
+
+    return {
+      success: false,
+      error: "Failed to create homework",
+    };
+  }
+};
+
+export const updateHomework = async (
+  _prevState: ActionState,
+  data: HomeworkFormValues,
+): Promise<ActionState> => {
+  try {
+    await prisma.homework.update({
+      where: {
+        id: data.id,
+      },
+
+      data: {
+        title: data.title,
+        description: data.description,
+        dueDate: data.dueDate,
+        classId: data.classId,
+        subjectId: data.subjectId,
+        teacherId: data.teacherId,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("updateHomework error:", error);
+
+    return {
+      success: false,
+      error: "Failed to update homework",
+    };
+  }
+};
+
+export const deleteHomework = async (
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> => {
+  try {
+    const id = Number(formData.get("id"));
+
+    await prisma.homework.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("deleteHomework error:", error);
+
+    return {
+      success: false,
+      error: "Failed to delete homework",
+    };
+  }
+};
+
+// Academic-year
+export const createAcademicYear = async (
+  _prevState: ActionState,
+  data: AcademicYearSchema,
+): Promise<ActionState> => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Create Academic Year
+      const newYear = await tx.academicYear.create({
+        data: {
+          label: data.label,
+          isActive: data.isActive,
+        },
+      });
+
+      // Clone Classes
+      if (data.cloneFromId) {
+        const classes = await tx.class.findMany({
+          where: {
+            academicYearId: data.cloneFromId,
+          },
+        });
+
+        if (classes.length > 0) {
+          await tx.class.createMany({
+            data: classes.map((cls) => ({
+              name: cls.name,
+              capacity: cls.capacity,
+              rollPrefix: cls.rollPrefix,
+              supervisorId: cls.supervisorId,
+              gradeId: cls.gradeId,
+              order: cls.order,
+              academicYearId: newYear.id,
+            })),
+          });
+        }
+      }
+
+      // If Active selected
+      if (data.isActive) {
+        await tx.academicYear.updateMany({
+          where: {
+            id: {
+              not: newYear.id,
+            },
+          },
+          data: {
+            isActive: false,
+          },
+        });
+      }
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(error);
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        error: "Academic year already exists.",
+      };
+    }
+
+    return {
+      success: false,
+      error: "Something went wrong.",
+    };
+  }
+};
+
+export const updateAcademicYear = async (
+  _prevState: ActionState,
+  data: AcademicYearSchema,
+): Promise<ActionState> => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.academicYear.update({
+        where: {
+          id: data.id,
+        },
+        data: {
+          label: data.label,
+        },
+      });
+
+      if (data.isActive) {
+        await tx.academicYear.updateMany({
+          where: {
+            id: {
+              not: data.id,
+            },
+          },
+          data: {
+            isActive: false,
+          },
+        });
+
+        await tx.academicYear.update({
+          where: {
+            id: data.id,
+          },
+          data: {
+            isActive: true,
+          },
+        });
+      }
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(error);
+
+    return {
+      success: false,
+      error: "Unable to update Academic Year.",
+    };
+  }
+};
+
+export const deleteAcademicYear = async (id: number): Promise<ActionState> => {
+  try {
+    const year = await prisma.academicYear.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            students: true,
+          },
+        },
+      },
+    });
+
+    if (!year) {
+      return {
+        success: false,
+        error: "Academic Year not found.",
+      };
+    }
+
+    if (year._count.classes > 0 || year._count.students > 0) {
+      return {
+        success: false,
+        error:
+          "Cannot delete Academic Year because it contains Classes or Students.",
+      };
+    }
+
+    await prisma.academicYear.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(error);
+
+    return {
+      success: false,
+      error: "Unable to delete Academic Year.",
+    };
+  }
+};
+
+export type StudentAttendanceRow = {
+  id: string;
+  name: string;
+  surname: string;
+  rollNo: string;
+  admissionNo: string;
+  attendance: {
+    id: number;
+    status: string;
+    remarks: string | null;
+    markedBy: string | null;
+  } | null;
+};
+
+export async function getStudentAttendance(
+  classId: number,
+  date: Date,
+): Promise<{
+  success: boolean;
+  data?: StudentAttendanceRow[];
+  error?: string;
+}> {
+  try {
+    if (!classId) {
+      return {
+        success: false,
+        error: "Class is required.",
+      };
+    }
+
+    const students = await prisma.student.findMany({
+      where: {
+        classId,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        rollNo: true,
+        admissionNo: true,
+
+        attendances: {
+          where: {
+            date,
+          },
+          select: {
+            id: true,
+            status: true,
+            remarks: true,
+            markedBy: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: {
+        rollNo: "asc",
+      },
+    });
+
+    return {
+      success: true,
+      data: students.map((student) => ({
+        id: student.id,
+        name: student.name,
+        surname: student.surname,
+        rollNo: student.rollNo,
+        admissionNo: student.admissionNo,
+        attendance: student.attendances[0] ?? null,
+      })),
+    };
+  } catch (error) {
+    console.error("getStudentAttendance error:", error);
+
+    return {
+      success: false,
+      error: "Failed to load student attendance.",
+    };
+  }
+}
+
+export type SaveStudentAttendanceInput = {
+  classId: number;
+  date: string;
+  attendance: Record<string, "PRESENT" | "ABSENT">;
+};
+
+export async function saveStudentAttendance({
+  classId,
+  date,
+  attendance,
+}: {
+  classId: number;
+  date: string;
+  attendance: Record<string, "PRESENT" | "ABSENT">;
+}) {
+  try {
+
+    if (!date) {
+      return {
+        success: false,
+        error: "Attendance date is required.",
+      };
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return {
+        success: false,
+        error: "Invalid attendance date. Expected YYYY-MM-DD.",
+      };
+    }
+
+    const attendanceDate = parseAttendanceDate(date);
+
+    const calendarBlock = await getAttendanceCalendarBlock(attendanceDate);
+
+    if (calendarBlock.blocked) {
+      return {
+        success: false,
+        error: calendarBlock.reason,
+      };
+    }
+
+    const selectedClass = await prisma.class.findUnique({
+      where: {
+        id: classId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+    if (!selectedClass) {
+      return {
+        success: false,
+        error: "Class not found.",
+      };
+    }
+
+    /* ============================================================
+       ATTENDANCE RECORDS
+    ============================================================ */
+
+    const entries = Object.entries(attendance);
+
+    if (entries.length === 0) {
+      return {
+        success: false,
+        error: "No attendance records provided.",
+      };
+    }
+
+    /* ============================================================
+       UPSERT ATTENDANCE
+
+       One student + one date = one attendance record.
+    ============================================================ */
+
+    let savedCount = 0;
+
+    for (const [studentId, status] of entries) {
+      if (status !== "PRESENT" && status !== "ABSENT") {
+        continue;
+      }
+
+      /* ========================================================
+         VERIFY STUDENT BELONGS TO CLASS
+      ======================================================== */
+
+      const student = await prisma.student.findFirst({
+        where: {
+          id: studentId,
+          classId,
+          status: "ACTIVE",
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+      if (!student) {
+        continue;
+      }
+
+      /* ========================================================
+         FIND EXISTING ATTENDANCE
+
+         Since your Attendance model currently uses
+         an integer id, we locate the record by:
+
+         studentId + date
+      ======================================================== */
+
+      const existing = await prisma.attendance.findFirst({
+        where: {
+          studentId,
+          date: attendanceDate,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+      if (existing) {
+        await prisma.attendance.update({
+          where: {
+            id: existing.id,
+          },
+
+          data: {
+            status,
+          },
+        });
+      } else {
+        await prisma.attendance.create({
+          data: {
+            studentId,
+            date: attendanceDate,
+            status,
+          },
+        });
+      }
+
+      savedCount++;
+    }
+
+    return {
+      success: true,
+      savedCount,
+    };
+  } catch (error) {
+    console.error("saveStudentAttendance error:", error);
+
+    return {
+      success: false,
+      error: "Failed to save student attendance.",
+    };
+  }
+}
+
+export async function getMonthlyStudentAttendance(
+  classId: number,
+  month: string,
+) {
+  try {
+    /* ============================================================
+       VALIDATION
+    ============================================================ */
+
+    if (!classId) {
+      return {
+        success: false,
+        error: "Class is required.",
+      };
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return {
+        success: false,
+        error: "Invalid month. Expected YYYY-MM.",
+      };
+    }
+
+    /* ============================================================
+       AUTHENTICATION
+
+       This is an ADMIN operation.
+    ============================================================ */
+
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+      return {
+        success: false,
+        error: "Unauthorized.",
+      };
+    }
+
+    const role = (
+      sessionClaims?.metadata as
+        | {
+            role?: string;
+          }
+        | undefined
+    )?.role;
+
+    if (role !== "admin") {
+      return {
+        success: false,
+        error: "Only administrators can view monthly student attendance.",
+      };
+    }
+
+    /* ============================================================
+       MONTH RANGE
+
+       Example:
+       2026-08
+
+       start:
+       2026-08-01
+
+       endExclusive:
+       2026-09-01
+    ============================================================ */
+
+    const [year, monthNumber] = month.split("-").map(Number);
+
+    const monthStart = new Date(Date.UTC(year, monthNumber - 1, 1));
+
+    const monthEndExclusive = new Date(Date.UTC(year, monthNumber, 1));
+
+    /* ============================================================
+       TODAY
+
+       Use date-only comparison.
+    ============================================================ */
+
+    const now = new Date();
+
+    const todayUTC = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+
+    /*
+     * For the current month, don't count
+     * future working days.
+     *
+     * For a previous month, the entire
+     * month has already occurred.
+     */
+    const isCurrentMonth =
+      year === todayUTC.getUTCFullYear() &&
+      monthNumber === todayUTC.getUTCMonth() + 1;
+
+    const lastCountedDate = isCurrentMonth
+      ? todayUTC
+      : new Date(monthEndExclusive.getTime() - 24 * 60 * 60 * 1000);
+
+    /* ============================================================
+       CLASS
+    ============================================================ */
+
+    const selectedClass = await prisma.class.findUnique({
+      where: {
+        id: classId,
+      },
+
+      select: {
+        id: true,
+        name: true,
+
+        academicYear: {
+          select: {
+            label: true,
+          },
+        },
+      },
+    });
+
+    if (!selectedClass) {
+      return {
+        success: false,
+        error: "Selected class was not found.",
+      };
+    }
+
+    /* ============================================================
+       ACTIVE STUDENTS
+    ============================================================ */
+
+    const students = await prisma.student.findMany({
+      where: {
+        classId,
+        status: "ACTIVE",
+      },
+
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        rollNo: true,
+        admissionNo: true,
+      },
+
+      orderBy: [
+        {
+          name: "asc",
+        },
+        {
+          surname: "asc",
+        },
+      ],
+    });
+
+    const totalStudents = students.length;
+
+    /* ============================================================
+       HOLIDAYS
+
+       Used only for calculating working days.
+    ============================================================ */
+
+    const holidays = await prisma.holiday.findMany({
+      where: {
+        date: {
+          gte: monthStart,
+          lt: monthEndExclusive,
+        },
+
+        isFullDay: true,
+      },
+
+      select: {
+        date: true,
+      },
+    });
+
+    const holidayDates = new Set(
+      holidays.map((holiday) => toDateKey(holiday.date)),
+    );
+
+    /* ============================================================
+       WORKING DAYS
+
+       School week:
+       Monday → Saturday
+       Sunday   → non-working
+
+       Holidays are excluded.
+
+       IMPORTANT:
+       This is now used for calendar information only.
+
+       Attendance records are NOT filtered by workingDayKeys.
+       This allows the admin monthly report to reflect all
+       attendance records actually stored in the database.
+    ============================================================ */
+
+    const workingDayKeys = getWorkingDayKeys({
+      start: monthStart,
+      end: lastCountedDate,
+      holidayDates,
+    });
+
+    const workingDays = workingDayKeys.length;
+
+    /* ============================================================
+       FUTURE WORKING DAYS
+
+       Only relevant for current month.
+    ============================================================ */
+
+    const futureWorkingDayKeys = isCurrentMonth
+      ? getWorkingDayKeys({
+          start: new Date(todayUTC.getTime() + 24 * 60 * 60 * 1000),
+
+          end: new Date(monthEndExclusive.getTime() - 24 * 60 * 60 * 1000),
+
+          holidayDates,
+        })
+      : [];
+
+    const futureDays = futureWorkingDayKeys.length;
+
+    /* ============================================================
+       ATTENDANCE RECORDS
+
+       IMPORTANT:
+       Fetch ALL attendance records belonging to active
+       students in the selected class and selected month.
+
+       We intentionally do NOT filter these records by
+       workingDayKeys.
+
+       Reason:
+       The admin monthly report should reflect the actual
+       attendance records stored in the Attendance table.
+    ============================================================ */
+
+    const attendanceRecords =
+      totalStudents === 0
+        ? []
+        : await prisma.attendance.findMany({
+            where: {
+              studentId: {
+                in: students.map((student) => student.id),
+              },
+
+              date: {
+                gte: monthStart,
+                lt: monthEndExclusive,
+              },
+            },
+
+            select: {
+              studentId: true,
+              date: true,
+              status: true,
+            },
+
+            orderBy: {
+              date: "asc",
+            },
+          });
+
+    /* ============================================================
+       ATTENDANCE MAP
+
+       studentId → date → status
+
+       Example:
+
+       student-1
+         2026-08-01 → PRESENT
+         2026-08-02 → PRESENT
+         2026-08-03 → ABSENT
+         ...
+    ============================================================ */
+
+    const attendanceMap = new Map<string, Map<string, string>>();
+
+    for (const record of attendanceRecords) {
+      const dateKey = toDateKey(record.date);
+
+      const status = String(record.status).toUpperCase();
+
+      /*
+       * Only count valid attendance statuses.
+       */
+      if (status !== "PRESENT" && status !== "ABSENT") {
+        continue;
+      }
+
+      if (!attendanceMap.has(record.studentId)) {
+        attendanceMap.set(record.studentId, new Map());
+      }
+
+      attendanceMap.get(record.studentId)!.set(dateKey, status);
+    }
+
+    /* ============================================================
+       STUDENT MONTHLY COUNTS
+    ============================================================ */
+
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalMarked = 0;
+
+    const monthlyStudents = students.map((student) => {
+      const studentAttendance = attendanceMap.get(student.id);
+
+      let present = 0;
+      let absent = 0;
+
+      const attendanceHistory: MonthlyAttendanceDay[] = [];
+
+      if (studentAttendance) {
+        for (const [date, status] of studentAttendance.entries()) {
+          if (status !== "PRESENT" && status !== "ABSENT") {
+            continue;
+          }
+
+          attendanceHistory.push({
+            date,
+            status,
+          });
+
+          if (status === "PRESENT") {
+            present++;
+          }
+
+          if (status === "ABSENT") {
+            absent++;
+          }
+        }
+      }
+
+      const marked = present + absent;
+
+      const pending = Math.max(workingDays - marked, 0);
+
+      totalPresent += present;
+      totalAbsent += absent;
+      totalMarked += marked;
+
+      const attendancePercentage =
+        marked === 0 ? 0 : Number(((present / marked) * 100).toFixed(2));
+
+      return {
+        id: student.id,
+        name: student.name,
+        surname: student.surname,
+        rollNo: student.rollNo,
+        admissionNo: student.admissionNo,
+
+        present,
+        absent,
+        pending,
+
+        attendancePercentage,
+
+        // IMPORTANT
+        attendance: attendanceHistory,
+      };
+    });
+
+    /* ============================================================
+       EXPECTED RECORDS
+    ============================================================ */
+
+    const expectedRecords = totalStudents * workingDays;
+
+    /*
+     * markedRecords is based on the actual attendance
+     * records counted above.
+     */
+    const markedRecords = totalMarked;
+
+    /*
+     * Pending cannot become negative even if attendance
+     * was entered for an extra/non-working day.
+     */
+    const pending = Math.max(expectedRecords - markedRecords, 0);
+
+    /* ============================================================
+       COMPLETED DAYS
+
+       A working day is considered completed only when
+       every active student has either PRESENT or ABSENT.
+
+       IMPORTANT:
+       Only working days participate in this calculation.
+       Extra Sunday/non-working-day attendance records do
+       not make a working day "completed".
+    ============================================================ */
+
+    let completedDays = 0;
+
+    if (totalStudents > 0 && workingDays > 0) {
+      for (const dateKey of workingDayKeys) {
+        let dayComplete = true;
+
+        for (const student of students) {
+          const status = attendanceMap.get(student.id)?.get(dateKey);
+
+          if (status !== "PRESENT" && status !== "ABSENT") {
+            dayComplete = false;
+            break;
+          }
+        }
+
+        if (dayComplete) {
+          completedDays++;
+        }
+      }
+    }
+
+    /* ============================================================
+       OVERALL MONTHLY ATTENDANCE PERCENTAGE
+
+       Present / (Present + Absent)
+
+       Pending records do NOT count as absent.
+    ============================================================ */
+
+    const attendancePercentage =
+      markedRecords === 0
+        ? 0
+        : Number(((totalPresent / markedRecords) * 100).toFixed(2));
+
+    /* ============================================================
+       RESPONSE
+    ============================================================ */
+
+    return {
+      success: true,
+
+      data: {
+        month,
+
+        totalStudents,
+
+        workingDays,
+
+        workingDayKeys,
+
+        completedDays,
+
+        futureDays,
+
+        expectedRecords,
+
+        markedRecords,
+
+        present: totalPresent,
+
+        absent: totalAbsent,
+
+        pending,
+
+        attendancePercentage,
+
+        students: monthlyStudents,
+      },
+    };
+  } catch (error) {
+    console.error("getMonthlyStudentAttendance error:", error);
+
+    return {
+      success: false,
+      error: "Failed to load monthly student attendance.",
+    };
+  }
+}
+
+function toDateKey(date: Date): string {
+  return [
+    date.getUTCFullYear().toString().padStart(4, "0"),
+
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getWorkingDayKeys({
+  start,
+  end,
+  holidayDates,
+}: {
+  start: Date;
+  end: Date;
+  holidayDates: Set<string>;
+}): string[] {
+  const result: string[] = [];
+
+  if (start > end) {
+    return result;
+  }
+
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const day = cursor.getUTCDay();
+
+    /**
+     * Sunday = 0
+     *
+     * Monday = 1
+     *
+     * Saturday = 6
+     */
+    const isSunday = day === 0;
+
+    const dateKey = toDateKey(cursor);
+
+    if (!isSunday && !holidayDates.has(dateKey)) {
+      result.push(dateKey);
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return result;
+}
+
+function parseAttendanceDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (
+    !year ||
+    !month ||
+    !day ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    throw new Error("Invalid attendance date.");
+  }
+
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 }

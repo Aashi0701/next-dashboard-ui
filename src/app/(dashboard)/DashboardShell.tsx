@@ -3,69 +3,230 @@
 import { ReactNode, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
 import Menu from "@/components/Menu";
 import NavbarClient from "@/components/NavbarClient";
+import TeacherMobileBottomNav from "@/components/mobile/teacher/TeacherMobileBottomNav";
 
 type Role = "admin" | "teacher" | "student" | "parent";
+
+interface DashboardShellProps {
+  children: ReactNode;
+  role: Role;
+}
 
 export default function DashboardShell({
   children,
   role,
-}: {
-  children: ReactNode;
-  role: Role;
-}) {
+}: DashboardShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    /* ⭐ CRITICAL FIX: h-screen + overflow-hidden */
-    <div className="h-screen flex w-full overflow-hidden bg-[#F7F8FA]">
+    <div className="flex h-screen w-full overflow-hidden bg-[#F7F8FA]">
       {/* ================= DESKTOP SIDEBAR ================= */}
-      {/* ⭐ FIX: h-screen + no scroll */}
-      <aside className="hidden lg:flex flex-col h-screen w-[16%] xl:w-[14%] bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 border-r p-3 shrink-0">
-        <Link href="/" className="flex items-center gap-2 mb-6 px-2">
-          <Image src="/my_logo.png" alt="logo" width={32} height={32} />
-          <span className="font-bold sm:text-xs lg:text-base">TrueSunshine</span>
-        </Link>
 
-        {/* menu only scrolls internally if needed */}
-        <div className="flex-1 overflow-y-auto">
-          <Menu mode="desktop" role={role} />
+      <aside
+        className="
+          relative
+          hidden
+          h-screen
+          w-[235px]
+          shrink-0
+          flex-col
+          overflow-hidden
+          border-r
+          border-white/10
+          bg-[#464B71]
+          px-2.5
+          py-3
+          shadow-xl
+          lg:flex
+        "
+      >
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <svg
+            className="absolute bottom-0 left-0 h-[120px] w-full"
+            viewBox="0 0 235 120"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 55C30 45 52 48 72 68C91 87 103 108 119 120H0V55Z"
+              fill="#B87938"
+            />
+
+            <path
+              d="M78 120C119 105 153 84 177 59C201 34 216 12 235 0V120H78Z"
+              fill="#FF9100"
+            />
+          </svg>
+        </div>
+
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <Link href="/" className="mb-4 flex items-center gap-2 px-2">
+            <div
+              className="
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-lg
+                bg-white
+                shadow-sm
+              "
+            >
+              <Image
+                src="/TSLogo.png"
+                alt="TrueSunshine"
+                width={27}
+                height={27}
+                className="object-contain"
+              />
+            </div>
+
+            <span className="text-[15px] font-bold tracking-tight text-white">
+              TrueSunshine
+            </span>
+          </Link>
+
+          <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <Menu mode="desktop" role={role} />
+          </div>
         </div>
       </aside>
 
-      {/* ================= MOBILE DRAWER ================= */}
+      {/* ================= MOBILE MENU ================= */}
+
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="
+              absolute
+              inset-0
+              bg-black/45
+              backdrop-blur-[2px]
+            "
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          <aside className="absolute left-0 top-0 h-full w-62 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 p-4 overflow-y-auto">
-            <Link href="/" className="flex items-center gap-2 mb-6">
-              <Image src="/my_logo.png" alt="logo" width={32} height={32} />
-              <span className="font-bold text-white">TrueSunshine</span>
-            </Link>
+          <aside
+            className="
+              absolute
+              left-0
+              top-0
+              h-full
+              w-[235px]
+              overflow-hidden
+              bg-[#464B71]
+              px-2.5
+              py-3
+              shadow-2xl
+            "
+          >
+            <div className="pointer-events-none absolute inset-0 z-0">
+              <svg
+                className="absolute bottom-0 left-0 h-[150px] w-full"
+                viewBox="0 0 235 150"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M0 78C35 67 58 80 79 103C96 122 114 145 153 150H0V78Z"
+                  fill="#B87938"
+                />
 
-            <Menu
-              mode="mobile"
-              role={role}
-              onItemClick={() => setMobileMenuOpen(false)}
-            />
+                <path
+                  d="M235 36C211 66 197 91 168 111C145 127 124 140 103 150H235V36Z"
+                  fill="#FF9100"
+                />
+
+                <path
+                  d="M235 70C216 89 198 105 178 118C155 133 131 144 111 150H235V70Z"
+                  fill="#FF9100"
+                />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex h-full flex-col">
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="mb-4 flex items-center gap-2 px-2"
+              >
+                <div
+                  className="
+                    flex
+                    h-8
+                    w-8
+                    items-center
+                    justify-center
+                    rounded-lg
+                    bg-white
+                    shadow-sm
+                  "
+                >
+                  <Image
+                    src="/TSLogo.png"
+                    alt="TrueSunshine"
+                    width={27}
+                    height={27}
+                    className="object-contain"
+                  />
+                </div>
+
+                <span className="text-[15px] font-bold tracking-tight text-white">
+                  TrueSunshine
+                </span>
+              </Link>
+
+              <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto">
+                <Menu
+                  mode="mobile"
+                  role={role}
+                  onItemClick={() => setMobileMenuOpen(false)}
+                />
+              </div>
+            </div>
           </aside>
         </div>
       )}
 
-      {/* ================= MAIN CONTENT ================= */}
-      {/* ⭐ ONLY THIS AREA SCROLLS */}
-      <section className="flex flex-col flex-1 overflow-hidden">
-        <NavbarClient onMenuClick={() => setMobileMenuOpen(true)} />
+      {/* ================= MAIN APPLICATION AREA ================= */}
 
-        <main className="flex-1 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-2 sm:p-3">
+      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative z-[100] shrink-0">
+          <NavbarClient
+            role={role}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        </div>
+
+        <main
+          className="
+            relative
+            z-0
+            min-w-0
+            max-w-full
+            flex-1
+            overflow-x-hidden
+            overflow-y-auto
+            pb-24
+            lg:p-3
+            lg:pb-3
+          "
+        >
           {children}
         </main>
       </section>
+
+      {/* ================= TEACHER MOBILE BOTTOM NAVIGATION ================= */}
+
+      {role === "teacher" && (
+        <div className="teacher-mobile-bottom-nav lg:hidden">
+          <TeacherMobileBottomNav />
+        </div>
+      )}
     </div>
   );
 }

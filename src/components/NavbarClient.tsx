@@ -1,66 +1,193 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu as MenuIcon } from "lucide-react";
+import Image from "next/image";
+
+import NotificationBell from "@/components/admin/NotificationBell";
 
 const UserButton = dynamic(
   () => import("@clerk/nextjs").then((mod) => mod.UserButton),
-  { ssr: false }
+  {
+    ssr: false,
+  },
 );
+
+type Role = "admin" | "teacher" | "student" | "parent";
 
 type NavbarData = {
   fullName: string;
   role: string;
-  unreadAnnouncements: number;
+  unreadNotifications: number;
 };
 
-export default function NavbarClient({ onMenuClick }: { onMenuClick?: () => void }) {
-  const pathname = usePathname();
+interface NavbarClientProps {
+  role: Role;
+  onMenuClick?: () => void;
+}
+
+export default function NavbarClient({ role, onMenuClick }: NavbarClientProps) {
   const [data, setData] = useState<NavbarData | null>(null);
 
   useEffect(() => {
-    fetch("/api/navbar")
-      .then((res) => res.json())
+    fetch("/api/navbar", {
+      cache: "no-store",
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load navbar data");
+        }
+
+        return res.json();
+      })
       .then(setData)
       .catch(() => {
-        setData({ fullName: "", role: "", unreadAnnouncements: 0 });
+        setData({
+          fullName: "",
+          role: "",
+          unreadNotifications: 0,
+        });
       });
   }, []);
 
-  const hideBadge = pathname.startsWith("/list/announcements");
-  const showBadge = data && data.unreadAnnouncements > 0 && !hideBadge;
-
   return (
-    <nav className="h-14 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-300 border-b flex items-center px-4">
-      <button
-        onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-md hover:bg-gray-100 text-white font-bold"
-      >
-        ☰
-      </button>
+    <nav
+      className="
+        relative
+        flex
+        h-12
+        shrink-0
+        items-center
+        overflow-visible
+        bg-[#464B71]
+        shadow-sm
+        sm:h-14
+      "
+    >
+      {/* Decorative Background */}
 
-      <div className="ml-auto flex items-center gap-4">
-        <Link
-          href="/list/announcements"
-          className="relative w-6 h-6 flex items-center justify-center rounded-full bg-white"
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 1000 56"
+          preserveAspectRatio="none"
+          aria-hidden="true"
         >
-          <Image src="/announcements.png" alt="" width={14} height={14} />
-          {showBadge && (
-            <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] px-1.5 rounded-full">
-              {data!.unreadAnnouncements > 99 ? "99+" : data!.unreadAnnouncements}
-            </span>
-          )}
-        </Link>
+          <path d="M730 0H1000V56H650C694 48 722 29 730 0Z" fill="#B87938" />
 
-        <div className="hidden sm:flex flex-col items-end">
-          <span className="text-xs font-medium">{data?.fullName}</span>
-          <span className="text-[10px] text-gray-500 capitalize">{data?.role}</span>
+          <path d="M765 0H1000V56H685C729 47 757 27 765 0Z" fill="#FF9100" />
+        </svg>
+      </div>
+
+      {/* Navbar Content */}
+
+      <div
+        className="
+          relative
+          z-10
+          flex
+          h-full
+          w-full
+          items-center
+          px-3
+          sm:px-4
+        "
+      >
+        <div className="flex min-w-0 items-center">
+          {role === "teacher" || role === "parent" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <Image
+                src="/TSLogo.png"
+                alt="TrueSunshine"
+                width={30}
+                height={30}
+                className="h-7 w-7 shrink-0 rounded-md object-contain"
+              />
+
+              <span className="truncate text-sm font-bold tracking-tight text-white">
+                TrueSunshine
+              </span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              aria-label="Open navigation menu"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white transition hover:bg-white/10 active:scale-95 md:hidden"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
-        <UserButton />
+        {/* Right Controls */}
+
+        <div
+          className="
+            ml-auto
+            flex
+            h-full
+            items-center
+            gap-2
+            sm:gap-3
+          "
+        >
+          {/* Notification */}
+
+          <div className="relative z-30 flex items-center justify-center">
+            <NotificationBell role={role} />
+          </div>
+
+          {/* User Information */}
+
+          <div className="hidden items-center sm:flex">
+            <div className="text-right leading-tight">
+              <p className="max-w-[190px] truncate text-xs font-semibold text-white">
+                {data?.fullName || "User"}
+              </p>
+
+              <p className="mt-0.5 text-[10px] font-medium capitalize text-white/80">
+                {data?.role || role}
+              </p>
+            </div>
+          </div>
+
+          {/* Clerk User Button */}
+
+          <div
+            className="
+              relative
+              z-30
+              flex
+              h-[34px]
+              w-[34px]
+              items-center
+              justify-center
+              overflow-hidden
+              rounded-full
+              bg-white
+              shadow-sm
+              ring-1
+              ring-white/80
+              sm:h-10
+              sm:w-10
+              sm:ring-2
+              sm:ring-white/60
+            "
+          >
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-[30px] w-[30px] sm:h-9 sm:w-9",
+                  userButtonAvatarBox: "h-[30px] w-[30px] sm:h-9 sm:w-9",
+                  userButtonPopoverCard:
+                    "rounded-xl border border-slate-200 shadow-xl",
+                },
+              }}
+            />
+          </div>
+        </div>
       </div>
     </nav>
   );

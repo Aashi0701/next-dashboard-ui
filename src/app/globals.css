@@ -6,6 +6,26 @@
 @import "swiper/css/pagination";
 @import "react-calendar/dist/Calendar.css";
 
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+
+.react-datepicker {
+  border-radius: 18px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.react-datepicker__header {
+  background: #eef2ff !important;
+  border-bottom: none !important;
+}
+
+.react-datepicker__day--selected {
+  background: #7267f6 !important;
+  border-radius: 999px !important;
+}
+
 .react-calendar{
     width: 100% !important;
     border: none !important;
@@ -343,76 +363,324 @@
   animation: shake 0.35s ease-in-out;
 }
 
-.react-calendar__tile {
-  position: relative;
-  overflow: visible;
-}
+/* =========================
+   Dashboard Calendar
+========================= */
 
-.react-calendar__tile > button {
+.calendar-grid {
   position: relative;
+  width: 100%;
   overflow: visible !important;
 }
 
-/* Holiday tile text */
-.react-calendar__tile.holiday-tile {
-  font-weight: 700;
-  color: #15803d;
+.calendar-grid .react-calendar {
+  width: 100% !important;
+  max-width: 100%;
+  border: none !important;
+  background: transparent !important;
+  font-family: "Inter", sans-serif !important;
+  overflow: visible !important;
 }
 
-/* Dot */
-.holiday-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-  background-color: #16a34a;
+/* =========================
+   Weekday Alignment
+========================= */
+
+.calendar-grid .react-calendar__month-view__weekdays {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  margin-bottom: 2px;
 }
 
-/* Marker */
-.holiday-marker {
+.calendar-grid .react-calendar__month-view__weekdays__weekday {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+
+  width: 100% !important;
+  max-width: none !important;
+
+  padding: 3px 0 !important;
+
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+
+  color: #64748b !important;
+  text-align: center !important;
+}
+
+.calendar-grid
+  .react-calendar__month-view__weekdays__weekday
+  abbr {
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none !important;
+}
+
+/* =========================
+   Date Grid Alignment
+========================= */
+
+.calendar-grid .react-calendar__month-view__days {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  width: 100% !important;
+}
+
+.calendar-grid .react-calendar__tile {
+  position: relative !important;
+
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+
+  height: 39px !important;
+
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+
+  padding: 6px 2px 8px !important;
+
+  border-radius: 10px !important;
+
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+
+  color: #1e293b !important;
+  background: transparent !important;
+}
+
+.calendar-grid .react-calendar__tile:hover {
+  background: #f8fafc !important;
+}
+
+.calendar-grid .react-calendar__tile abbr {
+  position: relative;
+  z-index: 2;
+
+  display: block;
+  width: 100%;
+
+  text-align: center;
+  text-decoration: none !important;
+}
+
+.calendar-grid .react-calendar__tile--active {
+  background: #eef2ff !important;
+  color: #4b517d !important;
+  border-radius: 10px !important;
+}
+
+.calendar-grid .react-calendar__tile--now {
+  background: #eef2ff !important;
+  color: #4b517d !important;
+}
+
+.calendar-grid
+  .react-calendar__month-view__days__day--neighboringMonth {
+  color: #94a3b8 !important;
+}
+
+/* =========================
+   Holiday
+========================= */
+
+.calendar-grid .calendar-holiday {
+  color: #ef4444 !important;
+  font-weight: 600 !important;
+}
+
+/* =========================
+   Second Saturday
+========================= */
+
+.calendar-grid .calendar-second-saturday {
+  background: #fff7ed !important;
+}
+
+.calendar-grid .calendar-second-saturday abbr {
+  color: #c2410c !important;
+}
+
+/* =========================
+   Dots
+========================= */
+
+.calendar-grid .calendar-dot-container {
   position: absolute;
+
   bottom: 4px;
   left: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
   transform: translateX(-50%);
-  pointer-events: none; /* important */
+
+  pointer-events: none;
 }
 
-/* Tooltip */
-.holiday-tooltip {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
+.calendar-grid .calendar-dot {
+  display: block;
 
-  background: #111827;
-  color: #fff;
-  font-size: 11px;
-  padding: 4px 10px;
+  width: 4px;
+  height: 4px;
+
   border-radius: 9999px;
+}
 
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+.calendar-grid .calendar-dot.holiday {
+  background: #ef4444;
+}
+
+.calendar-grid .calendar-dot.saturday {
+  background: #f97316;
+}
+
+.calendar-grid .calendar-dot.event {
+  background: #22c55e;
+}
+
+/* =========================
+   Holiday Tooltip
+========================= */
+
+.calendar-grid .react-calendar__tile {
+  overflow: visible !important;
+}
+
+.calendar-grid .calendar-holiday-tooltip {
+  position: absolute;
+
+  left: 50%;
+  top: calc(100% + 4px);
+  bottom: auto;
+
+  z-index: 999999;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 135px;
+  max-width: 190px;
+
+  padding: 6px 9px;
+
+  border-radius: 7px;
+
+  background: #303552;
+  color: #ffffff;
+
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.3;
+
+  white-space: normal;
+  text-align: left;
+
+  transform: translateX(-50%);
+
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.18),
+    0 2px 5px rgba(15, 23, 42, 0.08);
 
   opacity: 0;
+  visibility: hidden;
+
   pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 10000;
+
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
 }
 
-/* Arrow */
-.holiday-tooltip::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 6px;
-  border-style: solid;
-  border-color: #111827 transparent transparent transparent;
+.calendar-grid .calendar-holiday-tooltip span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #cbd5e1;
+
+  font-size: 8px;
+  font-weight: 400;
+
+  line-height: 1.25;
 }
 
-/* 🔑 THE FIX */
-.react-calendar__tile button:hover .holiday-tooltip {
+/* Show tooltip */
+
+.calendar-grid .react-calendar__tile:hover .calendar-holiday-tooltip {
   opacity: 1;
+  visibility: visible;
+}
+
+/* =========================
+   Tooltip Arrow
+========================= */
+
+.calendar-grid .calendar-holiday-tooltip::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  bottom: 100%;
+
+  width: 0;
+  height: 0;
+
+  transform: translateX(-50%);
+
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #303552;
+}
+
+/* =========================
+   First Column Tooltip
+========================= */
+
+.calendar-grid
+  .calendar-tooltip-first
+  .calendar-holiday-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.calendar-grid
+  .calendar-tooltip-first
+  .calendar-holiday-tooltip::after {
+  left: 14px;
+  transform: none;
+}
+
+/* =========================
+   Right Side Tooltip
+========================= */
+
+.calendar-grid
+  .calendar-tooltip-last
+  .calendar-holiday-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.calendar-grid
+  .calendar-tooltip-last
+  .calendar-holiday-tooltip::after {
+  left: auto;
+  right: 14px;
+  transform: none;
 }
 
 /* =======================
@@ -462,9 +730,6 @@
   font-weight: 600;
 }
 
-/* =======================
-   Month Grid
-======================= */
 .rbc-month-view {
   border-radius: 14px;
   overflow: hidden;
@@ -496,9 +761,6 @@
   background-color: #eff6ff;
 }
 
-/* =======================
-   Date Numbers
-======================= */
 .rbc-date-cell {
   padding: 4px 6px;
   font-size: 0.7rem;
@@ -511,9 +773,6 @@
   color: #9ca3af;
 }
 
-/* =======================
-   Events (PREMIUM LOOK)
-======================= */
 .calendar-event {
   border-radius: 999px;
   padding: 2px 10px;
@@ -538,9 +797,6 @@
   font-weight: 600;
 }
 
-/* =======================
-   Popup (More events)
-======================= */
 .rbc-overlay {
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
@@ -551,9 +807,6 @@
   font-weight: 600;
 }
 
-/* =======================
-   Remove selection glow
-======================= */
 .rbc-slot-selection {
   background: transparent;
 }
@@ -585,9 +838,6 @@
   }
 }
 
-/* ===============================
-   Swiper Navigation – Responsive
-================================ */
 
 /* Default (desktop) */
 .swiper-button-next,
@@ -616,8 +866,6 @@
     font-size: 12px;
   }
 }
-
-/* ================= FLOATING LOGO ================= */
 
 @keyframes floatSoft {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -840,24 +1088,25 @@
 /* ================= CLOTH BANNER ================= */
 .cloth-banner {
   position: relative;
+
   padding: 10px 36px 12px 32px;
+
   background: linear-gradient(
-    90deg,
-    #9042e4,
-    #f72cb3,
-    #FECDD3
-  );
+  90deg,
+  #555B86 0%,
+  #626991 38%,
+  #F59A23 100%
+);
 
   color: #ffffff;
+
   font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 
-  /* ❌ remove pill look */
   border-radius: 0;
 
-  /* irregular cloth shape */
   clip-path: polygon(
     0% 20%,
     5% 0%,
@@ -868,44 +1117,50 @@
     0% 70%
   );
 
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 14px rgba(75, 81, 125, 0.25);
 
-  /* fabric motion */
   animation: cloth-wave 3.8s ease-in-out infinite;
+
   transform-origin: left center;
 }
 
 .cloth-banner::after {
   content: "";
+
   position: absolute;
   left: -18px;
   top: 18%;
+
   width: 18px;
   height: 64%;
+
   background: inherit;
+
   clip-path: polygon(
     100% 0%,
     0% 50%,
     100% 100%
   );
-  filter: brightness(0.9);
+
+  filter: brightness(0.88);
 }
 
-/* Tail cut to avoid button look */
 .cloth-banner::before {
   content: "";
+
   position: absolute;
   left: -14px;
   top: 0;
+
   width: 14px;
   height: 100%;
+
   background: linear-gradient(
     to left,
-    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0.22),
     transparent
   );
 }
-
 /* ================= ANIMATIONS ================= */
 @keyframes airplane-fly {
   from {
@@ -956,9 +1211,6 @@
 
 /* Testimonials Styles */
 
-/* ============================= */
-/* Fade-in animation (card)      */
-/* ============================= */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -974,62 +1226,129 @@
   animation: fade-in 0.6s ease-out both;
 }
 
-/* ============================= */
-/* Swiper Pagination (FIXED)     */
-/* ============================= */
+/* Testimonials */
 
-/* Swiper wrapper */
 .testimonial-swiper {
-  padding-bottom: 56px; /* space for dots */
+  width: 100%;
+  overflow: visible !important;
+  padding: 8px 0 28px;
 }
 
-/* Pagination container */
+.testimonial-swiper .swiper-wrapper {
+  align-items: stretch;
+}
+
+.testimonial-swiper .swiper-slide {
+  opacity: 0.45;
+  transform: scale(0.88);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.testimonial-swiper .swiper-slide-active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 5;
+}
+
+.testimonial-swiper .swiper-slide-prev,
+.testimonial-swiper .swiper-slide-next {
+  opacity: 0.58;
+  transform: scale(0.91);
+}
+
+.testimonial-swiper .swiper-slide-active .testimonial-card {
+  box-shadow:
+    0 18px 40px rgba(75, 81, 125, 0.13),
+    0 5px 15px rgba(245, 154, 35, 0.06);
+  transform: translateY(-3px);
+}
+
+.testimonial-swiper .swiper-slide-active .testimonial-active-quote {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.testimonial-swiper .swiper-slide-active .testimonial-quote {
+  opacity: 0;
+}
+
+.testimonial-swiper .swiper-slide-active .testimonial-avatar {
+  border-color: rgba(75, 81, 125, 0.12);
+  box-shadow:
+    0 8px 18px rgba(75, 81, 125, 0.12);
+}
+
+.testimonial-swiper .swiper-slide-active .testimonial-author {
+  color: #4B517D;
+}
+
+.testimonial-card {
+  transition:
+    transform 0.5s ease,
+    box-shadow 0.5s ease;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 20px 38px rgba(75, 81, 125, 0.14),
+    0 6px 16px rgba(245, 154, 35, 0.08);
+}
+
 .testimonial-pagination {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
   display: flex;
-  gap: 8px;
-  z-index: 30;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-/* Dots */
 .testimonial-pagination .swiper-pagination-bullet {
   width: 6px;
   height: 6px;
+  margin: 0 !important;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.35);
+  background: #cbd5e1;
   opacity: 1;
-  transition: transform 0.3s ease, background 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
 }
 
 .testimonial-pagination .swiper-pagination-bullet-active {
-  background: linear-gradient(90deg, #6366f1, #ec4899);
-  transform: scale(1.4);
+  width: 18px;
+  background: linear-gradient(
+    90deg,
+    #4B517D,
+    #F59A23
+  );
 }
 
-/* ============================= */
-/* Responsive fine-tuning        */
-/* ============================= */
+.testimonial-prev,
+.testimonial-next {
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
 
-@media (max-width: 640px) {
-  .testimonial-swiper {
-    padding-bottom: 48px;
+.testimonial-prev:hover,
+.testimonial-next:hover {
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 6px 16px rgba(75, 81, 125, 0.12);
+}
+
+@media (max-width: 767px) {
+  .testimonial-swiper .swiper-slide,
+  .testimonial-swiper .swiper-slide-prev,
+  .testimonial-swiper .swiper-slide-next {
+    opacity: 1;
+    transform: scale(1);
   }
-}
 
-/* Tablet */
-@media (min-width: 640px) {
-  .swiper-pagination {
-    bottom: 10px;
-  }
-}
-
-/* Desktop */
-@media (min-width: 1024px) {
-  .swiper-pagination {
-    bottom: 8px;
+  .testimonial-card {
+    max-width: 280px;
   }
 }
 
@@ -1143,30 +1462,95 @@
     }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-    }
-  body {
-    @apply bg-background text-foreground;
-    }
+/* =========================
+   TOASTIFY - TRUE SUNSHINE
+   ========================= */
+
+.Toastify__toast-container {
+  z-index: 999999 !important;
 }
 
 .Toastify__toast {
-  min-height: unset !important;
-  padding: 8px 14px !important;
-  width: auto !important;
-  max-width: 320px !important;
+  min-height: 48px !important;
+  padding: 10px 14px !important;
+  width: 340px !important;
+  max-width: 340px !important;
+
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  color: #4B517D !important;
+
+  border: 1px solid #E5E7EB !important;
+  box-shadow: 0 10px 30px rgba(75, 81, 125, 0.16) !important;
+
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }
 
 .Toastify__toast-body {
   margin: 0 !important;
   padding: 0 !important;
+  color: #4B517D !important;
 }
 
-/* Optional: thinner success border */
 .Toastify__toast--success {
-  border-left: 3px solid #22c55e;
+  border-left: 4px solid #22C55E !important;
+}
+
+.Toastify__toast--error {
+  border-left: 4px solid #EF4444 !important;
+}
+
+.Toastify__toast--warning {
+  border-left: 4px solid #F59A23 !important;
+}
+
+.Toastify__toast--info {
+  border-left: 4px solid #4B517D !important;
+}
+
+.Toastify__close-button {
+  color: #64748B !important;
+  opacity: 0.7 !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+}
+
+.Toastify__progress-bar--success {
+  background: #F59A23 !important;
+}
+
+.Toastify__progress-bar--error {
+  background: #EF4444 !important;
+}
+
+/* =========================
+   MOBILE TOAST
+   ========================= */
+
+@media (max-width: 640px) {
+  .Toastify__toast-container--bottom-center {
+    width: calc(100% - 32px) !important;
+    max-width: none !important;
+
+    left: 50% !important;
+    right: auto !important;
+
+    bottom: 76px !important;
+
+    transform: translateX(-50%) !important;
+
+    padding: 0 !important;
+  }
+
+  .Toastify__toast-container--bottom-center .Toastify__toast {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
 }
 
 /* Completely hide scrollbars but keep scrolling */
@@ -1245,4 +1629,354 @@ input[type="password"]::-webkit-password-toggle-button {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease;
+}
+
+/* Hide scrollbar but allow scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari */
+}
+
+@keyframes successFloat {
+  0% {
+    transform: translateY(8px) scale(.9);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateY(-6px) scale(1.05);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-success-float {
+  animation: successFloat .7s cubic-bezier(.22,1,.36,1);
+}
+
+.event-datetime-picker {
+  width: 100%;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: white;
+  min-height: 44px;
+  padding: 0 10px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.event-datetime-picker:hover {
+  border-color: rgb(203 213 225);
+}
+
+.event-datetime-picker:focus-within {
+  border-color: rgb(196 181 253);
+  box-shadow: 0 0 0 3px rgb(237 233 254);
+}
+
+.event-datetime-picker:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.event-datetime-picker input {
+  height: 40px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: rgb(51 65 85);
+  min-width: 0;
+}
+
+/* Calendar popup */
+.react-datetime-picker__calendar {
+  z-index: 100 !important;
+}
+
+.react-calendar {
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+  box-shadow:
+    0 10px 25px rgba(15, 23, 42, 0.12),
+    0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+/* Clock popup */
+.react-datetime-picker__clock {
+  z-index: 100 !important;
+}
+
+/* =========================================================
+   EVENTS - DATE/TIME PICKER ONLY
+   ========================================================= */
+
+.event-datepicker {
+  width: 100%;
+  height: 44px;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0 12px;
+  outline: none;
+
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.event-datepicker:hover {
+  border-color: rgb(203 213 225);
+}
+
+.event-datepicker:focus {
+  border-color: rgb(167 139 250);
+  box-shadow: 0 0 0 3px rgb(237 233 254);
+}
+
+.event-datepicker:disabled {
+  cursor: not-allowed;
+  background: rgb(248 250 252);
+  color: rgb(148 163 184);
+  opacity: 0.7;
+}
+
+.event-datepicker::placeholder {
+  color: rgb(148 163 184);
+  font-weight: 400;
+}
+
+
+/* =========================================================
+   Events DatePicker Popup
+   ========================================================= */
+
+.event-datepicker-popper {
+  z-index: 99999 !important;
+}
+
+
+/* Main popup */
+
+.event-datepicker-popper .react-datepicker {
+  display: flex;
+
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 14px !important;
+
+  background: #ffffff;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.12),
+    0 8px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+
+/* =========================================================
+   Calendar
+   ========================================================= */
+
+.event-datepicker-calendar {
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+}
+
+.event-datepicker-popper
+  .react-datepicker__header {
+  background: rgb(248 250 252) !important;
+  border-bottom: 1px solid rgb(226 232 240) !important;
+
+  padding-top: 14px !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__current-month {
+  color: rgb(15 23 42) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day-name {
+  color: rgb(100 116 139) !important;
+
+  width: 32px !important;
+  margin: 2px !important;
+
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day {
+  width: 32px !important;
+  height: 32px !important;
+
+  margin: 2px !important;
+
+  line-height: 32px !important;
+
+  border-radius: 8px !important;
+
+  font-size: 12px !important;
+  color: rgb(51 65 85) !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day:hover {
+  background: rgb(245 243 255) !important;
+  color: rgb(109 40 217) !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day--selected,
+.event-datepicker-popper
+  .react-datepicker__day--keyboard-selected {
+  background: rgb(124 58 237) !important;
+  color: #ffffff !important;
+
+  border-radius: 8px !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day--today {
+  font-weight: 700 !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__day--outside-month {
+  color: rgb(203 213 225) !important;
+}
+
+
+/* =========================================================
+   Navigation arrows
+   ========================================================= */
+
+.event-datepicker-popper
+  .react-datepicker__navigation {
+  top: 12px !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__navigation-icon::before {
+  border-color: rgb(100 116 139) !important;
+}
+
+
+/* =========================================================
+   Time panel
+   ========================================================= */
+
+.event-datepicker-popper
+  .react-datepicker__time-container {
+  width: 105px !important;
+
+  border-left: 1px solid rgb(226 232 240) !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-container
+  .react-datepicker__time {
+  background: #ffffff !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-container
+  .react-datepicker__time-box {
+  width: 100% !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-container
+  .react-datepicker__time-list {
+  height: 250px !important;
+  overflow-y: auto !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-list-item {
+  height: 34px !important;
+  line-height: 34px !important;
+
+  font-size: 12px !important;
+  color: rgb(51 65 85) !important;
+
+  transition: background 120ms ease;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-list-item:hover {
+  background: rgb(245 243 255) !important;
+}
+
+.event-datepicker-popper
+  .react-datepicker__time-list-item--selected {
+  background: rgb(124 58 237) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .event-datepicker-popper .react-datepicker {
+    transform-origin: top left;
+  }
+
+  .event-datepicker-popper
+    .react-datepicker__day {
+    width: 29px !important;
+    height: 29px !important;
+    line-height: 29px !important;
+  }
+
+  .event-datepicker-popper
+    .react-datepicker__day-name {
+    width: 29px !important;
+  }
+
+  .event-datepicker-popper
+    .react-datepicker__time-container {
+    width: 90px !important;
+  }
+}
+
+body.action-sheet-open .teacher-mobile-bottom-nav {
+  display: none !important;
 }

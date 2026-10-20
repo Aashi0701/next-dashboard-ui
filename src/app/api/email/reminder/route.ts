@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     if (!parentEmail) {
       return NextResponse.json(
         { error: "Parent email not found" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -27,11 +27,12 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("EMAIL ERROR:", err);
+
     return NextResponse.json(
-      { error: "Email failed", details: String(err) },
-      { status: 500 }
+      { error: "Unable to send email reminder" },
+      { status: 500 },
     );
   }
 }

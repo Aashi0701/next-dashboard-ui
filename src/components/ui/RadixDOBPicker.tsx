@@ -2,11 +2,14 @@
 
 import * as React from "react";
 import dayjs from "dayjs";
+import { CalendarDays } from "lucide-react";
+
 import RadixSelect from "@/components/ui/RadixSelect";
 
 interface Props {
-  value?: Date;
+  value?: Date | string;
   onChange?: (date?: Date) => void;
+  icon?: React.ReactNode;
 }
 
 const months = [
@@ -24,48 +27,59 @@ const months = [
   { value: "11", label: "Dec" },
 ];
 
-export default function RadixDOBPicker({ value, onChange }: Props) {
+export default function RadixDOBPicker({ value, onChange, icon }: Props) {
   const currentYear = new Date().getFullYear();
 
   const years = React.useMemo(
     () =>
       Array.from({ length: 80 }, (_, i) => {
         const y = currentYear - i;
-        return { value: String(y), label: String(y) };
+
+        return {
+          value: String(y),
+          label: String(y),
+        };
       }),
     [currentYear],
   );
 
-  /* ---------- local state ---------- */
   const [month, setMonth] = React.useState<string | undefined>();
+
   const [day, setDay] = React.useState<string | undefined>();
+
   const [year, setYear] = React.useState<string | undefined>();
 
-  /* ---------- normalized value ---------- */
+  const normalizedValue = React.useMemo(() => {
+    if (!value) return undefined;
+
+    return value instanceof Date ? value : new Date(value);
+  }, [value]);
+
   const valueTime = React.useMemo(
-    () => value?.getTime(),
-    [value],
+    () => normalizedValue?.getTime(),
+    [normalizedValue],
   );
 
-  /* ---------- sync from value (ONE-WAY) ---------- */
   React.useEffect(() => {
-    if (!value) {
+    if (!normalizedValue) {
       setMonth(undefined);
       setDay(undefined);
       setYear(undefined);
       return;
     }
 
-    const d = dayjs(value);
+    const d = dayjs(normalizedValue);
+
     setMonth(String(d.month()));
     setDay(String(d.date()));
     setYear(String(d.year()));
-  }, [value, valueTime]); // ✅ ESLint satisfied
+  }, [normalizedValue, valueTime]);
 
-  /* ---------- days calculation ---------- */
   const daysInMonth = React.useMemo(() => {
     if (!month) return 31;
+
     const safeYear = year ? Number(year) : 2000;
+
     return dayjs(new Date(safeYear, Number(month))).daysInMonth();
   }, [month, year]);
 
@@ -78,14 +92,12 @@ export default function RadixDOBPicker({ value, onChange }: Props) {
     [daysInMonth],
   );
 
-  /* ---------- reset invalid day ---------- */
   React.useEffect(() => {
     if (day && Number(day) > daysInMonth) {
       setDay(undefined);
     }
   }, [day, daysInMonth]);
 
-  /* ---------- emit change (GUARDED) ---------- */
   const lastEmittedRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
@@ -97,13 +109,17 @@ export default function RadixDOBPicker({ value, onChange }: Props) {
       Number(day),
     ).getTime();
 
-    if (lastEmittedRef.current === nextTime) return;
+    if (lastEmittedRef.current === nextTime) {
+      return;
+    }
 
     lastEmittedRef.current = nextTime;
+
     onChange?.(new Date(nextTime));
   }, [day, month, year, onChange]);
 
-  /* ---------- render ---------- */
+  const calendarIcon = icon ?? <CalendarDays className="h-4 w-4" />;
+
   return (
     <div className="grid grid-cols-3 gap-3">
       <RadixSelect
@@ -111,6 +127,7 @@ export default function RadixDOBPicker({ value, onChange }: Props) {
         value={month}
         onChange={setMonth}
         options={months}
+        icon={calendarIcon}
       />
 
       <RadixSelect
@@ -119,6 +136,7 @@ export default function RadixDOBPicker({ value, onChange }: Props) {
         onChange={setDay}
         options={days}
         disabled={!month}
+        icon={calendarIcon}
       />
 
       <RadixSelect
@@ -126,6 +144,7 @@ export default function RadixDOBPicker({ value, onChange }: Props) {
         value={year}
         onChange={setYear}
         options={years}
+        icon={calendarIcon}
       />
     </div>
   );

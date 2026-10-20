@@ -23,7 +23,7 @@ function labelValueTwoColumn(
   leftValue: string,
   rightLabel: string,
   rightValue: string,
-  y: number
+  y: number,
 ) {
   const col1LabelX = 40;
   const col1ValueX = 150;
@@ -53,19 +53,30 @@ function labelValueTwoColumn(
 ---------------------------------------------- */
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ studentId: string }> }
+  { params }: { params: Promise<{ studentId: string }> },
 ) {
   const { studentId } = await params;
 
   /* FETCH DATA */
+
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     include: {
       class: true,
       studentFees: {
         include: {
-          feeStructure: { include: { class: true } },
-          payments: { orderBy: { paidAt: "asc" } },
+          plan: {
+            include: {
+              feeStructure: {
+                include: {
+                  class: true,
+                },
+              },
+            },
+          },
+          payments: {
+            orderBy: { paidAt: "asc" },
+          },
         },
       },
     },
@@ -79,20 +90,20 @@ export async function GET(
   const allPayments = student.studentFees.flatMap((sf) =>
     sf.payments.map((p) => ({
       date: p.paidAt,
-      category: sf.feeStructure.title,
+      category: sf.plan.feeStructure.title,
       receiptNo: `TS-${new Date(p.paidAt).getFullYear()}-${String(
-        p.id
+        p.id,
       ).padStart(3, "0")}`,
       amount: p.amount,
       mode: p.mode,
-    }))
+    })),
   );
 
   allPayments.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const totalFee = student.studentFees.reduce(
     (sum, sf) => sum + sf.totalAmount,
-    0
+    0,
   );
   const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
   const pending = totalFee - totalPaid;
@@ -139,7 +150,7 @@ export async function GET(
 Hyderabad, Rangareddy District Telangana – 500084
 Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
       headerLeft + 120,
-      68
+      68,
     );
 
   doc
@@ -190,7 +201,7 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     `${student.name} ${student.surname}`,
     "Class",
     student.class?.name ?? "School-wide",
-    y
+    y,
   );
   y = labelValueTwoColumn(
     doc,
@@ -198,7 +209,7 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     "Final",
     "Report No",
     reportNo,
-    y
+    y,
   );
   y = labelValueTwoColumn(
     doc,
@@ -206,150 +217,157 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     new Intl.DateTimeFormat("en-GB").format(new Date()),
     "",
     "",
-    y
+    y,
   );
 
   doc.y = y + 10;
 
-/* PAYMENT HISTORY */
-doc
-  .font("Bold")
-  .fontSize(12)
-  .text("Payment History", 0, doc.y, { align: "center" });
+  /* PAYMENT HISTORY */
+  doc
+    .font("Bold")
+    .fontSize(12)
+    .text("Payment History", 0, doc.y, { align: "center" });
 
-const tableStartY = doc.y + 20;
-/* COLUMN POSITIONS */
-const colDate = 40;
-const colCategory = 140;
-const colReceipt = 270;
+  const tableStartY = doc.y + 20;
+  /* COLUMN POSITIONS */
+  const colDate = 40;
+  const colCategory = 140;
+  const colReceipt = 270;
 
-const amountRightEdge = 400;
-const amountColWidth = 100;
-const colAmount = amountRightEdge - amountColWidth;
+  const amountRightEdge = 400;
+  const amountColWidth = 100;
+  const colAmount = amountRightEdge - amountColWidth;
 
-const colMode = 500;
+  const colMode = 500;
 
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    HEADER BACKGROUND
 --------------------------------------------------- */
-const headerTopY = tableStartY;
-const headerHeight = 20;
+  const headerTopY = tableStartY;
+  const headerHeight = 20;
 
-doc.save();
-doc.fillColor("#f3f4f6");
-doc.rect(40, headerTopY, 515, headerHeight).fill();
-doc.restore();
+  doc.save();
+  doc.fillColor("#f3f4f6");
+  doc.rect(40, headerTopY, 515, headerHeight).fill();
+  doc.restore();
 
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    NOW DRAW TOP DIVIDER — AFTER BACKGROUND
 --------------------------------------------------- */
-doc.strokeColor("#d1d5db")
-  .lineWidth(1)
-  .moveTo(40, headerTopY)
-  .lineTo(555, headerTopY)
-  .stroke();
+  doc
+    .strokeColor("#d1d5db")
+    .lineWidth(1)
+    .moveTo(40, headerTopY)
+    .lineTo(555, headerTopY)
+    .stroke();
 
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    HEADER TEXT
 --------------------------------------------------- */
-const headerTextY = headerTopY + 4;
+  const headerTextY = headerTopY + 4;
 
-doc.font("Bold").fontSize(10).fillColor("#000")
-  .text("Date", colDate, headerTextY)
-  .text("Fee Category", colCategory, headerTextY)
-  .text("Receipt No", colReceipt, headerTextY)
-  .text(`Amount (${INR})`, colAmount, headerTextY, {
-    width: amountColWidth,
-    align: "right",
-  })
-  .text("Mode", colMode, headerTextY);
+  doc
+    .font("Bold")
+    .fontSize(10)
+    .fillColor("#000")
+    .text("Date", colDate, headerTextY)
+    .text("Fee Category", colCategory, headerTextY)
+    .text("Receipt No", colReceipt, headerTextY)
+    .text(`Amount (${INR})`, colAmount, headerTextY, {
+      width: amountColWidth,
+      align: "right",
+    })
+    .text("Mode", colMode, headerTextY);
 
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    BOTTOM DIVIDER BELOW HEADER
 --------------------------------------------------- */
-doc.strokeColor("#d1d5db")
-  .lineWidth(1)
-  .moveTo(40, headerTopY + headerHeight)
-  .lineTo(555, headerTopY + headerHeight)
-  .stroke();
+  doc
+    .strokeColor("#d1d5db")
+    .lineWidth(1)
+    .moveTo(40, headerTopY + headerHeight)
+    .lineTo(555, headerTopY + headerHeight)
+    .stroke();
 
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    ROW START POSITION
 --------------------------------------------------- */
-let rowY = headerTopY + headerHeight + 10;
+  let rowY = headerTopY + headerHeight + 10;
 
-doc.font("Regular").fontSize(10).fillColor("#000");
+  doc.font("Regular").fontSize(10).fillColor("#000");
 
-allPayments.forEach((p) => {
-  const formattedDate = new Intl.DateTimeFormat("en-GB").format(p.date);
-  const amountValue = p.amount.toLocaleString("en-IN");
+  allPayments.forEach((p) => {
+    const formattedDate = new Intl.DateTimeFormat("en-GB").format(p.date);
+    const amountValue = p.amount.toLocaleString("en-IN");
 
-  doc.text(formattedDate, colDate, rowY);
-  doc.text(p.category, colCategory, rowY);
-  doc.text(p.receiptNo, colReceipt, rowY);
+    doc.text(formattedDate, colDate, rowY);
+    doc.text(p.category, colCategory, rowY);
+    doc.text(p.receiptNo, colReceipt, rowY);
 
-  doc.text("₹", colAmount + 60, rowY);
+    doc.text("₹", colAmount + 60, rowY);
 
-  doc.text(amountValue, colAmount, rowY, {
+    doc.text(amountValue, colAmount, rowY, {
+      width: amountColWidth,
+      align: "right",
+    });
+
+    doc.text(p.mode, colMode, rowY);
+
+    rowY += 22;
+  });
+
+  /* ---------------------------------------------------
+   TOP DIVIDER ABOVE TOTAL PAID (always visible)
+--------------------------------------------------- */
+  const totalTopY = rowY + 8;
+
+  doc
+    .strokeColor("#d1d5db")
+    .lineWidth(1)
+    .moveTo(40, totalTopY)
+    .lineTo(555, totalTopY)
+    .stroke();
+
+  /* ---------------------------------------------------
+   TOTAL PAID BACKGROUND
+   SHIFTED DOWN BY 1px so divider stays visible
+--------------------------------------------------- */
+  const totalRowHeight = 24;
+  const totalBgY = totalTopY + 1; // <-- IMPORTANT FIX
+
+  doc.save();
+  doc.fillColor("#f3f4f6");
+  doc.rect(40, totalBgY, 515, totalRowHeight).fill();
+  doc.restore();
+
+  /* ---------------------------------------------------
+   TOTAL PAID TEXT (adjusted to match new background Y)
+--------------------------------------------------- */
+  const totalTextY = totalBgY + 6;
+
+  doc.font("Bold").fontSize(10).fillColor("#000");
+
+  // Label
+  doc.text("TOTAL PAID", colReceipt, totalTextY);
+
+  // ₹ symbol
+  doc.text("₹", colAmount + 60, totalTextY);
+
+  // Amount
+  doc.text(totalPaid.toLocaleString("en-IN"), colAmount, totalTextY, {
     width: amountColWidth,
     align: "right",
   });
 
-  doc.text(p.mode, colMode, rowY);
-
-  rowY += 22;
-});
-
-/* ---------------------------------------------------
-   TOP DIVIDER ABOVE TOTAL PAID (always visible)
---------------------------------------------------- */
-const totalTopY = rowY + 8;
-
-doc.strokeColor("#d1d5db")
-  .lineWidth(1)
-  .moveTo(40, totalTopY)
-  .lineTo(555, totalTopY)
-  .stroke();
-
-/* ---------------------------------------------------
-   TOTAL PAID BACKGROUND
-   SHIFTED DOWN BY 1px so divider stays visible
---------------------------------------------------- */
-const totalRowHeight = 24;
-const totalBgY = totalTopY + 1;   // <-- IMPORTANT FIX
-
-doc.save();
-doc.fillColor("#f3f4f6");
-doc.rect(40, totalBgY, 515, totalRowHeight).fill();
-doc.restore();
-
-/* ---------------------------------------------------
-   TOTAL PAID TEXT (adjusted to match new background Y)
---------------------------------------------------- */
-const totalTextY = totalBgY + 6;
-
-doc.font("Bold").fontSize(10).fillColor("#000");
-
-// Label
-doc.text("TOTAL PAID", colReceipt, totalTextY);
-
-// ₹ symbol
-doc.text("₹", colAmount + 60, totalTextY);
-
-// Amount
-doc.text(totalPaid.toLocaleString("en-IN"), colAmount, totalTextY, {
-  width: amountColWidth,
-  align: "right",
-});
-
-/* ---------------------------------------------------
+  /* ---------------------------------------------------
    BOTTOM DIVIDER
 --------------------------------------------------- */
-doc.strokeColor("#e5e7eb")
-  .lineWidth(1)
-  .moveTo(40, totalBgY + totalRowHeight)
-  .lineTo(555, totalBgY + totalRowHeight)
-  .stroke();
+  doc
+    .strokeColor("#e5e7eb")
+    .lineWidth(1)
+    .moveTo(40, totalBgY + totalRowHeight)
+    .lineTo(555, totalBgY + totalRowHeight)
+    .stroke();
 
   /* SUMMARY BOX (OVERALL ONLY) */
   const boxX = 350;
@@ -527,7 +545,7 @@ doc.strokeColor("#e5e7eb")
       "Authorised by TrueSunshine School Management System",
       0,
       footerY - 35,
-      { width: doc.page.width, align: "center" }
+      { width: doc.page.width, align: "center" },
     );
 
   doc
@@ -538,7 +556,7 @@ doc.strokeColor("#e5e7eb")
       "This report is digitally generated and system authenticated. No physical signature is required.",
       0,
       footerY,
-      { width: doc.page.width, align: "center" }
+      { width: doc.page.width, align: "center" },
     );
 
   /* ----------------------------------------------

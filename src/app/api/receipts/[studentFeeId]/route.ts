@@ -8,7 +8,6 @@ import { readFile } from "fs/promises";
 import { generateQrSvg } from "@/lib/receipt/generateQrSvg";
 import { generateVerifyHash } from "@/lib/receipt/generateVerifyHash";
 
-
 /* ================= CONSTANTS ================= */
 const INR = "₹";
 
@@ -28,7 +27,7 @@ function labelValueTwoColumn(
   leftValue: string,
   rightLabel: string,
   rightValue: string,
-  y: number
+  y: number,
 ) {
   const col1LabelX = 40;
   const col1ValueX = 150;
@@ -39,18 +38,28 @@ function labelValueTwoColumn(
   const rowHeight = 20;
 
   // Left Label
-  doc.font("Regular").fontSize(10).fillColor("#374151")
+  doc
+    .font("Regular")
+    .fontSize(10)
+    .fillColor("#374151")
     .text(leftLabel, col1LabelX, y, { width: 100 });
 
   // Left Value
-  doc.font("Bold").fillColor("#000").text(leftValue, col1ValueX, y, { width: 130 });
+  doc
+    .font("Bold")
+    .fillColor("#000")
+    .text(leftValue, col1ValueX, y, { width: 130 });
 
   // Right Label
-  doc.font("Regular").fillColor("#374151")
+  doc
+    .font("Regular")
+    .fillColor("#374151")
     .text(rightLabel, col2LabelX, y, { width: 100 });
 
   // Right Value
-  doc.font("Bold").fillColor("#000")
+  doc
+    .font("Bold")
+    .fillColor("#000")
     .text(rightValue, col2ValueX, y, { width: 130 });
 
   return y + rowHeight;
@@ -61,24 +70,39 @@ function labelValueTwoColumn(
 ===================================================== */
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ studentFeeId: string }> }
+  { params }: { params: Promise<{ studentFeeId: string }> },
 ) {
   const { studentFeeId } = await params;
   const feeId = Number(studentFeeId);
 
-  if (Number.isNaN(feeId)) {return new Response("Invalid receipt id", { status: 400 });}
+  if (Number.isNaN(feeId)) {
+    return new Response("Invalid receipt id", { status: 400 });
+  }
 
   /* ================= FETCH DATA ================= */
+
   const fee = await prisma.studentFee.findUnique({
     where: { id: feeId },
     include: {
       student: true,
-      feeStructure: { include: { class: true } },
-      payments: { orderBy: { paidAt: "asc" } },
+      plan: {
+        include: {
+          feeStructure: {
+            include: {
+              class: true,
+            },
+          },
+        },
+      },
+      payments: {
+        orderBy: { paidAt: "asc" },
+      },
     },
   });
 
-  if (!fee) {return new Response("Receipt not found", { status: 404 });}
+  if (!fee) {
+    return new Response("Receipt not found", { status: 404 });
+  }
 
   /* ================= PDF SETUP ================= */
   const doc = new PDFDocument({ size: "A4", margin: 40 });
@@ -89,11 +113,11 @@ export async function GET(
   /* ================= REGISTER FONTS (BUFFER-BASED) ================= */
   const fontRegularPath = path.resolve(
     process.cwd(),
-    "public/fonts/NotoSans-Regular.ttf"
+    "public/fonts/NotoSans-Regular.ttf",
   );
   const fontBoldPath = path.resolve(
     process.cwd(),
-    "public/fonts/NotoSans-Bold.ttf"
+    "public/fonts/NotoSans-Bold.ttf",
   );
 
   // ✅ REQUIRED for pdfkit.standalone
@@ -110,7 +134,6 @@ export async function GET(
   try {
     const logoPath = path.resolve(process.cwd(), "public", "my_logo.svg");
     const svgContent = await readFile(logoPath, "utf-8");
-    
 
     SVGtoPDF(doc, svgContent, headerLeft + 20, 40, {
       width: 60,
@@ -136,7 +159,7 @@ export async function GET(
 Hyderabad, Rangareddy District Telangana – 500084
 Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
       headerLeft + 120,
-      68
+      68,
     );
 
   doc
@@ -152,15 +175,20 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
   const titleY = doc.y + 20;
 
   // Title text (centered)
-  doc.font("Bold").fontSize(15).fillColor("#000000")
-    .text(titleText, 0, titleY, {width: doc.page.width, align: "center",});
+  doc
+    .font("Bold")
+    .fontSize(15)
+    .fillColor("#000000")
+    .text(titleText, 0, titleY, { width: doc.page.width, align: "center" });
 
   // Calculate underline width based on text width
   const textWidth = doc.widthOfString(titleText);
   const underlineY = titleY + 22;
 
   // Draw underline
-  doc.strokeColor("#9ca3af").lineWidth(0.75)
+  doc
+    .strokeColor("#9ca3af")
+    .lineWidth(0.75)
     .moveTo((doc.page.width - textWidth) / 2, underlineY)
     .lineTo((doc.page.width + textWidth) / 2, underlineY)
     .stroke();
@@ -181,18 +209,18 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     "Student Name",
     `${fee.student.name} ${fee.student.surname}`,
     "Class",
-    fee.feeStructure.class?.name ?? "School-wide",
-    infoY
+    fee.plan.feeStructure.class?.name ?? "School-wide",
+    infoY,
   );
 
   // Row 2
   infoY = labelValueTwoColumn(
     doc,
     "Fee Category",
-    fee.feeStructure.title,
+    fee.plan.feeStructure.title,
     "Receipt No",
     receiptNo,
-    infoY
+    infoY,
   );
 
   // Row 3
@@ -200,9 +228,9 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     doc,
     "Generated On",
     new Intl.DateTimeFormat("en-GB").format(new Date()),
-    "",   // no second label
-    "",   // no value
-    infoY
+    "", // no second label
+    "", // no value
+    infoY,
   );
 
   doc.y = infoY + 10;
@@ -215,14 +243,16 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
   const colReceipt = 180;
 
   // FIX: Expand spacing for proper right alignment
-  const amountRightEdge = 400;     // moved further right
+  const amountRightEdge = 400; // moved further right
   const amountColWidth = 100;
   const colAmount = amountRightEdge - amountColWidth;
 
-  const colMode = 500;             // moved to avoid overlap
+  const colMode = 500; // moved to avoid overlap
 
   /* Section Title */
-  doc.font("Bold").fontSize(11)
+  doc
+    .font("Bold")
+    .fontSize(11)
     .text("Payment History", 0, tableStartY, { align: "center" });
 
   /* Table Header */
@@ -255,14 +285,10 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
 
   fee.payments.forEach((p) => {
     // Date
-    doc.text(
-      new Intl.DateTimeFormat("en-GB").format(p.paidAt),
-      colDate,
-      rowY
-    );
+    doc.text(new Intl.DateTimeFormat("en-GB").format(p.paidAt), colDate, rowY);
 
     // Row: Receipt No (DYNAMIC)
-    const paymentReceiptNo = `${receiptNo}-${p.id}`;  
+    const paymentReceiptNo = `${receiptNo}-${p.id}`;
     doc.text(paymentReceiptNo, colReceipt, rowY);
 
     const amountValue = p.amount.toLocaleString("en-IN");
@@ -290,31 +316,36 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     x: number,
     y: number,
     width: number,
-    bold = false
+    bold = false,
   ) {
     const labelWidth = 90;
 
     // Two columns for accounting-style alignment
-    const symbolWidth = 20;        // column for ₹
+    const symbolWidth = 20; // column for ₹
     const numberWidth = width - labelWidth - symbolWidth - 20;
 
     // Label
-    doc.font(bold ? "Bold" : "Regular")
+    doc
+      .font(bold ? "Bold" : "Regular")
       .fontSize(10)
       .text(label, x, y, { width: labelWidth });
 
     // Rupee symbol (fixed narrow column)
-    doc.font(bold ? "Bold" : "Regular")
-      .text("₹", x + labelWidth + 30, y, {
-        width: symbolWidth,
-        align: "left",   // keep symbol aligned vertically
-      });
+    doc.font(bold ? "Bold" : "Regular").text("₹", x + labelWidth + 30, y, {
+      width: symbolWidth,
+      align: "left", // keep symbol aligned vertically
+    });
 
     // Numeric amount (right-aligned perfectly)
-    doc.text(amount.toLocaleString("en-IN"), x + labelWidth + 10 + symbolWidth, y, {
-      width: numberWidth,
-      align: "right",
-    });
+    doc.text(
+      amount.toLocaleString("en-IN"),
+      x + labelWidth + 10 + symbolWidth,
+      y,
+      {
+        width: numberWidth,
+        align: "right",
+      },
+    );
 
     return y + 18;
   }
@@ -328,20 +359,25 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
   const summaryWidth = 190;
   const summaryHeight = 95;
 
-  doc.save()
+  doc
+    .save()
     .fillColor("#f9fafb")
     .rect(summaryX, summaryY, summaryWidth, summaryHeight)
     .fill()
     .restore();
 
-  doc.rect(summaryX, summaryY, summaryWidth, summaryHeight)
+  doc
+    .rect(summaryX, summaryY, summaryWidth, summaryHeight)
     .strokeColor("#e5e7eb")
     .lineWidth(0.8)
     .stroke();
 
   // Title
   let sy = summaryY + 12;
-  doc.font("Bold").fontSize(11).text("Summary", summaryX + 10, sy);
+  doc
+    .font("Bold")
+    .fontSize(11)
+    .text("Summary", summaryX + 10, sy);
   sy += 20;
 
   sy = summaryRow(
@@ -350,7 +386,7 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     fee.totalAmount,
     summaryX + 10,
     sy,
-    summaryWidth - 20
+    summaryWidth - 20,
   );
 
   sy = summaryRow(
@@ -359,7 +395,7 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     totalPaid,
     summaryX + 10,
     sy,
-    summaryWidth - 20
+    summaryWidth - 20,
   );
 
   sy = summaryRow(
@@ -369,27 +405,27 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     summaryX + 10,
     sy,
     summaryWidth - 20,
-    true   // bold row
+    true, // bold row
   );
 
   /* ================= QR VERIFICATION ================= */
   // Step 1: Generate verification hash
-    const verifyHash = generateVerifyHash({
-      studentFeeId: fee.id,
-      totalPaid,
-      receiptNo,
-    });
+  const verifyHash = generateVerifyHash({
+    studentFeeId: fee.id,
+    totalPaid,
+    receiptNo,
+  });
 
   // Step 2: Build verification URL (PUBLIC URL)
-    const verifyUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-receipt/${verifyHash}`;
+  const verifyUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-receipt/${verifyHash}`;
 
   // Step 3: Generate QR SVG
-    let qrSvg = "";
-    try {
-      qrSvg = await generateQrSvg(verifyUrl);
-    } catch (e) {
-      console.error("QR generation failed", e);
-    }
+  let qrSvg = "";
+  try {
+    qrSvg = await generateQrSvg(verifyUrl);
+  } catch (e) {
+    console.error("QR generation failed", e);
+  }
 
   /* ================= QR CODE (ABOVE STAMP) ================= */
   if (qrSvg) {
@@ -400,7 +436,8 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     const qrY = 220;
 
     // LABEL just ABOVE QR
-    doc.font("Bold")
+    doc
+      .font("Bold")
       .fontSize(8)
       .fillColor("#6b7280")
       .text("Scan to verify receipt", qrX - 10, qrY + 355, {
@@ -443,7 +480,8 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     }).format(now);
 
     // No wrapping (single line)
-    doc.font("Regular")
+    doc
+      .font("Regular")
       .fontSize(10)
       .fillColor("#374151")
       .text("Digitally signed by: Ranjith Kumar V", sigX, rowY, {
@@ -481,7 +519,6 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
     });
 
     doc.restore();
-
   } catch (err) {
     console.warn("Stamp render skipped:", err);
   }
@@ -489,18 +526,18 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
   /* ================= FOOTER ================= */
   const footerY = doc.page.height - 62;
   doc
-  .font("Bold")
-  .fontSize(9)
-  .fillColor("#374151")
-  .text(
-    "Authorised by TrueSunshine School Management System",
-    0,
-    footerY - 35,
-    { width: doc.page.width, align: "center" }
-  );
+    .font("Bold")
+    .fontSize(9)
+    .fillColor("#374151")
+    .text(
+      "Authorised by TrueSunshine School Management System",
+      0,
+      footerY - 35,
+      { width: doc.page.width, align: "center" },
+    );
 
   const footerText =
-  "This receipt is digitally generated and system authenticated. No physical signature is required.";
+    "This receipt is digitally generated and system authenticated. No physical signature is required.";
 
   // Divider line above footer
   doc
@@ -525,7 +562,7 @@ Phone: +91 79895 99833 | Email: truesunshine.playschools@gmail.com`,
   await new Promise<void>((resolve) => doc.on("end", resolve));
 
   const pdfBytes = new Uint8Array(
-    chunks.reduce<number[]>((acc, chunk) => acc.concat(...chunk), [])
+    chunks.reduce<number[]>((acc, chunk) => acc.concat(...chunk), []),
   );
 
   return new Response(pdfBytes, {

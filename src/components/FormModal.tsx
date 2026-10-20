@@ -17,20 +17,15 @@ import {
   deleteHoliday,
 } from "@/lib/actions";
 
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Dispatch,
-  SetStateAction,
   useActionState,
   useEffect,
-  useState,
   ReactNode,
 } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
-import AssignFeeForm from "./forms/AssignFeeForm";
 import ModalPortal from "./ModalPortal";
 import { useSearchParams } from "next/navigation";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
@@ -41,17 +36,7 @@ import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 type TableKey = FormContainerProps["table"];
 
-/** Only valid mutations for forms */
-type MutationType = "create" | "update";
-
 type ServerAction = (prev: any, formData: FormData) => Promise<any>;
-
-type FormFactory = (
-  close: () => void,
-  type: MutationType,
-  data?: any,
-  relatedData?: any,
-) => JSX.Element;
 
 const deleteActionMap: Partial<Record<TableKey, ServerAction>> = {
   subject: deleteSubject,
@@ -68,73 +53,6 @@ const deleteActionMap: Partial<Record<TableKey, ServerAction>> = {
   announcement: deleteAnnouncement,
   holiday: deleteHoliday,
   fee: deleteFee,
-};
-
-const TeacherForm = dynamic(() => import("./forms/TeacherForm"));
-const StudentForm = dynamic(() => import("./forms/StudentForm"));
-const ParentForm = dynamic(() => import("./forms/ParentForm"));
-const SubjectForm = dynamic(() => import("./forms/SubjectForm"));
-const ClassForm = dynamic(() => import("./forms/ClassForm"));
-const ExamForm = dynamic(() => import("./forms/ExamForm"));
-const LessonForm = dynamic(() => import("./forms/LessonForm"));
-const AssignmentForm = dynamic(() => import("./forms/AssignmentForm"));
-const ResultForm = dynamic(() => import("./forms/ResultForm"));
-const EventForm = dynamic(() => import("./forms/EventForm"));
-const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"));
-const AttendanceForm = dynamic(() => import("./forms/AttendanceForm"));
-const FeeForm = dynamic(() => import("./forms/FeeForm"));
-const CollectPaymentForm = dynamic(() => import("./forms/CollectPaymentForm"));
-const HolidayForm = dynamic(() => import("./forms/HolidayForm"));
-const ProfileForm = dynamic(() => import("./forms/ProfileForm"));
-
-const forms: Record<TableKey, FormFactory> = {
-  class: (close, t, d, r) => (
-    <ClassForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  lesson: (close, t, d, r) => (
-    <LessonForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  subject: (close, t, d, r) => (
-    <SubjectForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  teacher: (close, t, d, r) => (
-    <TeacherForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  student: (close, t, d, r) => (
-    <StudentForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  parent: (close, t, d) => <ParentForm close={close} type={t!} data={d} />,
-  exam: (close, t, d, r) => (
-    <ExamForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  assignment: (close, t, d, r) => (
-    <AssignmentForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  result: (close, t, d, r) => (
-    <ResultForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  attendance: (close, t, d, r) => (
-    <AttendanceForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  fee: (close, type, data, relatedData) => {
-    return (
-      <FeeForm
-        close={close}
-        type={type}
-        data={data}
-        relatedData={relatedData}
-      />
-    );
-  },
-  payment: (close, _t, d) => <CollectPaymentForm data={d} close={close} />,
-  announcement: (close, t, d, r) => (
-    <AnnouncementForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  event: (close, t, d, r) => (
-    <EventForm close={close} type={t!} data={d} relatedData={r} />
-  ),
-  holiday: (close, t, d) => <HolidayForm close={close} type={t!} data={d} />,
-  profile: (close, _t, data) => <ProfileForm profile={data} onClose={close} />,
 };
 
 const iconMap: Record<string, string> = {
@@ -211,25 +129,6 @@ const FormModal = ({
         />
       );
     }
-
-    /* CREATE / UPDATE */
-    if (type === "create" || type === "update") {
-      return forms[table](
-        () => {
-          closeModal(); // 🔑 remove ?action
-          router.refresh(); // 🔑 refresh AFTER cleanup
-        },
-        type,
-        data,
-        relatedData,
-      );
-    }
-
-    /* ASSIGN (FEE ONLY) */
-    if (type === "assign" && table === "fee") {
-      return <AssignFeeForm onClose={closeModal} relatedData={relatedData} />;
-    }
-
     return null;
   };
 

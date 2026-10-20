@@ -3,7 +3,7 @@
 type Announcement = {
   id: number;
   title: string;
-  date: Date;
+  createdAt: Date | string;
 };
 
 export default function AnnouncementTicker({
@@ -25,33 +25,30 @@ export default function AnnouncementTicker({
   if (!announcements.length) return null;
 
   return (
-    <div className="flex items-center gap-3 w-full overflow-hidden">
-      {/* Label */}
-      <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+    <div className="flex w-full items-center gap-3 overflow-hidden">
+      <span className="whitespace-nowrap text-sm font-semibold text-gray-700">
         📢 Announcements
       </span>
 
-      {/* Scrolling Area */}
       <div className="flex-1 overflow-hidden">
-        <div className="flex items-center gap-10 whitespace-nowrap animate-marquee text-sm text-gray-700">
-          
+        <div className="flex animate-marquee items-center gap-10 whitespace-nowrap text-sm text-gray-700">
           {[...announcements, ...announcements].map((a, i) => (
-            <span key={i} className="flex items-center gap-2 font-medium">
-              
+            <span
+              key={`${a.id}-${i}`}
+              className="flex items-center gap-2 font-medium"
+            >
               <span>{getIcon(a.title)}</span>
 
               <span>{a.title}</span>
 
-              <span className="text-gray-400 text-xs">
-                {new Date(a.date).toLocaleDateString("en-IN", {
+              <span className="text-xs text-gray-400">
+                {new Date(a.createdAt).toLocaleDateString("en-IN", {
                   day: "numeric",
                   month: "short",
                 })}
               </span>
-
             </span>
           ))}
-
         </div>
       </div>
     </div>

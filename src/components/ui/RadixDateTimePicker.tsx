@@ -17,86 +17,120 @@ export default function RadixDateTimePicker({
   placeholder = "Select date & time",
 }: Props) {
   const [open, setOpen] = useState(false);
+
   const date = value;
 
-  const updateTime = (type: "hour" | "minute", val: number) => {
-    if (!date) return;
-    const next = new Date(date);
-    if (type === "hour") next.setHours(val);
-    if (type === "minute") next.setMinutes(val);
+  const hours = date?.getHours() ?? 0;
+  const minutes = date?.getMinutes() ?? 0;
+
+  const buildDate = (
+    base: Date,
+    hour: number,
+    minute: number,
+  ) => {
+    return new Date(
+      base.getFullYear(),
+      base.getMonth(),
+      base.getDate(),
+      hour,
+      minute,
+      0,
+      0,
+    );
+  };
+
+  const updateTime = (
+    type: "hour" | "minute",
+    value: number,
+  ) => {
+    const base = date ?? new Date();
+
+    const next = buildDate(
+      base,
+      type === "hour" ? value : hours,
+      type === "minute" ? value : minutes,
+    );
+
     onChange(next);
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="
-            w-full h-10
-            flex items-center justify-between
-            rounded-xl border bg-white px-3
-            text-sm text-gray-700
-            hover:bg-gray-50
-          "
+          className="w-full h-10 flex items-center justify-between rounded-xl border bg-white px-3 text-sm hover:bg-gray-50"
         >
-          <span>
+          <span className="truncate">
             {date ? (
-              date.toLocaleString()
+              date.toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })
             ) : (
               <span className="text-gray-400">{placeholder}</span>
             )}
           </span>
-          <CalendarIcon size={16} className="text-gray-500" />
+
+          <CalendarIcon
+            size={16}
+            className="text-gray-500 shrink-0"
+          />
         </button>
       </Popover.Trigger>
 
-      {/* ✅ THIS IS THE FIX */}
       <Popover.Portal>
         <Popover.Content
           side="bottom"
           align="start"
           sideOffset={8}
-          avoidCollisions
-          collisionPadding={16}
-          className="
-            z-[99999]
-            rounded-xl
-            border
-            bg-white
-            p-3
-            shadow-xl
-          "
+          className="z-[99999] rounded-xl border bg-white p-3 shadow-xl"
         >
-          {/* DATE */}
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(d) => d && onChange(d)}
+            onSelect={(selected) => {
+              if (!selected) return;
+
+              onChange(
+                buildDate(
+                  selected,
+                  hours,
+                  minutes,
+                ),
+              );
+            }}
           />
 
-          {/* TIME */}
-          <div className="flex gap-2 mt-3">
+          <div className="mt-4 flex items-center gap-2">
             <input
               type="number"
               min={0}
               max={23}
-              value={date?.getHours() ?? ""}
-              onChange={(e) => updateTime("hour", Number(e.target.value))}
-              placeholder="HH"
-              className="w-16 h-9 rounded-md border px-2 text-sm"
+              value={hours}
+              onChange={(e) =>
+                updateTime(
+                  "hour",
+                  Number(e.target.value),
+                )
+              }
+              className="h-9 w-16 rounded-md border px-2 text-sm"
             />
 
-            <span className="pt-2">:</span>
+            <span>:</span>
 
             <input
               type="number"
               min={0}
               max={59}
-              value={date?.getMinutes() ?? ""}
-              onChange={(e) => updateTime("minute", Number(e.target.value))}
-              placeholder="MM"
-              className="w-16 h-9 rounded-md border px-2 text-sm"
+              value={minutes}
+              onChange={(e) =>
+                updateTime(
+                  "minute",
+                  Number(e.target.value),
+                )
+              }
+              className="h-9 w-16 rounded-md border px-2 text-sm"
             />
           </div>
         </Popover.Content>
